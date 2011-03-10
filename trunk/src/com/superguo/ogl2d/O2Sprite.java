@@ -111,4 +111,10 @@ public abstract class O2Sprite {
 	{
 		return managed;
 	}
+	
+	@Override
+	public boolean equals (Object o)
+	{
+		return this == o;
+	}
 }

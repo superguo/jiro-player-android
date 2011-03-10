@@ -7,6 +7,7 @@ import android.opengl.*;
 import android.view.*;
 
 public class O2Director extends GLSurfaceView {
+	public static boolean inGlContext = false;
 	android.content.Context appContext;
 	O2InternalRenderer renderer;
 	O2SpriteManager spriteManager;

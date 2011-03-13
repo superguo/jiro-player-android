@@ -9,23 +9,36 @@ public class O2AssetBitmapSprite extends O2Sprite {
 	
 	String assetPath;
 	
-	O2AssetBitmapSprite(boolean managed, String assetPath, AssetManager assetMan) throws IOException
+	O2AssetBitmapSprite(boolean managed, String assetPath, AssetManager assetMan)
 	{
 		super(managed);
-		this.assetPath = new String(assetPath); 
-		if (O2Director.inGlContext) create(assetMan);
+		this.assetPath = managed ? new String(assetPath) : assetPath;
+		if (O2Director.instance.gl != null) recreate();
 	}
 
 	void create(AssetManager assetMan) throws IOException
 	{
-		Bitmap bitmap = BitmapFactory.decodeStream(assetMan.open(assetPath));
-		createTexFromBitmap(bitmap);
-		available = true;
 	}
 	
 	@Override
 	public void dispose() {
 		assetPath = null;
 		super.dispose();
+	}
+
+	@Override
+	public void recreate()
+	{
+		try
+		{
+			Bitmap bitmap = BitmapFactory.decodeStream(
+				O2Director.instance.appContext.getAssets().open(assetPath));
+			createTexFromBitmap(bitmap);
+			available = true;
+		}
+		catch(IOException e)
+		{
+			available = false;
+		}
 	}
 }

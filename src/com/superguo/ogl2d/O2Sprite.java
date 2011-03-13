@@ -21,20 +21,37 @@ public abstract class O2Sprite {
 	
 	protected O2Sprite(boolean managed)
 	{
+		if (O2Director.instance == null)
+		{
+			throw new O2Exception("O2Director instance not created");
+		}
+		
+		if (!managed && O2Director.instance.gl == null)
+		{
+			throw new O2Exception("Cannot create unmanaged sprite when GL surface is lost");
+		}
+
 		this.managed = managed;
 		available = false;
 	}
 	
+	public abstract void recreate();
+	
 	public void dispose()
 	{
-		int texArr[] = { tex };
-		if (O2Director.inGlContext)
+		if (O2Director.instance.gl != null)
+		{
+			int texArr[] = { tex };
 			GLES10.glDeleteTextures(1, texArr, 0);
+		}
 		available = false;
 	}
 
 	protected void createTexFromBitmap(Bitmap bmp)
 	{
+		width = bmp.getWidth();
+		height = bmp.getHeight();
+
 		int texArr[] = new int[1];
 		GLES10.glGenTextures(1, texArr, 0);
 		tex = texArr[0];
@@ -55,7 +72,7 @@ public abstract class O2Sprite {
 		GLUtils.texImage2D(GLES10.GL_TEXTURE_2D, 0, bmp, 0);
 	}
 	
-	public final void draw(GL10 gl, int tagetX, int targetY)
+	public final void draw(int tagetX, int targetY)
 	{
 		vertCoods[0] = vertCoods[1] = vertCoods[3] = vertCoods[4] = 0;
 		vertCoods[2] = vertCoods[6] = width;
@@ -64,14 +81,15 @@ public abstract class O2Sprite {
 		vertBuf.position(0);
 		vertBuf.put(vertCoods);
 		vertBuf.position(0);
-		
+	
+		GL10 gl = O2Director.getInstance().gl;
 		gl.glVertexPointer(2, GLES10.GL_FLOAT, 0, vertBuf);
 		gl.glTexCoordPointer(2, GLES10.GL_FIXED, 0, fullTexBuf);
 		
 		GLES10.glDrawArrays(GLES10.GL_TRIANGLE_STRIP, 0, 4);
 	}
 	
-	public final void draw(GL10 gl, int srcX, int srcY, int srcWidth, int srcHeight, int tagetX, int targetY)
+	public final void draw(int srcX, int srcY, int srcWidth, int srcHeight, int tagetX, int targetY)
 	{
 		vertCoods[0] = vertCoods[4] = tagetX;
 		vertCoods[1] = vertCoods[3] = targetY;
@@ -90,7 +108,8 @@ public abstract class O2Sprite {
 		texBuf.position(0);
 		texBuf.put(texCoods);
 		texBuf.position(0);
-		
+	
+		GL10 gl = O2Director.getInstance().gl;
 		gl.glVertexPointer(2, GLES10.GL_FLOAT, 0, vertBuf);
 		gl.glTexCoordPointer(2, GLES10.GL_FIXED, 0, texBuf);
 		

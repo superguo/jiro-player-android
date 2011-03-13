@@ -1,6 +1,5 @@
 package com.superguo.ogl2d;
 
-import java.io.IOException;
 import java.util.*;
 
 import android.graphics.*;
@@ -32,30 +31,34 @@ public class O2SpriteManager {
 		return conditionalAdd(new O2ResourceBitmapSprite(managed, resId, appContext.getResources()));
 	}
 	
-	public O2Sprite createFromAsset(String assetPath, boolean managed) throws IOException
+	public O2Sprite createFromAsset(String assetPath, boolean managed)
 	{
 		return conditionalAdd(new O2AssetBitmapSprite(managed, assetPath, appContext.getAssets()));
 	}
 
-	public void recreateManaged() throws IOException
+	public O2Sprite createFromString(String text, long paintId, boolean managed)
+	{
+		return conditionalAdd(new O2StringSprite(managed, text, paintId));
+	}
+
+	public O2Sprite createFromString(String text, boolean managed)
+	{
+		return conditionalAdd(new O2StringSprite(managed, text, 0));
+	}
+
+	public void recreateManaged()
 	{
 		for (O2Sprite sprite : spriteSet)
 		{
-			if (sprite.managed)
-			{
-				if (sprite instanceof O2BitmapSprite)
-				{
-					((O2BitmapSprite)sprite).create();
-				}
-				else if (sprite instanceof O2ResourceBitmapSprite)
-				{
-					((O2ResourceBitmapSprite)sprite).create(appContext.getResources());
-				}
-				else if (sprite instanceof O2AssetBitmapSprite)
-				{
-					((O2AssetBitmapSprite)sprite).create(appContext.getAssets());
-				}
-			}
+			if (sprite.managed) sprite.recreate();
+		}
+	}
+	
+	void markAllNA()
+	{
+		for (O2Sprite sprite : spriteSet)
+		{
+			sprite.available = false;
 		}
 	}
 }

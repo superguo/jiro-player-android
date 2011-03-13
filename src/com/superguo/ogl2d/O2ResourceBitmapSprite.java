@@ -1,7 +1,5 @@
 package com.superguo.ogl2d;
 
-import java.io.IOException;
-
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -13,18 +11,20 @@ public class O2ResourceBitmapSprite extends O2Sprite {
 	{
 		super(managed);
 		this.resId = resId; 
-		if (O2Director.inGlContext) create(res);
+		if (O2Director.instance.gl != null) recreate();
 	}
 
-	void create(Resources res)
-	{
-		Bitmap bitmap = BitmapFactory.decodeResource(res, resId);
-		createTexFromBitmap(bitmap);
-		available = true;
-	}
-	
 	@Override
 	public void dispose() {
 		super.dispose();
+	}
+
+	@Override
+	public void recreate() {
+		if (O2Director.instance.gl == null) return;
+		Bitmap bitmap = BitmapFactory.decodeResource(
+				O2Director.instance.appContext.getResources(), resId);
+		createTexFromBitmap(bitmap);
+		available = true;
 	}
 }

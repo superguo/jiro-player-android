@@ -10,13 +10,7 @@ public class O2BitmapSprite extends O2Sprite{
 	{
 		super(managed);
 		this.bitmap = managed ? bitmap.copy(bitmap.getConfig(), false) : bitmap;
-		if (O2Director.inGlContext) create();
-	}
-
-	void create()
-	{
-		createTexFromBitmap(bitmap);
-		available = true;
+		if (O2Director.instance.gl!=null) recreate();
 	}
 	
 	@Override
@@ -24,5 +18,12 @@ public class O2BitmapSprite extends O2Sprite{
 	{
 		if (bitmap!=null && managed) bitmap.recycle();
 		super.dispose();
+	}
+
+	@Override
+	public void recreate()
+	{
+		createTexFromBitmap(bitmap);
+		available = true;		
 	}
 }

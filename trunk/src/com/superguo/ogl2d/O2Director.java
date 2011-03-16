@@ -39,7 +39,7 @@ public final class O2Director extends GLSurfaceView {
 		setRenderer(renderer);
 	}
 	
-	public static O2Director getInstance()
+	public final static O2Director getInstance()
 	{
 		return instance;
 	}

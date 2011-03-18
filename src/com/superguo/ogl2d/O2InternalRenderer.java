@@ -19,6 +19,7 @@ class O2InternalRenderer implements GLSurfaceView.Renderer{
 		GLES10.glEnableClientState(GLES10.GL_VERTEX_ARRAY);
 		GLES10.glEnable(GLES10.GL_TEXTURE_2D);
 		GLES10.glDisable(GLES10.GL_DITHER);
+		GLES10.glHint(GLES10.GL_PERSPECTIVE_CORRECTION_HINT, GLES10.GL_FASTEST);
 	}
 	
 	public void onSurfaceChanged(GL10 arg0, int arg1, int arg2) {

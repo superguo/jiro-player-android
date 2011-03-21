@@ -42,22 +42,7 @@ public abstract class O2Scene {
 		return val;
 	}
 
-	final void addMotionEvent(MotionEvent e)
-	{
-		// using a condition is faster than a virtual function
-		if (O2Director.isSingleProcessor)
-		{
-			addMotionEventUnsafe(e);
-		}
-		else
-		{
-			synchronized (motionEventQ) {
-				addMotionEventUnsafe(e);
-			}
-		}
-	}
-	
-	private final void addMotionEventUnsafe(MotionEvent e)
+	final void addMotionEventUnsafe(MotionEvent e)
 	{
 		if (motionEventHead == motionEventTail + 1 ||
 			motionEventTail == MAX_EVENT && motionEventHead==0)

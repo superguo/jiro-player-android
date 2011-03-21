@@ -82,7 +82,6 @@ public abstract class O2Director extends GLSurfaceView {
 		if (currentScene!=null) currentScene.onEnteringScene();
 	}
 	
-	
 	@Override
 	public void onResume()
 	{
@@ -110,4 +109,10 @@ public abstract class O2Director extends GLSurfaceView {
 		super.onPause();
 	}
 
+	@Override
+	public void surfaceDestroyed(SurfaceHolder holder)
+	{
+		super.surfaceDestroyed(holder);
+		spriteManager.markAllNA();
+	}
 }

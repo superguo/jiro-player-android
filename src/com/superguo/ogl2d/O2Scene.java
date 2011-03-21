@@ -2,6 +2,8 @@ package com.superguo.ogl2d;
 
 import java.util.*;
 
+import javax.microedition.khronos.opengles.GL10;
+
 import android.view.*;
 
 public abstract class O2Scene {
@@ -33,7 +35,7 @@ public abstract class O2Scene {
 		}
 	}
 	
-	private final MotionEvent getMotionEventUnsafe()
+	final MotionEvent getMotionEventUnsafe()
 	{
 		if (motionEventHead==motionEventTail) return null;
 		MotionEvent val = motionEventQ[motionEventHead];
@@ -60,4 +62,5 @@ public abstract class O2Scene {
 	public abstract void onLeavingScene();
 	public abstract void onPause();
 	public abstract void onResume();
+	public abstract void draw(GL10 gl);
 }

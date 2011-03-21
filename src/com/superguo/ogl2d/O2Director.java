@@ -1,6 +1,7 @@
 package com.superguo.ogl2d;
 
-import java.util.HashMap;
+import java.util.*;
+import java.util.concurrent.*;
 
 import javax.microedition.khronos.opengles.GL10;
 
@@ -9,21 +10,24 @@ import android.opengl.*;
 import android.view.*;
 import android.content.*;
 
-public final class O2Director extends GLSurfaceView {
+public abstract class O2Director extends GLSurfaceView {
 	static O2Director instance;
 	public final static boolean isSingleProcessor = 
 		java.lang.Runtime.getRuntime().availableProcessors() == 1;
 	GL10 gl;
 	Context appContext;
 	O2SpriteManager spriteManager;
-	HashMap<Long, Paint> paints;
+	Map<Long, Paint> paints;
 	O2InternalRenderer renderer;
 	O2Scene currentScene;
 	Object sceneSync;
 	
 	public O2Director createInstance(Context appContext)
 	{
-		instance = new O2Director(appContext);
+		instance = isSingleProcessor ?
+				new O2DirectorSP(appContext)
+		:
+				new O2DirectorMP(appContext);
 		return instance;
 	}
 	
@@ -33,7 +37,10 @@ public final class O2Director extends GLSurfaceView {
 		
 		if (!isSingleProcessor) sceneSync = new Object();
 		spriteManager = new O2SpriteManager(appContext);
-		paints = new HashMap<Long, Paint>(5);
+		paints = isSingleProcessor ?
+			new HashMap<Long, Paint>(5)
+				:
+			new ConcurrentHashMap<Long, Paint>(5);
 		paints.put(new Long(0), new Paint());
 		renderer = new O2InternalRenderer(this);
 		setRenderer(renderer);
@@ -44,24 +51,24 @@ public final class O2Director extends GLSurfaceView {
 		return instance;
 	}
 	
-	public O2SpriteManager getSpriteManager()
+	public final O2SpriteManager getSpriteManager()
 	{
 		return spriteManager;
 	}
 
-	public synchronized long addPaint(Paint p)
+	public long addPaint(Paint p)
 	{
 		long id = android.os.SystemClock.elapsedRealtime();
 		paints.put(new Long(id), new Paint(p));
 		return id;
 	}
 
-	public synchronized Paint getPaint(long id)
+	public Paint getPaint(long id)
 	{
 		return paints.get(new Long(id));
 	}
 	
-	public synchronized void removePaint(long id)
+	public void removePaint(long id)
 	{
 		paints.remove(new Long(id));
 	}
@@ -75,6 +82,7 @@ public final class O2Director extends GLSurfaceView {
 		if (currentScene!=null) currentScene.onEnteringScene();
 	}
 	
+	
 	@Override
 	public void onResume()
 	{
@@ -82,18 +90,8 @@ public final class O2Director extends GLSurfaceView {
 			
 			@Override
 			public void run() {
-				if (isSingleProcessor)
-				{
-					if (currentScene!=null)
-						currentScene.onResume();
-				}
-				else
-				{
-					synchronized (sceneSync) {
-						if (currentScene!=null)
-							currentScene.onResume();
-					}
-				}
+				if (currentScene!=null)
+					currentScene.onResume();
 			}
 		});
 		super.onResume();
@@ -110,24 +108,6 @@ public final class O2Director extends GLSurfaceView {
 			}
 		});
 		super.onPause();
-	}
-
-	@Override
-	public boolean onTouchEvent(MotionEvent event) {
-		if (isSingleProcessor)
-		{
-			if (currentScene != null)
-				currentScene.addMotionEvent(event);
-		}
-		else
-		{
-		synchronized (sceneSync) {
-			if (currentScene != null)
-				currentScene.addMotionEvent(event);
-		}
-		}
-		
-		return super.onTouchEvent(event);
 	}
 
 }

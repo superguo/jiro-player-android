@@ -13,14 +13,14 @@ public abstract class O2Sprite {
 	protected int tex;
 	protected int width;
 	protected int height;
-	protected int texWidth;
-	protected int texHeight;
+	protected int texPowOf2Width;	
+	protected int texPowOf2Height;
 	protected int vboFullTexCood;
 
-	private float vertCoods[] = new float[8];
-	private float texCoods[] = new float[8];
-	private FloatBuffer vertBuf = FloatBuffer.allocate(8);
-	private FloatBuffer texBuf = FloatBuffer.allocate(8);
+	private int vertCoods[] = new int[8];
+	private int texCoods[] = new int[8];
+	private IntBuffer vertBuf = IntBuffer.allocate(8);
+	private IntBuffer texBuf = IntBuffer.allocate(8);
 	
 	protected O2Sprite(boolean managed)
 	{
@@ -54,40 +54,46 @@ public abstract class O2Sprite {
 
 	protected void createTexFromBitmap(Bitmap bmp)
 	{
-		int w = bmp.getWidth();
-		int h = bmp.getHeight();
-		if (w > MAX_SIZE || h > MAX_SIZE) throw new Error("bitmap width/height larger than 1024");
-		if (w <=0 || h <= 0) throw new IllegalArgumentException("bitmap width/height <= 0");
+		width = bmp.getWidth();
+		height = bmp.getHeight();
+		
+		if (width > MAX_SIZE || height > MAX_SIZE)
+			throw new IllegalArgumentException("bitmap width/height larger than 1024");
+		
+		if (width <=0 || height <= 0)
+			throw new IllegalArgumentException("bitmap width/height <= 0");
+		
+		boolean hasEnlarged = false;
 
 		// pad the size of bitmap to the power of 2
-		int actualW = w;
-		int actualH = h;
-		int powOf2;
-
-		for (powOf2=0; actualW>1; actualW>>=1) powOf2++;
-		actualW = (1 << powOf2);
-		if (w != actualW) actualW<<=1;
-
-		for (powOf2=0; actualH>1; actualH>>=1) powOf2++;
-		actualH = (1 << powOf2);
-		if (h != actualH) actualH<<=1;
-		
-		if (w != actualW || h != actualH)
+		texPowOf2Width = Integer.numberOfTrailingZeros(width);
+		if (Integer.lowestOneBit(width) != Integer.highestOneBit(width))
 		{
-			Bitmap standardBmp = Bitmap.createBitmap(bmp, 0, 0, actualW, actualH);
-			createTexFromStandardBitmap(standardBmp, w, h);
+			++texPowOf2Width;
+			hasEnlarged = true;
+		}
+
+		texPowOf2Height = Integer.numberOfTrailingZeros(height);
+		if (Integer.lowestOneBit(height) != Integer.highestOneBit(height))
+		{
+			++texPowOf2Height;
+			hasEnlarged = true;
+		}
+		
+		if (hasEnlarged)
+		{
+			Bitmap standardBmp = Bitmap.createBitmap(bmp, 0, 0, 1<<texPowOf2Width, 1<<texPowOf2Height);
+			createTexFromStandardBitmap(standardBmp);
+			standardBmp.recycle();
 		}
 		else
-			createTexFromStandardBitmap(bmp, w, h);
+			createTexFromStandardBitmap(bmp);
 	}
 	
-	private void createTexFromStandardBitmap(Bitmap bmp, int width, int height)
+	private void createTexFromStandardBitmap(Bitmap bmp)
 	{
-		texWidth = bmp.getWidth();
-		texHeight = bmp.getHeight();
-		this.width = width;
-		this.height = height;
-
+		// width, height, texPowOf2Width, texPowOf2Height
+		// are done in createTexFromBitmap(Bitmap)
 		int texArr[] = new int[1];
 		GLES10.glGenTextures(1, texArr, 0);
 		tex = texArr[0];
@@ -108,8 +114,18 @@ public abstract class O2Sprite {
 		GLUtils.texImage2D(GLES10.GL_TEXTURE_2D, 0, bmp, 0);
 		
 		int[] vboArr = new int[1];
-		float fullTexCoods[] = {0.0f, 0.0f, (float)width/texWidth, 0.0f, 0.0f, (float)height/texHeight, (float)width/texWidth, (float)height/texHeight};
-		FloatBuffer fullTexBuf = FloatBuffer.wrap(fullTexCoods);
+		int texCoodFixedW = width<<(16-texPowOf2Width);
+		int texCoodFixedH = height<<(16-texPowOf2Height);
+		int fullTexCoods[] = {
+				1<<16,
+				1<<16,
+				texCoodFixedW,
+				0,
+				0,
+				texCoodFixedH,
+				texCoodFixedW,
+				texCoodFixedH};
+		IntBuffer fullTexBuf = IntBuffer.wrap(fullTexCoods);
 
 		GLES11.glGenBuffers(1, vboArr, 0);
 		vboFullTexCood = vboArr[0];
@@ -122,19 +138,19 @@ public abstract class O2Sprite {
 	{
 		// vertex coordinations
 		vertCoods[0] = vertCoods[1] = vertCoods[3] = vertCoods[4] = 0;
-		vertCoods[2] = vertCoods[6] = width;
-		vertCoods[5] = vertCoods[7] = height;
+		vertCoods[2] = vertCoods[6] = width<<16;
+		vertCoods[5] = vertCoods[7] = height<<16;
 		
 		vertBuf.position(0);
 		vertBuf.put(vertCoods);
 		vertBuf.position(0);
 		
 		GL10 gl = O2Director.instance.gl;
-		gl.glVertexPointer(2, GLES10.GL_FLOAT, 0, vertBuf);
+		gl.glVertexPointer(2, GLES10.GL_FIXED, 0, vertBuf);
 		
 		// texture coordinations
 		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, vboFullTexCood);
-		GLES11.glTexCoordPointer(2, GLES10.GL_FLOAT, 0, 0);
+		GLES11.glTexCoordPointer(2, GLES10.GL_FIXED, 0, 0);
 		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, 0);
 
 		// draw
@@ -143,26 +159,26 @@ public abstract class O2Sprite {
 	
 	public final void draw(int srcX, int srcY, int srcWidth, int srcHeight, int tagetX, int targetY)
 	{
-		vertCoods[0] = vertCoods[4] = tagetX;
-		vertCoods[1] = vertCoods[3] = targetY;
-		vertCoods[2] = vertCoods[6] = tagetX + srcWidth;
-		vertCoods[5] = vertCoods[7] = targetY + srcHeight;
+		vertCoods[0] = vertCoods[4] = tagetX  << 16;
+		vertCoods[1] = vertCoods[3] = targetY << 16;
+		vertCoods[2] = vertCoods[6] = (tagetX + srcWidth)   << 16;
+		vertCoods[5] = vertCoods[7] = (targetY + srcHeight) << 16;
 		
 		vertBuf.position(0);
 		vertBuf.put(vertCoods);
 		vertBuf.position(0);
 		
-		texCoods[0] = texCoods[4] = (float)srcX / texWidth;
-		texCoods[1] = texCoods[3] = (float)srcY / texHeight;
-		texCoods[2] = texCoods[6] =  (float)(srcX + srcWidth) / texWidth;
-		texCoods[5] = texCoods[7] =  (float)(srcY + srcHeight) / texHeight;
+		texCoods[0] = texCoods[4] = srcX << (16-texPowOf2Width);
+		texCoods[1] = texCoods[3] = srcY << (16-texPowOf2Height);
+		texCoods[2] = texCoods[6] =  (srcX + srcWidth)  << (16-texPowOf2Width);
+		texCoods[5] = texCoods[7] =  (srcY + srcHeight) << (16-texPowOf2Height);
 		
 		texBuf.position(0);
 		texBuf.put(texCoods);
 		texBuf.position(0);
 	
 		GL10 gl = O2Director.instance.gl;
-		gl.glVertexPointer(2, GLES10.GL_FLOAT, 0, vertBuf);
+		gl.glVertexPointer(2, GLES10.GL_FIXED, 0, vertBuf);
 		gl.glTexCoordPointer(2, GLES10.GL_FIXED, 0, texBuf);
 		
 		GLES10.glDrawArrays(GLES10.GL_TRIANGLE_STRIP, 0, 4);

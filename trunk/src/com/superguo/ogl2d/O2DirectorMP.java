@@ -10,9 +10,23 @@ class O2DirectorMP extends O2Director {
 		// TODO Auto-generated constructor stub
 	}
 
+	public void setCurrentScene(O2Scene scene)
+	{
+		synchronized (sceneAccessMutex) {
+			setCurrentSceneUnsafe(scene);
+		}
+	}
+
+	public O2Scene getCurrentScene()
+	{
+		synchronized (sceneAccessMutex) {
+			return currentScene;
+		}
+	}
+
 	@Override
 	public boolean onTouchEvent(MotionEvent event) {
-		synchronized (sceneSync) {
+		synchronized (sceneAccessMutex) {
 			if (currentScene != null)
 				currentScene.addMotionEventUnsafe(event);
 		}

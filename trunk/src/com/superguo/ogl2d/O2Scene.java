@@ -4,6 +4,7 @@ import java.util.*;
 
 import javax.microedition.khronos.opengles.GL10;
 
+import android.os.Parcel;
 import android.view.*;
 
 public abstract class O2Scene {
@@ -35,7 +36,7 @@ public abstract class O2Scene {
 		}
 	}
 	
-	final MotionEvent getMotionEventUnsafe()
+	private final MotionEvent getMotionEventUnsafe()
 	{
 		if (motionEventHead==motionEventTail) return null;
 		MotionEvent val = motionEventQ[motionEventHead];
@@ -51,15 +52,17 @@ public abstract class O2Scene {
 			// full!! we do nothing, though
 			return;
 
-		motionEventQ[motionEventTail] = e;
+		motionEventQ[motionEventTail] = MotionEvent.obtain(e);
 		if (motionEventTail == MAX_EVENT)
 			motionEventTail = 0;
 		else
 			motionEventTail++;
 	}
 	
-	public abstract void onEnteringScene();
-	public abstract void onLeavingScene();
+	public void onEnteringScene()
+	{	}
+	public void onLeavingScene()
+	{	}
 	public abstract void onPause();
 	public abstract void onResume();
 	public abstract void draw(GL10 gl);

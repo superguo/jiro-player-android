@@ -10,6 +10,16 @@ class O2DirectorSP extends O2Director{
 		// TODO Auto-generated constructor stub
 	}
 
+	public void setCurrentScene(O2Scene scene)
+	{
+		setCurrentSceneUnsafe(scene);
+	}
+
+	public O2Scene getCurrentScene()
+	{
+		return currentScene;
+	}
+
 	@Override
 	public synchronized boolean onTouchEvent(MotionEvent event) {
 		if (currentScene != null)

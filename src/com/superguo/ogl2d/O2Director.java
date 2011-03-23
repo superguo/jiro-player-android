@@ -19,10 +19,11 @@ public abstract class O2Director extends GLSurfaceView {
 	O2SpriteManager spriteManager;
 	Map<Long, Paint> paints;
 	O2InternalRenderer renderer;
-	O2Scene currentScene;
-	Object sceneSync;
+	protected O2Scene currentScene;
+	protected Object sceneAccessMutex;
+	private SceneEventQ sceneEventQ;
 	
-	public O2Director createInstance(Context appContext)
+	public static O2Director createInstance(Context appContext)
 	{
 		instance = isSingleProcessor ?
 				new O2DirectorSP(appContext)
@@ -35,13 +36,14 @@ public abstract class O2Director extends GLSurfaceView {
 	{
 		super(appContext);
 		
-		if (!isSingleProcessor) sceneSync = new Object();
+		if (!isSingleProcessor) sceneAccessMutex = new Object();
 		spriteManager = new O2SpriteManager(appContext);
 		paints = isSingleProcessor ?
 			new HashMap<Long, Paint>(5)
 				:
 			new ConcurrentHashMap<Long, Paint>(5);
 		paints.put(new Long(0), new Paint());
+		sceneEventQ = new SceneEventQ();
 		renderer = new O2InternalRenderer(this);
 		setRenderer(renderer);
 	}
@@ -73,39 +75,38 @@ public abstract class O2Director extends GLSurfaceView {
 		paints.remove(new Long(id));
 	}
 
-	public void setCurrentScene(O2Scene scene)
+	public abstract void setCurrentScene(O2Scene scene);
+
+	public abstract O2Scene getCurrentScene();
+	
+	protected final void setCurrentSceneUnsafe(O2Scene scene)
 	{
 		O2Scene orig = currentScene;
-		if (orig!=null) orig.onLeavingScene();
+		if (orig!=null)
+			queueEvent(sceneEventQ.add(orig, SceneEventQ.EVENT_TYPE_ON_LEAVING_SCENE));
 		
 		currentScene = scene;
-		if (currentScene!=null) currentScene.onEnteringScene();
+		if (currentScene!=null)
+			queueEvent(sceneEventQ.add(scene, SceneEventQ.EVENT_TYPE_ON_ENTERING_SCENE));
 	}
 	
 	@Override
 	public void onResume()
 	{
-		queueEvent(new Runnable() {
-			
-			@Override
-			public void run() {
-				if (currentScene!=null)
-					currentScene.onResume();
-			}
-		});
+		O2Scene scene = getCurrentScene();
+		if (scene!=null)
+			queueEvent(sceneEventQ.add(scene, SceneEventQ.EVENT_TYPE_ON_RESUME));
 		super.onResume();
 	}
 	
 	@Override
 	public void onPause()
 	{
-		queueEvent(new Runnable() {
-			@Override
-			public void run() {
-				if (currentScene!=null)
-					currentScene.onPause();
-			}
-		});
+		O2Scene scene = getCurrentScene();
+		if (scene!=null)
+		{
+			queueEvent(sceneEventQ.add(scene, SceneEventQ.EVENT_TYPE_ON_PAUSE));
+		}
 		super.onPause();
 	}
 
@@ -115,4 +116,62 @@ public abstract class O2Director extends GLSurfaceView {
 		super.surfaceDestroyed(holder);
 		spriteManager.markAllNA();
 	}
+}
+
+class SceneEventQ implements Runnable
+{
+	final static int EVENT_TYPE_ON_PAUSE = 1;
+	final static int EVENT_TYPE_ON_RESUME = 2;
+	final static int EVENT_TYPE_ON_ENTERING_SCENE = 3;
+	final static int EVENT_TYPE_ON_LEAVING_SCENE = 4;
+	public final static int MAX_EVENT = 100; 
+	O2Scene sceneQueue[];
+	int eventQueue[];
+	int eventIndex;
+	
+	public SceneEventQ()
+	{
+		sceneQueue = new O2Scene[MAX_EVENT];
+		eventQueue = new int[MAX_EVENT];
+		eventIndex = 0;
+	}
+	
+	public SceneEventQ add(O2Scene scene, int eventType)
+	{
+		if (eventIndex < MAX_EVENT)
+		{
+			sceneQueue[eventIndex] = scene;
+			eventQueue[eventIndex++] = eventType;
+		}
+		return this;
+	}
+	
+	public void run() {
+		if (eventIndex>0)
+		{
+			switch (eventQueue[eventIndex])
+			{
+			case EVENT_TYPE_ON_PAUSE:
+				sceneQueue[eventIndex].onPause();
+				break;
+				
+			case EVENT_TYPE_ON_RESUME:
+				sceneQueue[eventIndex].onResume();
+				break;
+				
+			case EVENT_TYPE_ON_ENTERING_SCENE:
+				sceneQueue[eventIndex].onEnteringScene();
+				break;
+				
+			case EVENT_TYPE_ON_LEAVING_SCENE:
+				sceneQueue[eventIndex].onLeavingScene();
+				break;
+
+			default:;
+			}
+			--eventIndex;
+		}
+		
+	}
+	
 }

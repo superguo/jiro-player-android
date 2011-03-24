@@ -22,8 +22,10 @@ public class O2ResourceBitmapSprite extends O2Sprite {
 	@Override
 	public void recreate() {
 		if (O2Director.instance.gl == null) return;
+		BitmapFactory.Options opts = new BitmapFactory.Options();
+		opts.inScaled = false;
 		Bitmap bitmap = BitmapFactory.decodeResource(
-				O2Director.instance.getResources(), resId);
+				O2Director.instance.getResources(), resId, opts);
 		createTexFromBitmap(bitmap);
 		available = true;
 	}

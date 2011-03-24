@@ -1,14 +1,18 @@
+
+
 package com.superguo.jiroplayer;
 
-import javax.microedition.khronos.opengles.GL10;
-
+import javax.microedition.khronos.opengles.*;
 import com.superguo.ogl2d.*;
 
 public class PlayScene extends O2Scene {
-
-	public PlayScene(GameModel gameModel)
+	private O2Director director;
+	private O2Sprite bgSprite;
+	
+	public PlayScene(O2Director director, GameModel gameModel)
 	{
-		
+		super(director);
+		bgSprite = director.getSpriteManager().createFromResource(R.drawable.bg, true);
 	}
 	
 	@Override
@@ -25,8 +29,7 @@ public class PlayScene extends O2Scene {
 
 	@Override
 	public void draw(GL10 gl) {
-		// TODO Auto-generated method stub
-		
+		bgSprite.draw(0, 0);		
 	}
 
 }

@@ -1,23 +1,27 @@
 package com.superguo.ogl2d;
 
 import java.util.*;
+import java.util.concurrent.*;
 
 import android.graphics.*;
 
 public class O2SpriteManager {
 	
 	private android.content.Context appContext;
-	private HashSet<O2Sprite> spriteSet;
+	private AbstractMap<O2Sprite, O2Sprite> spriteMap;
 	
 	O2SpriteManager(android.content.Context appContext)
 	{
 		this.appContext = appContext;
-		spriteSet = new HashSet<O2Sprite>(10);
+		if (O2Director.isSingleProcessor)
+			spriteMap = new HashMap<O2Sprite, O2Sprite>(10);
+		else
+			spriteMap = new ConcurrentHashMap<O2Sprite, O2Sprite>(10);
 	}
 	
 	O2Sprite conditionalAdd(O2Sprite sprite)
 	{
-		if (sprite.managed) spriteSet.add(sprite);
+		if (sprite.managed) spriteMap.put(sprite, sprite);
 		return sprite;
 	}
 	
@@ -46,9 +50,14 @@ public class O2SpriteManager {
 		return conditionalAdd(new O2StringSprite(managed, text, 0));
 	}
 
+	public O2BufferSprite createBuffer(int width, int height)
+	{
+		return (O2BufferSprite)conditionalAdd(new O2BufferSprite(width, height));
+	}
+	
 	public void recreateManaged()
 	{
-		for (O2Sprite sprite : spriteSet)
+		for (O2Sprite sprite : spriteMap.keySet())
 		{
 			if (sprite.managed) sprite.recreate();
 		}
@@ -56,7 +65,7 @@ public class O2SpriteManager {
 	
 	void markAllNA()
 	{
-		for (O2Sprite sprite : spriteSet)
+		for (O2Sprite sprite : spriteMap.keySet())
 		{
 			sprite.available = false;
 		}

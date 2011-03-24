@@ -8,14 +8,15 @@ import android.os.Parcel;
 import android.view.*;
 
 public abstract class O2Scene {
-	
+	protected O2Director director;
 	public static final int MAX_EVENT = 128;
 	private MotionEvent motionEventQ[];
 	private int motionEventHead;
 	private int motionEventTail;
 	
-	protected O2Scene()
+	protected O2Scene(O2Director director)
 	{
+		this.director = director;
 		motionEventQ = new MotionEvent[MAX_EVENT+1];
 		motionEventHead = motionEventTail = 0;
 	}

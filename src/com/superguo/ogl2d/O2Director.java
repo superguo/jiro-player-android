@@ -15,7 +15,6 @@ public abstract class O2Director extends GLSurfaceView {
 	public final static boolean isSingleProcessor = 
 		java.lang.Runtime.getRuntime().availableProcessors() == 1;
 	GL10 gl;
-	Context appContext;
 	O2SpriteManager spriteManager;
 	Map<Long, Paint> paints;
 	O2InternalRenderer renderer;
@@ -115,6 +114,7 @@ public abstract class O2Director extends GLSurfaceView {
 	{
 		super.surfaceDestroyed(holder);
 		spriteManager.markAllNA();
+		gl = null;
 	}
 }
 

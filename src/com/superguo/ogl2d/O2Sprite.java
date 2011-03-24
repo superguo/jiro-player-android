@@ -19,8 +19,10 @@ public abstract class O2Sprite {
 
 	private int vertCoods[] = new int[8];
 	private int texCoods[] = new int[8];
-	private IntBuffer vertBuf = IntBuffer.allocate(8);
-	private IntBuffer texBuf = IntBuffer.allocate(8);
+	private IntBuffer vertBuf = 
+		ByteBuffer.allocateDirect(32).order(null).asIntBuffer();
+	private IntBuffer texBuf = 
+		ByteBuffer.allocateDirect(32).order(null).asIntBuffer();
 	
 	protected O2Sprite(boolean managed)
 	{
@@ -82,7 +84,10 @@ public abstract class O2Sprite {
 		
 		if (hasEnlarged)
 		{
-			Bitmap standardBmp = Bitmap.createBitmap(bmp, 0, 0, 1<<texPowOf2Width, 1<<texPowOf2Height);
+			Bitmap standardBmp = Bitmap.createBitmap(
+					bmp, 0, 0, 
+					((int)1<<texPowOf2Width),
+					((int)1<<texPowOf2Height));
 			createTexFromStandardBitmap(standardBmp);
 			standardBmp.recycle();
 		}
@@ -117,8 +122,8 @@ public abstract class O2Sprite {
 		int texCoodFixedW = width<<(16-texPowOf2Width);
 		int texCoodFixedH = height<<(16-texPowOf2Height);
 		int fullTexCoods[] = {
-				1<<16,
-				1<<16,
+				(int)1<<16,
+				(int)1<<16,
 				texCoodFixedW,
 				0,
 				0,
@@ -138,8 +143,8 @@ public abstract class O2Sprite {
 	{
 		// vertex coordinations
 		vertCoods[0] = vertCoods[1] = vertCoods[3] = vertCoods[4] = 0;
-		vertCoods[2] = vertCoods[6] = width<<16;
-		vertCoods[5] = vertCoods[7] = height<<16;
+		vertCoods[2] = vertCoods[6] = (width<<16);
+		vertCoods[5] = vertCoods[7] = (height<<16);
 		
 		vertBuf.position(0);
 		vertBuf.put(vertCoods);

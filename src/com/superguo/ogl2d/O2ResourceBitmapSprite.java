@@ -23,7 +23,7 @@ public class O2ResourceBitmapSprite extends O2Sprite {
 	public void recreate() {
 		if (O2Director.instance.gl == null) return;
 		Bitmap bitmap = BitmapFactory.decodeResource(
-				O2Director.instance.appContext.getResources(), resId);
+				O2Director.instance.getResources(), resId);
 		createTexFromBitmap(bitmap);
 		available = true;
 	}

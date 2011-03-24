@@ -20,7 +20,7 @@ public class GameActivity extends Activity
         super.onCreate(savedInstanceState);
         director = O2Director.createInstance(getApplicationContext());
         gameModel = new GameModel();
-        playScene = new PlayScene(gameModel);
+        playScene = new PlayScene(director, gameModel);
         setContentView(director);
         director.setCurrentScene(playScene);
         /*

@@ -32,7 +32,7 @@ public class O2AssetBitmapSprite extends O2Sprite {
 		try
 		{
 			Bitmap bitmap = BitmapFactory.decodeStream(
-				O2Director.instance.appContext.getAssets().open(assetPath));
+				O2Director.instance.getContext().getAssets().open(assetPath));
 			createTexFromBitmap(bitmap);
 			available = true;
 		}

@@ -15,7 +15,8 @@ class O2InternalRenderer implements GLSurfaceView.Renderer{
 		this.director = director;
 	}
 
-	public void onSurfaceCreated(GL10 arg0, EGLConfig arg1) {
+	public void onSurfaceCreated(GL10 gl, EGLConfig config) {
+		director.gl = gl;
 		// enable vetex array and texure 2d
 		GLES10.glEnableClientState(GLES10.GL_VERTEX_ARRAY);
 		GLES10.glEnable(GLES10.GL_TEXTURE_2D);

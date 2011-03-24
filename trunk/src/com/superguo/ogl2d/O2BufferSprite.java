@@ -8,7 +8,7 @@ public final class O2BufferSprite extends O2Sprite {
 	int width;
 	int height;
 
-	protected O2BufferSprite(int width, int height) {
+	O2BufferSprite(int width, int height) {
 		super(true);
 		this.width = width;
 		this.height = height;
@@ -68,7 +68,6 @@ public final class O2BufferSprite extends O2Sprite {
 
 	public final void end()
 	{
-		GLES10.glPopMatrix();
 		GLES11Ext.glBindFramebufferOES(GLES11Ext.GL_FRAMEBUFFER_OES, 0);
 		GLES10.glBindTexture(GLES10.GL_TEXTURE_2D, tex);
 	}

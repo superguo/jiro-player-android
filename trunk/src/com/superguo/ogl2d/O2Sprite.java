@@ -3,7 +3,7 @@ import java.nio.*;
 
 import javax.microedition.khronos.opengles.*;
 
-import android.graphics.Bitmap;
+import android.graphics.*;
 import android.opengl.*;
 
 public abstract class O2Sprite {
@@ -85,11 +85,16 @@ public abstract class O2Sprite {
 		if (hasEnlarged)
 		{
 			Bitmap standardBmp = Bitmap.createBitmap(
-					bmp, 0, 0, 
-					((int)1<<texPowOf2Width),
-					((int)1<<texPowOf2Height));
+					1<<texPowOf2Width,
+					1<<texPowOf2Height,
+					bmp.getConfig()
+					);
+			Canvas canvas = new Canvas(standardBmp);
+			canvas.drawBitmap(bmp, 0.0f, 0.0f, new Paint());
 			createTexFromStandardBitmap(standardBmp);
+			canvas = null;
 			standardBmp.recycle();
+			standardBmp = null;
 		}
 		else
 			createTexFromStandardBitmap(bmp);
@@ -122,29 +127,33 @@ public abstract class O2Sprite {
 		int texCoodFixedW = width<<(16-texPowOf2Width);
 		int texCoodFixedH = height<<(16-texPowOf2Height);
 		int fullTexCoods[] = {
-				(int)1<<16,
-				(int)1<<16,
+				0,
+				0,
 				texCoodFixedW,
 				0,
 				0,
 				texCoodFixedH,
 				texCoodFixedW,
 				texCoodFixedH};
-		IntBuffer fullTexBuf = IntBuffer.wrap(fullTexCoods);
+		IntBuffer fullTexBuf = ByteBuffer.allocateDirect(32).order(null).asIntBuffer();
+		fullTexBuf.position(0);
+		fullTexBuf.put(fullTexCoods);
+		fullTexBuf.position(0);
 
 		GLES11.glGenBuffers(1, vboArr, 0);
 		vboFullTexCood = vboArr[0];
 		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, vboFullTexCood);
-		GLES11.glBufferData(GLES11.GL_ARRAY_BUFFER, 8, fullTexBuf, GLES11.GL_STATIC_DRAW);
+		GLES11.glBufferData(GLES11.GL_ARRAY_BUFFER, 32, fullTexBuf, GLES11.GL_STATIC_DRAW);
 		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, 0);
 	}
 
 	public final void draw(int tagetX, int targetY)
 	{
 		// vertex coordinations
-		vertCoods[0] = vertCoods[1] = vertCoods[3] = vertCoods[4] = 0;
-		vertCoods[2] = vertCoods[6] = (width<<16);
-		vertCoods[5] = vertCoods[7] = (height<<16);
+		vertCoods[0] = vertCoods[4] = tagetX  << 16;
+		vertCoods[1] = vertCoods[3] = targetY << 16;
+		vertCoods[2] = vertCoods[6] = (tagetX + width)   << 16;
+		vertCoods[5] = vertCoods[7] = (targetY + height) << 16;
 		
 		vertBuf.position(0);
 		vertBuf.put(vertCoods);

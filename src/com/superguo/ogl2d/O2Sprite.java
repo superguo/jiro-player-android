@@ -68,14 +68,14 @@ public abstract class O2Sprite {
 		boolean hasEnlarged = false;
 
 		// pad the size of bitmap to the power of 2
-		texPowOf2Width = Integer.numberOfTrailingZeros(width);
+		texPowOf2Width = 31 - Integer.numberOfLeadingZeros(width);
 		if (Integer.lowestOneBit(width) != Integer.highestOneBit(width))
 		{
 			++texPowOf2Width;
 			hasEnlarged = true;
 		}
 
-		texPowOf2Height = Integer.numberOfTrailingZeros(height);
+		texPowOf2Height = 31 - Integer.numberOfLeadingZeros(height);
 		if (Integer.lowestOneBit(height) != Integer.highestOneBit(height))
 		{
 			++texPowOf2Height;
@@ -119,8 +119,8 @@ public abstract class O2Sprite {
         GLES10.glTexParameterf(GLES10.GL_TEXTURE_2D, GLES10.GL_TEXTURE_WRAP_T,
         		GLES10.GL_CLAMP_TO_EDGE);
 
-        //GLES10.glTexEnvf(GLES10.GL_TEXTURE_ENV, GLES10.GL_TEXTURE_ENV_MODE,
-        	//	GLES10.GL_REPLACE); 
+        GLES10.glTexEnvf(GLES10.GL_TEXTURE_ENV, GLES10.GL_TEXTURE_ENV_MODE,
+        		GLES10.GL_REPLACE); 
 		GLUtils.texImage2D(GLES10.GL_TEXTURE_2D, 0, bmp, 0);
 		
 		int[] vboArr = new int[1];
@@ -159,14 +159,15 @@ public abstract class O2Sprite {
 		vertBuf.put(vertCoods);
 		vertBuf.position(0);
 		
-		GL10 gl = O2Director.instance.gl;
-		gl.glVertexPointer(2, GLES10.GL_FIXED, 0, vertBuf);
+		GLES10.glVertexPointer(2, GLES10.GL_FIXED, 0, vertBuf);
 		
-		// texture coordinations
+		// texture texture and coordinations
+		GLES10.glBindTexture(GLES10.GL_TEXTURE_2D, tex);
 		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, vboFullTexCood);
 		GLES11.glTexCoordPointer(2, GLES10.GL_FIXED, 0, 0);
 		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, 0);
 
+		
 		// draw
 		GLES10.glDrawArrays(GLES10.GL_TRIANGLE_STRIP, 0, 4);
 	}
@@ -191,9 +192,8 @@ public abstract class O2Sprite {
 		texBuf.put(texCoods);
 		texBuf.position(0);
 	
-		GL10 gl = O2Director.instance.gl;
-		gl.glVertexPointer(2, GLES10.GL_FIXED, 0, vertBuf);
-		gl.glTexCoordPointer(2, GLES10.GL_FIXED, 0, texBuf);
+		GLES10.glVertexPointer(2, GLES10.GL_FIXED, 0, vertBuf);
+		GLES10.glTexCoordPointer(2, GLES10.GL_FIXED, 0, texBuf);
 		
 		GLES10.glDrawArrays(GLES10.GL_TRIANGLE_STRIP, 0, 4);
 	}

@@ -60,10 +60,8 @@ public abstract class O2Scene {
 			motionEventTail++;
 	}
 	
-	public void onEnteringScene()
-	{	}
-	public void onLeavingScene()
-	{	}
+	public abstract void onEnteringScene();
+	public abstract void onLeavingScene();
 	public abstract void onPause();
 	public abstract void onResume();
 	public abstract void draw(GL10 gl);

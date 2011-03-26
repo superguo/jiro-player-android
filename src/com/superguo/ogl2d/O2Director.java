@@ -21,19 +21,45 @@ public abstract class O2Director extends GLSurfaceView {
 	protected O2Scene currentScene;
 	protected Object sceneAccessMutex;
 	private SceneEventQ sceneEventQ;
+	Config config;
+	InternalConfig internalConfig;
 	
-	public static O2Director createInstance(Context appContext)
+	public static class Config
+	{
+		public int width;
+		public int height;
+		public Config(int width, int height)
+		{
+			this.width = width;
+			this.height = height;
+		}
+		public Config()
+		{
+			width = height = 0;
+		}
+	}
+
+	static class InternalConfig
+	{
+		public float scale;
+		public float xOffset;
+		public float yOffset;
+	}
+	
+	public static O2Director createInstance(Context appContext, Config config)
 	{
 		instance = isSingleProcessor ?
-				new O2DirectorSP(appContext)
+				new O2DirectorSP(appContext, config)
 		:
-				new O2DirectorMP(appContext);
+				new O2DirectorMP(appContext, config);
 		return instance;
 	}
 	
-	O2Director(Context appContext)
+	O2Director(Context appContext, Config config)
 	{
 		super(appContext);
+		this.config = config==null ? new Config() : config;
+		internalConfig = new InternalConfig();
 		
 		if (!isSingleProcessor) sceneAccessMutex = new Object();
 		spriteManager = new O2SpriteManager(appContext);
@@ -89,6 +115,22 @@ public abstract class O2Director extends GLSurfaceView {
 			queueEvent(sceneEventQ.add(scene, SceneEventQ.EVENT_TYPE_ON_ENTERING_SCENE));
 	}
 	
+	public float toXLogical(float xDevice)
+	{
+		if (Math.abs(internalConfig.scale) > 1e-5)
+			return (xDevice - internalConfig.xOffset) / internalConfig.scale;
+		else
+			return xDevice;
+	}
+
+	public float toYLogical(float yDevice)
+	{
+		if (Math.abs(internalConfig.scale) > 1e-5)
+			return (yDevice - internalConfig.yOffset) / internalConfig.scale;
+		else
+			return yDevice;
+	}
+
 	@Override
 	public void onResume()
 	{
@@ -149,6 +191,7 @@ class SceneEventQ implements Runnable
 	public void run() {
 		if (eventIndex>0)
 		{
+			--eventIndex;
 			switch (eventQueue[eventIndex])
 			{
 			case EVENT_TYPE_ON_PAUSE:
@@ -169,7 +212,6 @@ class SceneEventQ implements Runnable
 
 			default:;
 			}
-			--eventIndex;
 		}
 		
 	}

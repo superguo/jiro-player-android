@@ -9,7 +9,7 @@ public class O2StringSprite extends O2Sprite {
 
 	protected O2StringSprite(boolean managed, String text, long paintId) {
 		super(managed);
-		text = managed ? new String(text) : text;
+		this.text = managed ? new String(text) : text;
 		this.paintId = paintId; 
 		if (O2Director.instance.gl != null) recreate();
 	}
@@ -29,7 +29,7 @@ public class O2StringSprite extends O2Sprite {
 		paint.getTextBounds(text, 0, text.length(), rect);
 		Bitmap bitmap = Bitmap.createBitmap(rect.width(), rect.height(), Bitmap.Config.ARGB_4444);
 		Canvas canvas = new Canvas(bitmap);
-		canvas.drawText(text, 0, 0, paint);
+		canvas.drawText(text, 0, -rect.top, paint);
 		createTexFromBitmap(bitmap);
 	}
 }

@@ -18,7 +18,9 @@ public class GameActivity extends Activity
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        director = O2Director.createInstance(getApplicationContext());
+        director = O2Director.createInstance(
+        		getApplicationContext(),
+        		new O2Director.Config(512, 384));
         gameModel = new GameModel();
         playScene = new PlayScene(director, gameModel);
         setContentView(director);

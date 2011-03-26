@@ -1,11 +1,8 @@
 package com.superguo.ogl2d;
 
-import javax.microedition.khronos.egl.EGLConfig;
-import javax.microedition.khronos.opengles.GL10;
-
-import android.opengl.GLES10;
-import android.opengl.GLES11;
-import android.opengl.GLSurfaceView;
+import javax.microedition.khronos.egl.*;
+import javax.microedition.khronos.opengles.*;
+import android.opengl.*;
 
 class O2InternalRenderer implements GLSurfaceView.Renderer{
 	O2Director director;
@@ -17,8 +14,9 @@ class O2InternalRenderer implements GLSurfaceView.Renderer{
 
 	public void onSurfaceCreated(GL10 gl, EGLConfig config) {
 		director.gl = gl;
-		// enable vetex array and texure 2d
+		// enable vertex array and texture 2d
 		GLES10.glEnableClientState(GLES10.GL_VERTEX_ARRAY);
+		GLES10.glEnableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
 		GLES10.glEnable(GLES10.GL_TEXTURE_2D);
 		
 		// improve the performance 
@@ -33,20 +31,55 @@ class O2InternalRenderer implements GLSurfaceView.Renderer{
 	}
 	
 	public void onSurfaceChanged(GL10 gl, int width, int height) {
+		O2Director.Config config = director.config;
 		GLES10.glViewport(0, 0, width, height);
 		// for a fixed camera, set the projection too
-		float ratio = (float) width / height;
+		// float ratio = (float) width / height;
 		GLES10.glMatrixMode(GL10.GL_PROJECTION);
 		GLES10.glLoadIdentity();
-		GLES10.glFrustumf(-ratio, ratio, -1, 1, 1, 10);
-        GLES10.glOrthof(0.0f, width,0.0f,  height, 0.0f, 1.0f);
+		//GLES10.glFrustumf(-ratio, ratio, -1, 1, 1, 10);
+		GLES10.glOrthof(0.0f, width,0.0f,  height, 0.0f, 1.0f);
 
-        // map to normal screen coodination
+        // map to normal screen coordination
         GLES10.glMatrixMode(GLES10.GL_MODELVIEW);
         GLES10.glLoadIdentity();
         // Magic offsets to promote consistent rasterization.
         GLES10.glTranslatef(0.375f, height + 0.375f, 0.0f);
         GLES10.glRotatef(180.0f, 1.0f, 0.0f, 0.0f);
+		if (config.width > 0 && config.height > 0)
+		{
+			/* xLogical * scale + xOffset = xDeivce
+			 * yLogical * scale + yOffset = yDeivce
+			 */
+			float scale;
+			float xOffset;
+			float yOffset;
+			
+			if (config.width * height > width * config.height)
+			{
+				scale = (float)width/config.width;
+				yOffset = (height/scale - config.height) / 2.0f;
+				
+				GLES10.glScalef(scale, scale, 1.0f);				
+				GLES10.glTranslatef(0.0f, yOffset, 0.0f);
+				
+				director.internalConfig.scale = scale;
+				director.internalConfig.xOffset = 0.0f;
+				director.internalConfig.yOffset = yOffset;
+			}
+			else
+			{
+				scale = (float)height/config.height;
+				xOffset = (width/scale - config.width) / 2.0f;
+				
+				GLES10.glScalef(scale, scale, 1.0f);
+				GLES10.glTranslatef(xOffset, 0.0f, 0.0f);
+				
+				director.internalConfig.scale = scale;
+				director.internalConfig.xOffset = xOffset;
+				director.internalConfig.yOffset = 0.0f;
+			}
+		}
 	}
 
 	public void onDrawFrame(GL10 gl) {

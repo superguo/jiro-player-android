@@ -5,12 +5,15 @@ package com.superguo.jiroplayer;
 import javax.microedition.khronos.opengles.*;
 
 import android.graphics.*;
+import android.view.*;
 
 import com.superguo.ogl2d.*;
 
 public class PlayScene extends O2Scene {
 	private O2Sprite bgSprite;
 	private O2Sprite textSprite;
+	private O2Sprite notesSprite;
+	private O2SpriteSheet notesSpriteSheet;
 	/*
 	private Paint paint;
 	private Typeface typeface;
@@ -32,8 +35,10 @@ public class PlayScene extends O2Scene {
 	@Override
 	public void onEnteringScene() {
 		O2SpriteManager mgr = director.getSpriteManager();
-		bgSprite = mgr.createFromResource(R.drawable.bg, true);
-		textSprite = mgr.createFromString("hello", true);
+		bgSprite 	= mgr.createFromResource(R.drawable.bg, true);
+		textSprite 	= mgr.createFromString("hello", true);
+		notesSprite	= mgr.createFromResource(R.drawable.notes, true);
+		notesSpriteSheet = notesSprite.createSpriteSheetWithRowsAndCols(2, 13);
 	}
 
 	@Override
@@ -61,6 +66,13 @@ public class PlayScene extends O2Scene {
 	public void draw(GL10 gl) {
 		bgSprite.draw(0, 0);
 		textSprite.draw(0, 0);
+		MotionEvent e = getMotionEvent();
+		if (e!=null)
+		{
+			float x = director.toXLogical(e.getX());
+			float y = director.toXLogical(e.getY());
+			notesSpriteSheet.draw(0, (int)x, (int)y);
+		}
 	}
 
 

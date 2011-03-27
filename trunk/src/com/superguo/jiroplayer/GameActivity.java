@@ -7,6 +7,8 @@ import android.content.res.*;
 import android.media.*;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
+import android.view.Window;
+import android.view.WindowManager;
 
 public class GameActivity extends Activity
 	{
@@ -18,6 +20,10 @@ public class GameActivity extends Activity
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        getWindow().setFlags(
+        		WindowManager.LayoutParams.FLAG_FULLSCREEN,
+        		WindowManager.LayoutParams.FLAG_FULLSCREEN);
         director = O2Director.createInstance(
         		getApplicationContext(),
         		new O2Director.Config(512, 384));

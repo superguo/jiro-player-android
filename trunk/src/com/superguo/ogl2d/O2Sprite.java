@@ -1,8 +1,6 @@
 package com.superguo.ogl2d;
 import java.nio.*;
-
-import javax.microedition.khronos.opengles.*;
-
+//import javax.microedition.khronos.opengles.*;
 import android.graphics.*;
 import android.opengl.*;
 
@@ -87,7 +85,7 @@ public abstract class O2Sprite {
 			Bitmap standardBmp = Bitmap.createBitmap(
 					1<<texPowOf2Width,
 					1<<texPowOf2Height,
-					bmp.getConfig()
+					Bitmap.Config.ARGB_4444
 					);
 			Canvas canvas = new Canvas(standardBmp);
 			canvas.drawBitmap(bmp, 0.0f, 0.0f, new Paint());
@@ -150,6 +148,7 @@ public abstract class O2Sprite {
 	public final void draw(int tagetX, int targetY)
 	{
 		// vertex coordinations
+		int vertCoods[] = this.vertCoods;
 		vertCoods[0] = vertCoods[4] = tagetX  << 16;
 		vertCoods[1] = vertCoods[3] = targetY << 16;
 		vertCoods[2] = vertCoods[6] = (tagetX + width)   << 16;
@@ -159,21 +158,23 @@ public abstract class O2Sprite {
 		vertBuf.put(vertCoods);
 		vertBuf.position(0);
 		
+		// Specify the vertex pointers
 		GLES10.glVertexPointer(2, GLES10.GL_FIXED, 0, vertBuf);
 		
-		// texture texture and coordinations
+		// Specify the texture coordinations
 		GLES10.glBindTexture(GLES10.GL_TEXTURE_2D, tex);
 		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, vboFullTexCood);
 		GLES11.glTexCoordPointer(2, GLES10.GL_FIXED, 0, 0);
 		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, 0);
 
-		
 		// draw
 		GLES10.glDrawArrays(GLES10.GL_TRIANGLE_STRIP, 0, 4);
 	}
 	
 	public final void draw(int srcX, int srcY, int srcWidth, int srcHeight, int tagetX, int targetY)
 	{
+		int vertCoods[] = this.vertCoods;
+
 		vertCoods[0] = vertCoods[4] = tagetX  << 16;
 		vertCoods[1] = vertCoods[3] = targetY << 16;
 		vertCoods[2] = vertCoods[6] = (tagetX + srcWidth)   << 16;
@@ -183,6 +184,8 @@ public abstract class O2Sprite {
 		vertBuf.put(vertCoods);
 		vertBuf.position(0);
 		
+		int texCoods[] = this.texCoods;
+
 		texCoods[0] = texCoods[4] = srcX << (16-texPowOf2Width);
 		texCoods[1] = texCoods[3] = srcY << (16-texPowOf2Height);
 		texCoods[2] = texCoods[6] =  (srcX + srcWidth)  << (16-texPowOf2Width);
@@ -211,6 +214,19 @@ public abstract class O2Sprite {
 	public final boolean isManaged()
 	{
 		return managed;
+	}
+	
+	public final O2SpriteSheet createSpriteSheetWithRowsAndCols(
+			int rows, int cols)
+	{
+		Rect rects[] = new Rect[rows*cols];
+		int i, j, w, h;
+		w = width/cols;
+		h = height/rows;
+		for (i=rows-1; i>=0; --i)
+			for (j=cols-1; j>=0; --j)
+				rects[i*cols+j] = new Rect(j*w, i*h, j*(w+1), i*(h+1));
+		return new O2SpriteSheet(this, rects);
 	}
 	
 	@Override

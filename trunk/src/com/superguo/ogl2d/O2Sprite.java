@@ -87,7 +87,9 @@ public abstract class O2Sprite {
 					1<<texPowOf2Height,
 					Bitmap.Config.ARGB_4444
 					);
+			standardBmp.setDensity(bmp.getDensity());
 			Canvas canvas = new Canvas(standardBmp);
+			canvas.setDensity(bmp.getDensity());
 			canvas.drawBitmap(bmp, 0.0f, 0.0f, new Paint());
 			createTexFromStandardBitmap(standardBmp);
 			canvas = null;
@@ -214,19 +216,6 @@ public abstract class O2Sprite {
 	public final boolean isManaged()
 	{
 		return managed;
-	}
-	
-	public final O2SpriteSheet createSpriteSheetWithRowsAndCols(
-			int rows, int cols)
-	{
-		Rect rects[] = new Rect[rows*cols];
-		int i, j, w, h;
-		w = width/cols;
-		h = height/rows;
-		for (i=rows-1; i>=0; --i)
-			for (j=cols-1; j>=0; --j)
-				rects[i*cols+j] = new Rect(j*w, i*h, j*(w+1), i*(h+1));
-		return new O2SpriteSheet(this, rects);
 	}
 	
 	@Override

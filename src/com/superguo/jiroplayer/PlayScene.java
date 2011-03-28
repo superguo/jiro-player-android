@@ -38,7 +38,7 @@ public class PlayScene extends O2Scene {
 		bgSprite 	= mgr.createFromResource(R.drawable.bg, true);
 		textSprite 	= mgr.createFromString("hello", true);
 		notesSprite	= mgr.createFromResource(R.drawable.notes, true);
-		notesSpriteSheet = notesSprite.createSpriteSheetWithRowsAndCols(2, 13);
+		notesSpriteSheet = mgr.createSpriteSheetWithRowsAndCols(notesSprite, 2, 13);
 	}
 
 	@Override
@@ -65,15 +65,13 @@ public class PlayScene extends O2Scene {
 	@Override
 	public void draw(GL10 gl) {
 		bgSprite.draw(0, 0);
-		textSprite.draw(0, 0);
+		textSprite.draw(10, 10);
 		MotionEvent e = getMotionEvent();
 		if (e!=null)
 		{
 			float x = director.toXLogical(e.getX());
-			float y = director.toXLogical(e.getY());
+			float y = director.toYLogical(e.getY());
 			notesSpriteSheet.draw(0, (int)x, (int)y);
 		}
 	}
-
-
 }

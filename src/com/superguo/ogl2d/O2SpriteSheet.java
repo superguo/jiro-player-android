@@ -1,56 +1,48 @@
 package com.superguo.ogl2d;
 
 import java.nio.*;
+import java.util.*;
 
 import android.graphics.*;
 import android.opengl.GLES10;
 import android.opengl.GLES11;
 
-public class O2SpriteSheet {
+public class O2SpriteSheet{
+	protected O2Sprite sprite;
+	protected boolean created;
+	protected final static int CREATE_FROM_ROWS_AND_COLS = 1;
+	protected int createMethod;
+	protected int createArg0;
+	protected int createArg1;
+	
 	protected int vboFullTexCoods[];
 	protected Point[] sizes;
-	protected O2Sprite sprite;
 	private int vertCoods[] = new int[8];
 	private IntBuffer vertBuf = 
 		ByteBuffer.allocateDirect(32).order(null).asIntBuffer();
 
-	public O2SpriteSheet(O2Sprite sprite, Rect[] rects)
+	protected O2SpriteSheet(O2Sprite sprite, int createMethod, int createArg0, int createArg1, boolean doVerification)
 	{
 		this.sprite = sprite;
-		// checks the number of elements in rects
-		int count = rects.length;
-		if (count<0) throw new IllegalArgumentException();
-		if (count==0) return;
-		
-		// intermediate variables
-		vboFullTexCoods = new int[count];
-		sizes = new Point[count];
-		int fullTexCoods[] = new int[8];
-		IntBuffer fullTexBuf = 
-			ByteBuffer.allocateDirect(32).order(null).asIntBuffer();
-
-		GLES11.glGenBuffers(count, vboFullTexCoods, 0);
-		int texPowOf2Width = sprite.texPowOf2Width;
-		int texPowOf2Height = sprite.texPowOf2Height;
-		int i;
-		for (i=0; i<count; ++i)
-		{
-			sizes[i] = new Point(
-					rects[i].right - rects[i].left,
-					rects[i].bottom - rects[i].top);
-			fullTexCoods[0] = fullTexCoods[4] = rects[i].left << (16-texPowOf2Width);
-			fullTexCoods[1] = fullTexCoods[3] = rects[i].top << (16-texPowOf2Height);
-			fullTexCoods[2] = fullTexCoods[6] = rects[i].right  << (16-texPowOf2Width);
-			fullTexCoods[5] = fullTexCoods[7] = rects[i].bottom << (16-texPowOf2Height);
-			fullTexBuf.position(0);
-			fullTexBuf.put(fullTexCoods);
-			fullTexBuf.position(0);
-			GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, vboFullTexCoods[i]);
-			GLES11.glBufferData(GLES11.GL_ARRAY_BUFFER, 32, fullTexBuf, GLES11.GL_STATIC_DRAW);
-			GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, 0);
-		}
+		this.createMethod = createMethod;
+		this.createArg0 = createArg0;
+		this.createArg1 = createArg1;
+		if (doVerification) verify();
 	}
 
+	protected void verify()
+	{
+		switch (createMethod)
+		{
+		case CREATE_FROM_ROWS_AND_COLS:
+			if (createArg0<0 || createArg1<0) throw new IllegalArgumentException();
+			return;
+			
+		default:
+			throw new UnsupportedOperationException();
+		}
+	}
+	
 	public final void draw(int index, int targetX, int targetY)
 	{
 		int vertCoods[] = this.vertCoods;
@@ -75,5 +67,58 @@ public class O2SpriteSheet {
 
 		// draw
 		GLES10.glDrawArrays(GLES10.GL_TRIANGLE_STRIP, 0, 4);
+	}
+
+	protected void create() {
+		switch (createMethod)
+		{
+		case CREATE_FROM_ROWS_AND_COLS:
+			createFromRowsAndCols(createArg0, createArg1);
+			return;
+
+		default:
+			throw new UnsupportedOperationException();
+		}
+	}
+	
+	private void createFromRowsAndCols(int rows, int cols)
+	{
+		int i, j, w, h;
+		w = sprite.width/cols;
+		h = sprite.height/rows;
+		int count = rows*cols;
+		if (count==0) return;
+		
+		// block sizes, using Point as size type
+		sizes = new Point[count];
+		Point fixedSize = new Point(w, h);
+		Arrays.fill(sizes, fixedSize);
+		
+		// VBO
+		vboFullTexCoods = new int[count];
+		int fullTexCoods[] = new int[8];
+		IntBuffer fullTexBuf = ByteBuffer.allocateDirect(32).order(null).asIntBuffer();
+		GLES11.glGenBuffers(count, vboFullTexCoods, 0);
+		int texPowOf2Width = sprite.texPowOf2Width;
+		int texPowOf2Height = sprite.texPowOf2Height;
+		for (i=0; i<rows; ++i)
+			for (j=0; j<cols; ++j)
+			{
+				int left = j*w;
+				int top = i*h;
+				int right = left + w;
+				int bottom = top + h;
+				fullTexCoods[0] = fullTexCoods[4] = left 	<< (16-texPowOf2Width);
+				fullTexCoods[1] = fullTexCoods[3] = top 	<< (16-texPowOf2Height);
+				fullTexCoods[2] = fullTexCoods[6] = right  	<< (16-texPowOf2Width);
+				fullTexCoods[5] = fullTexCoods[7] = bottom 	<< (16-texPowOf2Height);
+				fullTexBuf.position(0);
+				fullTexBuf.put(fullTexCoods);
+				fullTexBuf.position(0);
+				GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, vboFullTexCoods[i*cols+j]);
+				GLES11.glBufferData(GLES11.GL_ARRAY_BUFFER, 32, fullTexBuf, GLES11.GL_STATIC_DRAW);
+				GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, 0);
+			}
+		created = true;
 	}
 }

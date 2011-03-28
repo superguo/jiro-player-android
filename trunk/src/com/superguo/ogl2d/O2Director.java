@@ -118,7 +118,7 @@ public abstract class O2Director extends GLSurfaceView {
 	public float toXLogical(float xDevice)
 	{
 		if (Math.abs(internalConfig.scale) > 1e-5)
-			return (xDevice - internalConfig.xOffset) / internalConfig.scale;
+			return xDevice / internalConfig.scale - internalConfig.xOffset;
 		else
 			return xDevice;
 	}
@@ -126,11 +126,27 @@ public abstract class O2Director extends GLSurfaceView {
 	public float toYLogical(float yDevice)
 	{
 		if (Math.abs(internalConfig.scale) > 1e-5)
-			return (yDevice - internalConfig.yOffset) / internalConfig.scale;
+			return yDevice / internalConfig.scale - internalConfig.yOffset;
 		else
 			return yDevice;
 	}
 
+	public float toXDevice(float xLogical)
+	{
+		if (Math.abs(internalConfig.scale) > 1e-5)
+			return xLogical * (internalConfig.scale + internalConfig.xOffset);
+		else
+			return xLogical;
+	}
+	
+	public float toYDevice(float yLogical)
+	{
+		if (Math.abs(internalConfig.scale) > 1e-5)
+			return yLogical * (internalConfig.scale + internalConfig.yOffset);
+		else
+			return yLogical;
+	}
+	
 	@Override
 	public void onResume()
 	{

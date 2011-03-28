@@ -51,8 +51,8 @@ class O2InternalRenderer implements GLSurfaceView.Renderer{
         GLES10.glRotatef(180.0f, 1.0f, 0.0f, 0.0f);
 		if (config.width > 0 && config.height > 0)
 		{
-			/* xLogical * scale + xOffset = xDeivce
-			 * yLogical * scale + yOffset = yDeivce
+			/* (xLogical + xOffset) * scale  = xDeivce
+			 * (yLogical + yOffset) * scale  = yDeivce
 			 */
 			float scale;
 			float xOffset;
@@ -82,6 +82,14 @@ class O2InternalRenderer implements GLSurfaceView.Renderer{
 				director.internalConfig.xOffset = xOffset;
 				director.internalConfig.yOffset = 0.0f;
 			}
+			
+			// set the clipping rect
+			GLES10.glEnable(GLES10.GL_SCISSOR_TEST);
+			GLES10.glScissor(
+					(int)director.toXDevice(0),
+					(int)director.toYDevice(0),
+					(int)director.toXDevice(config.width),
+					(int)director.toYDevice(config.height));
 		}
 	}
 

@@ -4,10 +4,10 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 
-public class O2ResourceBitmapSprite extends O2Sprite {
+class O2ResourceBitmapTexture extends O2Texture {
 	int resId;
 	
-	O2ResourceBitmapSprite(boolean managed, int resId, Resources res)
+	O2ResourceBitmapTexture(boolean managed, int resId, Resources res)
 	{
 		super(managed);
 		this.resId = resId; 

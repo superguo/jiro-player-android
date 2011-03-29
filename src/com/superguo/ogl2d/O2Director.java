@@ -15,7 +15,7 @@ public abstract class O2Director extends GLSurfaceView {
 	public final static boolean isSingleProcessor = 
 		java.lang.Runtime.getRuntime().availableProcessors() == 1;
 	GL10 gl;
-	O2SpriteManager spriteManager;
+	O2TextureManager spriteManager;
 	Map<Long, Paint> paints;
 	O2InternalRenderer renderer;
 	protected O2Scene currentScene;
@@ -62,7 +62,7 @@ public abstract class O2Director extends GLSurfaceView {
 		internalConfig = new InternalConfig();
 		
 		if (!isSingleProcessor) sceneAccessMutex = new Object();
-		spriteManager = new O2SpriteManager(appContext);
+		spriteManager = new O2TextureManager(appContext);
 		paints = isSingleProcessor ?
 			new HashMap<Long, Paint>(5)
 				:
@@ -78,7 +78,7 @@ public abstract class O2Director extends GLSurfaceView {
 		return instance;
 	}
 	
-	public final O2SpriteManager getSpriteManager()
+	public final O2TextureManager getSpriteManager()
 	{
 		return spriteManager;
 	}

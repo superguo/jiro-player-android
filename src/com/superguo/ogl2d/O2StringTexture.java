@@ -2,12 +2,12 @@ package com.superguo.ogl2d;
 
 import android.graphics.*;
 
-public class O2StringSprite extends O2Sprite {
+public class O2StringTexture extends O2Texture {
 
 	String text;
 	long paintId;
 
-	protected O2StringSprite(boolean managed, String text, long paintId) {
+	protected O2StringTexture(boolean managed, String text, long paintId) {
 		super(managed);
 		this.text = managed ? new String(text) : text;
 		this.paintId = paintId; 

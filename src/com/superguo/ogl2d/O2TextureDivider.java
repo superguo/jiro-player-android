@@ -7,8 +7,8 @@ import android.graphics.*;
 import android.opengl.GLES10;
 import android.opengl.GLES11;
 
-public class O2SpriteSheet{
-	protected O2Sprite sprite;
+public class O2TextureDivider{
+	protected O2Texture texture;
 	protected boolean created;
 	protected final static int CREATE_FROM_ROWS_AND_COLS = 1;
 	protected int createMethod;
@@ -21,9 +21,9 @@ public class O2SpriteSheet{
 	private IntBuffer vertBuf = 
 		ByteBuffer.allocateDirect(32).order(null).asIntBuffer();
 
-	protected O2SpriteSheet(O2Sprite sprite, int createMethod, int createArg0, int createArg1, boolean doVerification)
+	protected O2TextureDivider(O2Texture texture, int createMethod, int createArg0, int createArg1, boolean doVerification)
 	{
-		this.sprite = sprite;
+		this.texture = texture;
 		this.createMethod = createMethod;
 		this.createArg0 = createArg0;
 		this.createArg1 = createArg1;
@@ -60,7 +60,7 @@ public class O2SpriteSheet{
 		GLES10.glVertexPointer(2, GLES10.GL_FIXED, 0, vertBuf);
 		
 		// Specify the texture coordinations
-		GLES10.glBindTexture(GLES10.GL_TEXTURE_2D, sprite.tex);
+		GLES10.glBindTexture(GLES10.GL_TEXTURE_2D, texture.tex);
 		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, vboFullTexCoods[index]);
 		GLES11.glTexCoordPointer(2, GLES10.GL_FIXED, 0, 0);
 		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, 0);
@@ -84,8 +84,8 @@ public class O2SpriteSheet{
 	private void createFromRowsAndCols(int rows, int cols)
 	{
 		int i, j, w, h;
-		w = sprite.width/cols;
-		h = sprite.height/rows;
+		w = texture.width/cols;
+		h = texture.height/rows;
 		int count = rows*cols;
 		if (count==0) return;
 		
@@ -99,8 +99,8 @@ public class O2SpriteSheet{
 		int fullTexCoods[] = new int[8];
 		IntBuffer fullTexBuf = ByteBuffer.allocateDirect(32).order(null).asIntBuffer();
 		GLES11.glGenBuffers(count, vboFullTexCoods, 0);
-		int texPowOf2Width = sprite.texPowOf2Width;
-		int texPowOf2Height = sprite.texPowOf2Height;
+		int texPowOf2Width = texture.texPowOf2Width;
+		int texPowOf2Height = texture.texPowOf2Height;
 		for (i=0; i<rows; ++i)
 			for (j=0; j<cols; ++j)
 			{

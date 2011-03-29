@@ -2,13 +2,13 @@ package com.superguo.ogl2d;
 
 import android.opengl.*;
 
-public final class O2BufferSprite extends O2Sprite {
+public final class O2BufferTexture extends O2Texture {
 	int fbo;
 	int depthBuf;
 	int width;
 	int height;
 
-	O2BufferSprite(int width, int height) {
+	O2BufferTexture(int width, int height) {
 		super(true);
 		this.width = width;
 		this.height = height;

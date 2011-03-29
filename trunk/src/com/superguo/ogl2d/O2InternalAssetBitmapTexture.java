@@ -5,11 +5,11 @@ import java.io.IOException;
 import android.content.res.AssetManager;
 import android.graphics.*;
 
-public class O2AssetBitmapSprite extends O2Sprite {
+class O2InternalAssetBitmapTexture extends O2Texture {
 	
 	String assetPath;
 	
-	O2AssetBitmapSprite(boolean managed, String assetPath, AssetManager assetMan)
+	O2InternalAssetBitmapTexture(boolean managed, String assetPath, AssetManager assetMan)
 	{
 		super(managed);
 		this.assetPath = managed ? new String(assetPath) : assetPath;

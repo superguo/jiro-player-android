@@ -7,13 +7,18 @@ import javax.microedition.khronos.opengles.*;
 import android.graphics.*;
 import android.view.*;
 
+import com.superguo.jiroplayer.*;
 import com.superguo.ogl2d.*;
 
 public class PlayScene extends O2Scene {
-	private O2Sprite bgSprite;
-	private O2Sprite textSprite;
-	private O2Sprite notesSprite;
-	private O2SpriteSheet notesSpriteSheet;
+	private GameModel iGameModel;
+	private GameModel.Layout iLayout;
+	private O2Texture mDebugTextSprite;
+	private O2Texture mBgSprite;
+	private O2Texture mMTaikoSprite;
+	private O2Texture mNotesSprite;
+	private O2TextureDivider mNotesSpriteSheet;
+	
 	/*
 	private Paint paint;
 	private Typeface typeface;
@@ -23,6 +28,9 @@ public class PlayScene extends O2Scene {
 	public PlayScene(O2Director director, GameModel gameModel)
 	{
 		super(director);
+		iGameModel = gameModel;
+		iLayout = gameModel.iLayout;
+		
 		/*
 		paint = new Paint();
 		typeface = Typeface.createFromAsset(director.getContext().getAssets(), "a-otf-kanteiryustd-ultra.otf");
@@ -34,20 +42,23 @@ public class PlayScene extends O2Scene {
 
 	@Override
 	public void onEnteringScene() {
-		O2SpriteManager mgr = director.getSpriteManager();
-		bgSprite 	= mgr.createFromResource(R.drawable.bg, true);
-		textSprite 	= mgr.createFromString("hello", true);
-		notesSprite	= mgr.createFromResource(R.drawable.notes, true);
-		notesSpriteSheet = mgr.createSpriteSheetWithRowsAndCols(notesSprite, 2, 13);
+		O2TextureManager mgr = director.getSpriteManager();
+		mBgSprite 			= mgr.createFromResource(R.drawable.bg, true);
+		mMTaikoSprite		= mgr.createFromResource(R.drawable.mtaiko, true);
+		mMTaikoSprite.valign = O2Texture.VALIGN_MIDDLE;
+		// mDebugTextSprite 	= mgr.createFromString("hello", true);
+		mNotesSprite		= mgr.createFromResource(R.drawable.notes, true);
+		mNotesSpriteSheet 	= mgr.createSpriteSheetWithRowsAndCols(mNotesSprite, 2, 13);
+		
 	}
 
 	@Override
 	public void onLeavingScene() {
-		bgSprite.dispose();
-		bgSprite = null;
+		mBgSprite.dispose();
+		mBgSprite = null;
 		
-		textSprite.dispose();
-		textSprite = null;
+		mNotesSprite.dispose();
+		mNotesSprite = null;
 		
 	}
 	@Override
@@ -64,14 +75,13 @@ public class PlayScene extends O2Scene {
 
 	@Override
 	public void draw(GL10 gl) {
-		bgSprite.draw(0, 0);
-		textSprite.draw(10, 10);
+		mBgSprite.draw(0, 0);
+		mMTaikoSprite.draw(0, iLayout.iScrollFieldY);
 		MotionEvent e = getMotionEvent();
 		if (e!=null)
 		{
 			float x = director.toXLogical(e.getX());
 			float y = director.toYLogical(e.getY());
-			notesSpriteSheet.draw(0, (int)x, (int)y);
 		}
 	}
 }

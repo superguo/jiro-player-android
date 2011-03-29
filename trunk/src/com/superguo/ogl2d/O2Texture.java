@@ -4,8 +4,15 @@ import java.nio.*;
 import android.graphics.*;
 import android.opengl.*;
 
-public abstract class O2Sprite {
-	public final static int MAX_SIZE = 1024;
+public abstract class O2Texture {
+	public final static int MAX_SIZE 		= 1024;
+	public final static int HALIGN_LEFT 	= 0;
+	public final static int HALIGN_MIDDLE 	= 1;
+	public final static int HALIGN_RIGHT 	= 2;
+	public final static int VALIGN_TOP 		= 0;
+	public final static int VALIGN_MIDDLE 	= 1;
+	public final static int VALIGN_BOTTOM	= 2;
+
 	protected boolean available;
 	protected boolean managed;
 	protected int tex;
@@ -14,6 +21,11 @@ public abstract class O2Sprite {
 	protected int texPowOf2Width;	
 	protected int texPowOf2Height;
 	protected int vboFullTexCood;
+	public boolean iAutoDraw;
+	public int halign;
+	public int valign;
+	public int iX;
+	public int iY;
 
 	private int vertCoods[] = new int[8];
 	private int texCoods[] = new int[8];
@@ -22,7 +34,7 @@ public abstract class O2Sprite {
 	private IntBuffer texBuf = 
 		ByteBuffer.allocateDirect(32).order(null).asIntBuffer();
 	
-	protected O2Sprite(boolean managed)
+	protected O2Texture(boolean managed)
 	{
 		if (O2Director.instance == null)
 		{
@@ -36,6 +48,7 @@ public abstract class O2Sprite {
 
 		this.managed = managed;
 		available = false;
+		iAutoDraw = true;
 	}
 	
 	public abstract void recreate();
@@ -147,15 +160,16 @@ public abstract class O2Sprite {
 		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, 0);
 	}
 
-	public final void draw(int tagetX, int targetY)
+	public final void draw(int targetX, int targetY)
 	{
 		// vertex coordinations
 		int vertCoods[] = this.vertCoods;
-		vertCoods[0] = vertCoods[4] = tagetX  << 16;
-		vertCoods[1] = vertCoods[3] = targetY << 16;
-		vertCoods[2] = vertCoods[6] = (tagetX + width)   << 16;
-		vertCoods[5] = vertCoods[7] = (targetY + height) << 16;
 		
+		vertCoods[0] = vertCoods[4] = (targetX << 16) - (width << 15) * halign;
+		vertCoods[1] = vertCoods[3] = (targetY << 16) - (height << 15) * valign;
+		vertCoods[2] = vertCoods[6] = vertCoods[0] + (width << 16);
+		vertCoods[5] = vertCoods[7] = vertCoods[1] + (height << 16);
+
 		vertBuf.position(0);
 		vertBuf.put(vertCoods);
 		vertBuf.position(0);

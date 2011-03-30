@@ -11,30 +11,34 @@ public class O2Sprite {
 	public final static int VALIGN_MIDDLE 	= 1;
 	public final static int VALIGN_BOTTOM	= 2;
 	
+	// id to distinct itself from other O2Sprite
+	protected int id;
+	
 	// create from texture
-	private O2Texture iTexture;
+	protected O2Texture iTexture;
 	
 	// create from texture slices
-	private O2TextureSlices iTexSli;
-	private int iIndexOfSli;
+	protected O2TextureSlices iTexSli;
+	protected int iIndexOfSli;
 	
 	// public properties
 	public int iHalign;
 	public int iValign;
 	public int iX;
 	public int iY;
+	public int iZOrder;
 	
 	public O2Sprite(O2Texture aTexture)
 	{
 		iTexture = aTexture;
-		O2Director.instance.iSpriteManager.iSpriteMap.put(this, this);
+		O2Director.instance.iSpriteManager.addSprite(this);
 	}
 
 	public O2Sprite(O2TextureSlices aTexSli, int anIndex)
 	{
 		iTexSli = aTexSli;
 		iIndexOfSli = anIndex;
-		O2Director.instance.iSpriteManager.iSpriteMap.put(this, this);
+		O2Director.instance.iSpriteManager.addSprite(this);
 	}
 	
 	public void draw(GL10 gl)
@@ -47,6 +51,6 @@ public class O2Sprite {
 	
 	public void dispose()
 	{
-		O2Director.instance.iSpriteManager.iSpriteMap.remove(this);
+		O2Director.instance.iSpriteManager.iSpriteSet.remove(this);
 	}
 }

@@ -4,7 +4,7 @@ import java.nio.*;
 import android.graphics.*;
 import android.opengl.*;
 
-public abstract class O2Texture {
+public abstract class O2Texture{
 	public final static int MAX_SIZE 		= 1024;
 
 	protected boolean available;
@@ -40,7 +40,7 @@ public abstract class O2Texture {
 		available = false;
 		iAutoDraw = true;
 	}
-	
+
 	public abstract void recreate();
 	
 	public void dispose()

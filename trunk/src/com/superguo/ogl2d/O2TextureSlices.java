@@ -7,13 +7,13 @@ import android.graphics.*;
 import android.opengl.GLES10;
 import android.opengl.GLES11;
 
-public class O2TextureSlices{
-	protected O2Texture texture;
-	protected boolean created;
+public class O2TextureSlices implements Comparable<O2TextureSlices>{
+	protected O2Texture iTexture;
+	protected boolean iCreated;
 	protected final static int CREATE_FROM_ROWS_AND_COLS = 1;
-	protected int createMethod;
-	protected int createArg0;
-	protected int createArg1;
+	protected int iCreateMethod;
+	protected int iCreateArg0;
+	protected int iCreateArg1;
 	
 	protected int vboFullTexCoods[];
 	protected Point[] sizes;
@@ -23,19 +23,24 @@ public class O2TextureSlices{
 
 	protected O2TextureSlices(O2Texture texture, int createMethod, int createArg0, int createArg1, boolean doVerification)
 	{
-		this.texture = texture;
-		this.createMethod = createMethod;
-		this.createArg0 = createArg0;
-		this.createArg1 = createArg1;
+		this.iTexture = texture;
+		iCreateMethod = createMethod;
+		iCreateArg0 = createArg0;
+		iCreateArg1 = createArg1;
 		if (doVerification) verify();
 	}
 
+	public int compareTo(O2TextureSlices another) {
+		//if (createMethod)
+		return 0;
+	}
+	
 	protected void verify()
 	{
-		switch (createMethod)
+		switch (iCreateMethod)
 		{
 		case CREATE_FROM_ROWS_AND_COLS:
-			if (createArg0<0 || createArg1<0) throw new IllegalArgumentException();
+			if (iCreateArg0<0 || iCreateArg1<0) throw new IllegalArgumentException();
 			return;
 			
 		default:
@@ -77,7 +82,7 @@ public class O2TextureSlices{
 		GLES10.glVertexPointer(2, GLES10.GL_FIXED, 0, vertBuf);
 		
 		// Specify the texture coordinations
-		GLES10.glBindTexture(GLES10.GL_TEXTURE_2D, texture.tex);
+		GLES10.glBindTexture(GLES10.GL_TEXTURE_2D, iTexture.tex);
 		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, vboFullTexCoods[index]);
 		GLES11.glTexCoordPointer(2, GLES10.GL_FIXED, 0, 0);
 		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, 0);
@@ -87,10 +92,10 @@ public class O2TextureSlices{
 	}
 
 	protected void create() {
-		switch (createMethod)
+		switch (iCreateMethod)
 		{
 		case CREATE_FROM_ROWS_AND_COLS:
-			createFromRowsAndCols(createArg0, createArg1);
+			createFromRowsAndCols(iCreateArg0, iCreateArg1);
 			return;
 
 		default:
@@ -101,8 +106,8 @@ public class O2TextureSlices{
 	private void createFromRowsAndCols(int rows, int cols)
 	{
 		int i, j, w, h;
-		w = texture.width/cols;
-		h = texture.height/rows;
+		w = iTexture.width/cols;
+		h = iTexture.height/rows;
 		int count = rows*cols;
 		if (count==0) return;
 		
@@ -116,8 +121,8 @@ public class O2TextureSlices{
 		int fullTexCoods[] = new int[8];
 		IntBuffer fullTexBuf = ByteBuffer.allocateDirect(32).order(null).asIntBuffer();
 		GLES11.glGenBuffers(count, vboFullTexCoods, 0);
-		int texPowOf2Width = texture.texPowOf2Width;
-		int texPowOf2Height = texture.texPowOf2Height;
+		int texPowOf2Width = iTexture.texPowOf2Width;
+		int texPowOf2Height = iTexture.texPowOf2Height;
 		for (i=0; i<rows; ++i)
 			for (j=0; j<cols; ++j)
 			{
@@ -136,6 +141,6 @@ public class O2TextureSlices{
 				GLES11.glBufferData(GLES11.GL_ARRAY_BUFFER, 32, fullTexBuf, GLES11.GL_STATIC_DRAW);
 				GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, 0);
 			}
-		created = true;
+		iCreated = true;
 	}
 }

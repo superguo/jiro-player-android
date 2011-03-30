@@ -83,7 +83,7 @@ public class O2TextureManager {
 		}
 		for (O2TextureSlices sheet : textureSlicesMap.keySet())
 		{
-			if (!sheet.created) sheet.create();
+			if (!sheet.iCreated) sheet.create();
 		}
 	}
 	

@@ -7,7 +7,7 @@ import android.graphics.*;
 import android.opengl.GLES10;
 import android.opengl.GLES11;
 
-public class O2TextureDivider{
+public class O2TextureSlices{
 	protected O2Texture texture;
 	protected boolean created;
 	protected final static int CREATE_FROM_ROWS_AND_COLS = 1;
@@ -21,7 +21,7 @@ public class O2TextureDivider{
 	private IntBuffer vertBuf = 
 		ByteBuffer.allocateDirect(32).order(null).asIntBuffer();
 
-	protected O2TextureDivider(O2Texture texture, int createMethod, int createArg0, int createArg1, boolean doVerification)
+	protected O2TextureSlices(O2Texture texture, int createMethod, int createArg0, int createArg1, boolean doVerification)
 	{
 		this.texture = texture;
 		this.createMethod = createMethod;
@@ -52,6 +52,23 @@ public class O2TextureDivider{
 		vertCoods[2] = vertCoods[6] = (targetX + sizes[index].x) << 16;
 		vertCoods[5] = vertCoods[7] = (targetY + sizes[index].y) << 16;
 		
+		drawFull(index);
+	}
+	
+	public final void draw(int index, int targetX, int targetY, int halign, int valign)
+	{
+		int vertCoods[] = this.vertCoods;
+
+		vertCoods[0] = vertCoods[4] = targetX << 16 - (sizes[index].x << 15) * halign;
+		vertCoods[1] = vertCoods[3] = targetY << 16 - (sizes[index].y << 15) * valign;
+		vertCoods[2] = vertCoods[6] = (targetX + sizes[index].x) << 16;
+		vertCoods[5] = vertCoods[7] = (targetY + sizes[index].y) << 16;
+		
+		drawFull(index);
+	}
+	
+	private final void drawFull(int index)
+	{
 		vertBuf.position(0);
 		vertBuf.put(vertCoods);
 		vertBuf.position(0);

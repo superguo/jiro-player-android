@@ -6,12 +6,6 @@ import android.opengl.*;
 
 public abstract class O2Texture {
 	public final static int MAX_SIZE 		= 1024;
-	public final static int HALIGN_LEFT 	= 0;
-	public final static int HALIGN_MIDDLE 	= 1;
-	public final static int HALIGN_RIGHT 	= 2;
-	public final static int VALIGN_TOP 		= 0;
-	public final static int VALIGN_MIDDLE 	= 1;
-	public final static int VALIGN_BOTTOM	= 2;
 
 	protected boolean available;
 	protected boolean managed;
@@ -22,10 +16,6 @@ public abstract class O2Texture {
 	protected int texPowOf2Height;
 	protected int vboFullTexCood;
 	public boolean iAutoDraw;
-	public int halign;
-	public int valign;
-	public int iX;
-	public int iY;
 
 	private int vertCoods[] = new int[8];
 	private int texCoods[] = new int[8];
@@ -41,7 +31,7 @@ public abstract class O2Texture {
 			throw new O2Exception("O2Director instance not created");
 		}
 		
-		if (!managed && O2Director.instance.gl == null)
+		if (!managed && O2Director.instance.iGl == null)
 		{
 			throw new O2Exception("Cannot create unmanaged sprite when GL surface is lost");
 		}
@@ -55,7 +45,7 @@ public abstract class O2Texture {
 	
 	public void dispose()
 	{
-		if (O2Director.instance.gl != null)
+		if (O2Director.instance.iGl != null)
 		{
 			int texArr[] = { tex };
 			GLES10.glDeleteTextures(1, texArr, 0);
@@ -165,11 +155,29 @@ public abstract class O2Texture {
 		// vertex coordinations
 		int vertCoods[] = this.vertCoods;
 		
+		vertCoods[0] = vertCoods[4] = targetX << 16;
+		vertCoods[1] = vertCoods[3] = targetY << 16;
+		vertCoods[2] = vertCoods[6] = vertCoods[0] + (width << 16);
+		vertCoods[5] = vertCoods[7] = vertCoods[1] + (height << 16);
+
+		drawFull();
+	}
+	
+	public final void draw(int targetX, int targetY, int halign, int valign)
+	{
+		// vertex coordinations
+		int vertCoods[] = this.vertCoods;
+		
 		vertCoods[0] = vertCoods[4] = (targetX << 16) - (width << 15) * halign;
 		vertCoods[1] = vertCoods[3] = (targetY << 16) - (height << 15) * valign;
 		vertCoods[2] = vertCoods[6] = vertCoods[0] + (width << 16);
 		vertCoods[5] = vertCoods[7] = vertCoods[1] + (height << 16);
 
+		drawFull();
+	}
+	
+	private final void drawFull()
+	{
 		vertBuf.position(0);
 		vertBuf.put(vertCoods);
 		vertBuf.position(0);
@@ -216,6 +224,7 @@ public abstract class O2Texture {
 		
 		GLES10.glDrawArrays(GLES10.GL_TRIANGLE_STRIP, 0, 4);
 	}
+
 	
 	public final int getWidth()
 	{

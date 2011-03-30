@@ -64,5 +64,8 @@ public abstract class O2Scene {
 	public abstract void onLeavingScene();
 	public abstract void onPause();
 	public abstract void onResume();
-	public abstract void draw(GL10 gl);
+	public void preDraw(GL10 gl)
+	{	}
+	public void postDraw(GL10 gl)
+	{	}
 }

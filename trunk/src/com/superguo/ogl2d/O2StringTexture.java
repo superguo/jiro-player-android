@@ -11,7 +11,7 @@ public class O2StringTexture extends O2Texture {
 		super(managed);
 		this.text = managed ? new String(text) : text;
 		this.paintId = paintId; 
-		if (O2Director.instance.gl != null) recreate();
+		if (O2Director.instance.iGl != null) recreate();
 	}
 
 	@Override

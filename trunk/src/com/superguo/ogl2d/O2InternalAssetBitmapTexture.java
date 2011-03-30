@@ -13,7 +13,7 @@ class O2InternalAssetBitmapTexture extends O2Texture {
 	{
 		super(managed);
 		this.assetPath = managed ? new String(assetPath) : assetPath;
-		if (O2Director.instance.gl != null) recreate();
+		if (O2Director.instance.iGl != null) recreate();
 	}
 
 	void create(AssetManager assetMan) throws IOException

@@ -96,6 +96,7 @@ class O2InternalRenderer implements GLSurfaceView.Renderer{
 	}
 
 	public void onDrawFrame(GL10 gl) {
+		GLES10.glClear(GLES10.GL_COLOR_BUFFER_BIT);
 		O2Scene s = iDirector.iCurrentScene;
 		if (s!=null)	s.preDraw(gl);
 		iSpriteManager.drawAllSprites(gl);

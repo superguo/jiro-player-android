@@ -10,7 +10,7 @@ class O2InternalBitmapTexture extends O2Texture{
 	{
 		super(managed);
 		this.bitmap = managed ? bitmap.copy(bitmap.getConfig(), false) : bitmap;
-		if (O2Director.instance.gl!=null) recreate();
+		if (O2Director.instance.iGl!=null) recreate();
 	}
 	
 	@Override

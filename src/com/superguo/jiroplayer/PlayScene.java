@@ -13,11 +13,11 @@ import com.superguo.ogl2d.*;
 public class PlayScene extends O2Scene {
 	private GameModel iGameModel;
 	private GameModel.Layout iLayout;
-	private O2Texture mDebugTextSprite;
-	private O2Texture mBgSprite;
-	private O2Texture mMTaikoSprite;
-	private O2Texture mNotesSprite;
-	private O2TextureDivider mNotesSpriteSheet;
+	//private O2Texture mDebugTextSprite;
+	private O2Sprite iBgSprite;
+	private O2Sprite iMTaikoSprite;
+	private O2TextureSlices iNotesSlices;
+	private O2Sprite iTargetNoteSprite;
 	
 	/*
 	private Paint paint;
@@ -42,25 +42,38 @@ public class PlayScene extends O2Scene {
 
 	@Override
 	public void onEnteringScene() {
-		O2TextureManager mgr = director.getSpriteManager();
-		mBgSprite 			= mgr.createFromResource(R.drawable.bg, true);
-		mMTaikoSprite		= mgr.createFromResource(R.drawable.mtaiko, true);
-		mMTaikoSprite.valign = O2Texture.VALIGN_MIDDLE;
-		// mDebugTextSprite 	= mgr.createFromString("hello", true);
-		mNotesSprite		= mgr.createFromResource(R.drawable.notes, true);
-		mNotesSpriteSheet 	= mgr.createSpriteSheetWithRowsAndCols(mNotesSprite, 2, 13);
+		O2TextureManager mgr = director.getTextureManager();
+		iBgSprite 			= new O2Sprite(mgr.createFromResource(R.drawable.bg, true));
+		iMTaikoSprite		= new O2Sprite(mgr.createFromResource(R.drawable.mtaiko, true));
+		iMTaikoSprite.iValign = O2Sprite.VALIGN_MIDDLE;
+		iMTaikoSprite.iX	= 0;
+		iMTaikoSprite.iY	= iLayout.iScrollFieldY;
 		
+		// mDebugTextSprite 	= mgr.createFromString("hello", true);
+		iNotesSlices		= mgr.createSpriteSheetWithRowsAndCols(
+				mgr.createFromResource(R.drawable.notes, true),
+				2,
+				13);
+		iTargetNoteSprite 			= new O2Sprite(iNotesSlices, 0);
+		iTargetNoteSprite.iValign	=  O2Sprite.VALIGN_MIDDLE;
+		iTargetNoteSprite.iX		= 130;
+		iTargetNoteSprite.iY		= iLayout.iScrollFieldY;
 	}
 
 	@Override
 	public void onLeavingScene() {
-		mBgSprite.dispose();
-		mBgSprite = null;
+		iBgSprite.dispose();
+		iBgSprite = null;
 		
-		mNotesSprite.dispose();
-		mNotesSprite = null;
+		iMTaikoSprite.dispose();
+		iMTaikoSprite = null;
 		
+		iTargetNoteSprite.dispose();
+		iTargetNoteSprite = null;
+		
+		iNotesSlices = null;
 	}
+	
 	@Override
 	public void onPause() {
 		// TODO Auto-generated method stub
@@ -74,9 +87,7 @@ public class PlayScene extends O2Scene {
 	}
 
 	@Override
-	public void draw(GL10 gl) {
-		mBgSprite.draw(0, 0);
-		mMTaikoSprite.draw(0, iLayout.iScrollFieldY);
+	public void postDraw(GL10 gl) {
 		MotionEvent e = getMotionEvent();
 		if (e!=null)
 		{

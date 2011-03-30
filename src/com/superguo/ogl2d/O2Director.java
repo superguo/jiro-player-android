@@ -14,16 +14,18 @@ public abstract class O2Director extends GLSurfaceView {
 	static O2Director instance;
 	public final static boolean isSingleProcessor = 
 		java.lang.Runtime.getRuntime().availableProcessors() == 1;
-	GL10 gl;
-	O2TextureManager spriteManager;
-	Map<Long, Paint> paints;
-	O2InternalRenderer renderer;
-	protected O2Scene currentScene;
-	protected Object sceneAccessMutex;
-	private SceneEventQ sceneEventQ;
-	Config config;
-	InternalConfig internalConfig;
-	
+	Context				iAppContext;
+	GL10 				iGl;
+	O2TextureManager 	iTextureManager;
+	O2SpriteManager 	iSpriteManager;
+	Map<Long, Paint> 	iPaints;
+	O2InternalRenderer 	iRenderer;
+	protected O2Scene 	iCurrentScene;
+	protected Object 	iSceneAccessMutex;
+	private SceneEventQ iSceneEventQ;
+	Config 				iConfig;
+	InternalConfig		iInternalConfig;
+
 	public static class Config
 	{
 		public int width;
@@ -58,46 +60,47 @@ public abstract class O2Director extends GLSurfaceView {
 	O2Director(Context appContext, Config config)
 	{
 		super(appContext);
-		this.config = config==null ? new Config() : config;
-		internalConfig = new InternalConfig();
+		iAppContext = appContext;
+		this.iConfig = config==null ? new Config() : config;
+		iInternalConfig = new InternalConfig();
 		
-		if (!isSingleProcessor) sceneAccessMutex = new Object();
-		spriteManager = new O2TextureManager(appContext);
-		paints = isSingleProcessor ?
+		if (!isSingleProcessor) iSceneAccessMutex = new Object();
+		iTextureManager = new O2TextureManager();
+		iSpriteManager = new O2SpriteManager();
+		iPaints = isSingleProcessor ?
 			new HashMap<Long, Paint>(5)
 				:
 			new ConcurrentHashMap<Long, Paint>(5);
-		paints.put(new Long(0), new Paint());
-		sceneEventQ = new SceneEventQ();
-		renderer = new O2InternalRenderer(this);
-		setRenderer(renderer);
+		iPaints.put(new Long(0), new Paint());
+		iSceneEventQ = new SceneEventQ();
+		iRenderer = new O2InternalRenderer(this);
+		setRenderer(iRenderer);
 	}
 	
 	public final static O2Director getInstance()
-	{
-		return instance;
-	}
+	{	return instance;	}
 	
-	public final O2TextureManager getSpriteManager()
-	{
-		return spriteManager;
-	}
+	public final O2TextureManager getTextureManager()
+	{	return iTextureManager;	}
+	
+	public final O2SpriteManager getSpriteManager()
+	{	return iSpriteManager;	}
 
 	public long addPaint(Paint p)
 	{
 		long id = android.os.SystemClock.elapsedRealtime();
-		paints.put(new Long(id), new Paint(p));
+		iPaints.put(new Long(id), new Paint(p));
 		return id;
 	}
 
 	public Paint getPaint(long id)
 	{
-		return paints.get(new Long(id));
+		return iPaints.get(new Long(id));
 	}
 	
 	public void removePaint(long id)
 	{
-		paints.remove(new Long(id));
+		iPaints.remove(new Long(id));
 	}
 
 	public abstract void setCurrentScene(O2Scene scene);
@@ -106,43 +109,43 @@ public abstract class O2Director extends GLSurfaceView {
 	
 	protected final void setCurrentSceneUnsafe(O2Scene scene)
 	{
-		O2Scene orig = currentScene;
+		O2Scene orig = iCurrentScene;
 		if (orig!=null)
-			queueEvent(sceneEventQ.add(orig, SceneEventQ.EVENT_TYPE_ON_LEAVING_SCENE));
+			queueEvent(iSceneEventQ.add(orig, SceneEventQ.EVENT_TYPE_ON_LEAVING_SCENE));
 		
-		currentScene = scene;
-		if (currentScene!=null)
-			queueEvent(sceneEventQ.add(scene, SceneEventQ.EVENT_TYPE_ON_ENTERING_SCENE));
+		iCurrentScene = scene;
+		if (iCurrentScene!=null)
+			queueEvent(iSceneEventQ.add(scene, SceneEventQ.EVENT_TYPE_ON_ENTERING_SCENE));
 	}
 	
 	public float toXLogical(float xDevice)
 	{
-		if (Math.abs(internalConfig.scale) > 1e-5)
-			return xDevice / internalConfig.scale - internalConfig.xOffset;
+		if (Math.abs(iInternalConfig.scale) > 1e-5)
+			return xDevice / iInternalConfig.scale - iInternalConfig.xOffset;
 		else
 			return xDevice;
 	}
 
 	public float toYLogical(float yDevice)
 	{
-		if (Math.abs(internalConfig.scale) > 1e-5)
-			return yDevice / internalConfig.scale - internalConfig.yOffset;
+		if (Math.abs(iInternalConfig.scale) > 1e-5)
+			return yDevice / iInternalConfig.scale - iInternalConfig.yOffset;
 		else
 			return yDevice;
 	}
 
 	public float toXDevice(float xLogical)
 	{
-		if (Math.abs(internalConfig.scale) > 1e-5)
-			return xLogical * (internalConfig.scale + internalConfig.xOffset);
+		if (Math.abs(iInternalConfig.scale) > 1e-5)
+			return xLogical * (iInternalConfig.scale + iInternalConfig.xOffset);
 		else
 			return xLogical;
 	}
 	
 	public float toYDevice(float yLogical)
 	{
-		if (Math.abs(internalConfig.scale) > 1e-5)
-			return yLogical * (internalConfig.scale + internalConfig.yOffset);
+		if (Math.abs(iInternalConfig.scale) > 1e-5)
+			return yLogical * (iInternalConfig.scale + iInternalConfig.yOffset);
 		else
 			return yLogical;
 	}
@@ -152,7 +155,7 @@ public abstract class O2Director extends GLSurfaceView {
 	{
 		O2Scene scene = getCurrentScene();
 		if (scene!=null)
-			queueEvent(sceneEventQ.add(scene, SceneEventQ.EVENT_TYPE_ON_RESUME));
+			queueEvent(iSceneEventQ.add(scene, SceneEventQ.EVENT_TYPE_ON_RESUME));
 		super.onResume();
 	}
 	
@@ -162,7 +165,7 @@ public abstract class O2Director extends GLSurfaceView {
 		O2Scene scene = getCurrentScene();
 		if (scene!=null)
 		{
-			queueEvent(sceneEventQ.add(scene, SceneEventQ.EVENT_TYPE_ON_PAUSE));
+			queueEvent(iSceneEventQ.add(scene, SceneEventQ.EVENT_TYPE_ON_PAUSE));
 		}
 		super.onPause();
 	}
@@ -171,8 +174,8 @@ public abstract class O2Director extends GLSurfaceView {
 	public void surfaceDestroyed(SurfaceHolder holder)
 	{
 		super.surfaceDestroyed(holder);
-		spriteManager.markAllNA();
-		gl = null;
+		iTextureManager.markAllNA();
+		iGl = null;
 	}
 }
 

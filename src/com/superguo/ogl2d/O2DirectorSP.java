@@ -19,13 +19,13 @@ class O2DirectorSP extends O2Director{
 
 	public O2Scene getCurrentScene()
 	{
-		return currentScene;
+		return iCurrentScene;
 	}
 
 	@Override
 	public synchronized boolean onTouchEvent(MotionEvent event) {
-		if (currentScene != null)
-			currentScene.addMotionEventUnsafe(event);
+		if (iCurrentScene != null)
+			iCurrentScene.addMotionEventUnsafe(event);
 		
 		return true;
 	}

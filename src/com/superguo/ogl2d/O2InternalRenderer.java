@@ -5,15 +5,17 @@ import javax.microedition.khronos.opengles.*;
 import android.opengl.*;
 
 class O2InternalRenderer implements GLSurfaceView.Renderer{
-	O2Director director;
+	O2Director iDirector;
+	O2SpriteManager iSpriteManager;
 	
 	O2InternalRenderer(O2Director director)
 	{
-		this.director = director;
+		this.iDirector = director;
+		iSpriteManager = director.iSpriteManager;
 	}
 
 	public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-		director.gl = gl;
+		iDirector.iGl = gl;
 		
 		GLES10.glClearColorx(0, 0, 0, 0);
 		
@@ -30,11 +32,11 @@ class O2InternalRenderer implements GLSurfaceView.Renderer{
         GLES10.glEnable(GLES10.GL_BLEND);
         GLES10.glBlendFunc(GLES10.GL_SRC_ALPHA, GLES10.GL_ONE_MINUS_SRC_ALPHA);
 
-        director.spriteManager.recreateManaged();
+        iDirector.iTextureManager.recreateManaged();
 	}
 	
 	public void onSurfaceChanged(GL10 gl, int width, int height) {
-		O2Director.Config config = director.config;
+		O2Director.Config config = iDirector.iConfig;
 		GLES10.glViewport(0, 0, width, height);
 		// for a fixed camera, set the projection too
 		// float ratio = (float) width / height;
@@ -66,9 +68,9 @@ class O2InternalRenderer implements GLSurfaceView.Renderer{
 				GLES10.glScalef(scale, scale, 1.0f);				
 				GLES10.glTranslatef(0.0f, yOffset, 0.0f);
 				
-				director.internalConfig.scale = scale;
-				director.internalConfig.xOffset = 0.0f;
-				director.internalConfig.yOffset = yOffset;
+				iDirector.iInternalConfig.scale = scale;
+				iDirector.iInternalConfig.xOffset = 0.0f;
+				iDirector.iInternalConfig.yOffset = yOffset;
 			}
 			else
 			{
@@ -78,23 +80,25 @@ class O2InternalRenderer implements GLSurfaceView.Renderer{
 				GLES10.glScalef(scale, scale, 1.0f);
 				GLES10.glTranslatef(xOffset, 0.0f, 0.0f);
 				
-				director.internalConfig.scale = scale;
-				director.internalConfig.xOffset = xOffset;
-				director.internalConfig.yOffset = 0.0f;
+				iDirector.iInternalConfig.scale = scale;
+				iDirector.iInternalConfig.xOffset = xOffset;
+				iDirector.iInternalConfig.yOffset = 0.0f;
 			}
 			
 			// set the clipping rect
 			GLES10.glEnable(GLES10.GL_SCISSOR_TEST);
 			GLES10.glScissor(
-					(int)director.toXDevice(0),
-					(int)director.toYDevice(0),
-					(int)director.toXDevice(config.width),
-					(int)director.toYDevice(config.height));
+					(int)iDirector.toXDevice(0),
+					(int)iDirector.toYDevice(0),
+					(int)iDirector.toXDevice(config.width),
+					(int)iDirector.toYDevice(config.height));
 		}
 	}
 
 	public void onDrawFrame(GL10 gl) {
-		if (director.currentScene!=null)
-			director.currentScene.draw(gl);
+		O2Scene s = iDirector.iCurrentScene;
+		if (s!=null)	s.preDraw(gl);
+		iSpriteManager.drawAllSprites(gl);
+		if (s!=null)	s.postDraw(gl);
 	}
 }

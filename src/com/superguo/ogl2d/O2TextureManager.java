@@ -7,28 +7,31 @@ import android.graphics.*;
 
 public class O2TextureManager {
 	
-	private android.content.Context appContext;
-	private AbstractMap<O2Texture, O2Texture> spriteMap;
-	private AbstractMap<O2TextureDivider, O2TextureDivider> spriteSheetMap;
+	private AbstractMap<O2Texture, O2Texture> textureMap;
+	private AbstractMap<O2TextureSlices, O2TextureSlices> textureSlicesMap;
 	
-	O2TextureManager(android.content.Context appContext)
+	O2TextureManager()
 	{
-		this.appContext = appContext;
 		if (O2Director.isSingleProcessor)
 		{
-			spriteMap = new HashMap<O2Texture, O2Texture>(10);
-			spriteSheetMap = new HashMap<O2TextureDivider, O2TextureDivider>(10);
+			textureMap = new HashMap<O2Texture, O2Texture>(10);
+			textureSlicesMap = new HashMap<O2TextureSlices, O2TextureSlices>(10);
 		}
 		else
 		{
-			spriteMap = new ConcurrentHashMap<O2Texture, O2Texture>(10);
-			spriteSheetMap = new ConcurrentHashMap<O2TextureDivider, O2TextureDivider>(10);
+			textureMap = new ConcurrentHashMap<O2Texture, O2Texture>(10);
+			textureSlicesMap = new ConcurrentHashMap<O2TextureSlices, O2TextureSlices>(10);
 		}
 	}
 	
-	final O2Texture conditionalAdd(O2Texture sprite)
+	public final static O2TextureManager getInstance()
 	{
-		if (sprite.managed) spriteMap.put(sprite, sprite);
+		return O2Director.instance.iTextureManager;
+	}
+	
+	private final O2Texture conditionalAdd(O2Texture sprite)
+	{
+		if (sprite.managed) textureMap.put(sprite, sprite);
 		return sprite;
 	}
 	
@@ -39,12 +42,14 @@ public class O2TextureManager {
 	
 	public final O2Texture createFromResource(int resId, boolean managed)
 	{
-		return conditionalAdd(new O2ResourceBitmapTexture(managed, resId, appContext.getResources()));
+		return conditionalAdd(new O2ResourceBitmapTexture(
+				managed, resId, O2Director.instance.iAppContext.getResources()));
 	}
 	
 	public final O2Texture createFromAsset(String assetPath, boolean managed)
 	{
-		return conditionalAdd(new O2InternalAssetBitmapTexture(managed, assetPath, appContext.getAssets()));
+		return conditionalAdd(new O2InternalAssetBitmapTexture(
+				managed, assetPath, O2Director.instance.iAppContext.getAssets()));
 	}
 
 	public final O2Texture createFromString(String text, long paintId, boolean managed)
@@ -62,21 +67,21 @@ public class O2TextureManager {
 		return (O2BufferTexture)conditionalAdd(new O2BufferTexture(width, height));
 	}
 	
-	public final O2TextureDivider createSpriteSheetWithRowsAndCols(
+	public final O2TextureSlices createSpriteSheetWithRowsAndCols(
 			O2Texture sprite, int rows, int cols)
 	{
-		O2TextureDivider sheet = new O2TextureDivider(sprite, O2TextureDivider.CREATE_FROM_ROWS_AND_COLS, rows, cols, true);
-		spriteSheetMap.put(sheet, sheet);
+		O2TextureSlices sheet = new O2TextureSlices(sprite, O2TextureSlices.CREATE_FROM_ROWS_AND_COLS, rows, cols, true);
+		textureSlicesMap.put(sheet, sheet);
 		return sheet;
 	}
 	
 	public void recreateManaged()
 	{
-		for (O2Texture sprite : spriteMap.keySet())
+		for (O2Texture sprite : textureMap.keySet())
 		{
 			if (sprite.managed) sprite.recreate();
 		}
-		for (O2TextureDivider sheet : spriteSheetMap.keySet())
+		for (O2TextureSlices sheet : textureSlicesMap.keySet())
 		{
 			if (!sheet.created) sheet.create();
 		}
@@ -84,7 +89,7 @@ public class O2TextureManager {
 	
 	void markAllNA()
 	{
-		for (O2Texture sprite : spriteMap.keySet())
+		for (O2Texture sprite : textureMap.keySet())
 		{
 			sprite.available = false;
 		}

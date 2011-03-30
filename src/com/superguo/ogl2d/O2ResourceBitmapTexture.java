@@ -11,7 +11,7 @@ class O2ResourceBitmapTexture extends O2Texture {
 	{
 		super(managed);
 		this.resId = resId; 
-		if (O2Director.instance.gl != null) recreate();
+		if (O2Director.instance.iGl != null) recreate();
 	}
 
 	@Override
@@ -21,7 +21,7 @@ class O2ResourceBitmapTexture extends O2Texture {
 
 	@Override
 	public void recreate() {
-		if (O2Director.instance.gl == null) return;
+		if (O2Director.instance.iGl == null) return;
 		BitmapFactory.Options opts = new BitmapFactory.Options();
 		opts.inScaled = false;
 		Bitmap bitmap = BitmapFactory.decodeResource(

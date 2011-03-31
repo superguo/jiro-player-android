@@ -1,10 +1,7 @@
 package com.superguo.ogl2d;
 
-import java.util.*;
-
 import javax.microedition.khronos.opengles.GL10;
 
-import android.os.Parcel;
 import android.view.*;
 
 public abstract class O2Scene {

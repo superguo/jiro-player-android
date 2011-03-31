@@ -1,7 +1,5 @@
 package com.superguo.ogl2d;
 
-import com.superguo.ogl2d.O2Director.Config;
-
 import android.content.Context;
 import android.view.MotionEvent;
 

@@ -2,25 +2,19 @@
 
 package com.superguo.jiroplayer;
 
-import java.io.BufferedReader;
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.lang.ref.WeakReference;
+import java.io.*;
 
 import javax.microedition.khronos.opengles.*;
 
 import android.content.res.*;
-import android.graphics.*;
+//import android.graphics.*;
 import android.view.*;
 
-import com.superguo.jiroplayer.*;
 import com.superguo.ogl2d.*;
 
 public class PlayScene extends O2Scene {
 	private GameModel iGameModel;
-	private GameModel.Layout iLayout;
+	private PlayLayout iLayout;
 	private O2Sprite iBgSprite;
 	private O2Sprite iMTaikoSprite;
 	private O2TextureSlices iNotesSlices;

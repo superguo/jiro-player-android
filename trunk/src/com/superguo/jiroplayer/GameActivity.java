@@ -1,14 +1,9 @@
 package com.superguo.jiroplayer;
 
-import com.superguo.ogl2d.*;
-import java.io.*;
 import android.app.Activity;
-import android.content.res.*;
-import android.media.*;
-import android.opengl.GLSurfaceView;
 import android.os.Bundle;
-import android.view.Window;
-import android.view.WindowManager;
+import android.view.*;
+import com.superguo.ogl2d.*;
 
 public class GameActivity extends Activity
 	{

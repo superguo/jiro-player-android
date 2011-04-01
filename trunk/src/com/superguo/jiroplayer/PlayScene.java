@@ -8,6 +8,7 @@ import javax.microedition.khronos.opengles.*;
 
 import android.content.res.*;
 //import android.graphics.*;
+import android.media.*;
 import android.view.*;
 
 import com.superguo.ogl2d.*;
@@ -15,12 +16,18 @@ import com.superguo.ogl2d.*;
 public class PlayScene extends O2Scene {
 	private GameModel iGameModel;
 	private PlayLayout iLayout;
+	
+	private SoundPool iSoundPool;
+	private int 	 iSoundDong;
+	private int 	 iSoundKa;
+
 	private O2Sprite iBgSprite;
 	private O2Sprite iMTaikoSprite;
 	private O2TextureSlices iNotesSlices;
 	private O2Sprite iTargetNoteSprite;
 	private O2Sprite iTextSprite1;
 	private O2Sprite iTextSprite2;
+
 	
 	/*
 	private Paint paint;
@@ -45,6 +52,9 @@ public class PlayScene extends O2Scene {
 
 	@Override
 	public void onEnteringScene() {
+		iSoundPool 	= new SoundPool(20, AudioManager.STREAM_MUSIC, 0);
+		iSoundDong 	= iSoundPool.load(director.getContext(), R.raw.dong, 1);
+		iSoundKa  	= iSoundPool.load(director.getContext(), R.raw.ka, 1);
 		O2TextureManager mgr = director.getTextureManager();
 		iBgSprite 			= new O2Sprite(mgr.createFromResource(R.drawable.bg, true));
 		iMTaikoSprite		= new O2Sprite(mgr.createFromResource(R.drawable.mtaiko, true));
@@ -110,23 +120,31 @@ public class PlayScene extends O2Scene {
 	
 	@Override
 	public void onPause() {
-		// TODO Auto-generated method stub
-		
+		iSoundPool.autoPause();
 	}
 
 	@Override
 	public void onResume() {
-		// TODO Auto-generated method stub
-		
+		iSoundPool.autoResume();
 	}
 
 	@Override
 	public void postDraw(GL10 gl) {
+		FPSHolder.showFPS();
 		MotionEvent e = getMotionEvent();
-		if (e!=null)
+		if (e!=null && e.getAction()==MotionEvent.ACTION_DOWN)
 		{
 			float x = director.toXLogical(e.getX());
 			float y = director.toYLogical(e.getY());
+			if (y>iLayout.iSENotesY)
+			{
+				if (128<x && x<384)
+					iSoundPool.play(iSoundDong, 1.0f, 1.0f, 10, 0, 1.0f);
+				else
+					iSoundPool.play(iSoundKa, 1.0f, 1.0f, 10, 0, 1.0f);
+			}
 		}
 	}
+	
+
 }

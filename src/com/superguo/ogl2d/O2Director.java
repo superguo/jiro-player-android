@@ -71,7 +71,10 @@ public abstract class O2Director extends GLSurfaceView {
 			new HashMap<Long, Paint>(5)
 				:
 			new ConcurrentHashMap<Long, Paint>(5);
-		iPaints.put(new Long(0), new Paint());
+		Paint defaultPaint = new Paint(Paint.FAKE_BOLD_TEXT_FLAG);
+		defaultPaint.setColor(Color.rgb(255, 255, 255));
+		defaultPaint.setAntiAlias(true);
+		iPaints.put(new Long(0), defaultPaint);
 		iSceneEventQ = new SceneEventQ();
 		iRenderer = new O2InternalRenderer(this);
 		setRenderer(iRenderer);

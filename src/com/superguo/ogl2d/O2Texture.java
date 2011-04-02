@@ -45,7 +45,7 @@ public abstract class O2Texture{
 	
 	public void dispose()
 	{
-		if (O2Director.instance.iGl != null)
+		if (O2Director.instance != null && O2Director.instance.iGl != null)
 		{
 			int texArr[] = { tex };
 			GLES10.glDeleteTextures(1, texArr, 0);

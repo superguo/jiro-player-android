@@ -56,7 +56,7 @@ public class PlayScene extends O2Scene {
 		iSoundDong 	= iSoundPool.load(director.getContext(), R.raw.dong, 1);
 		iSoundKa  	= iSoundPool.load(director.getContext(), R.raw.ka, 1);
 		O2TextureManager mgr = director.getTextureManager();
-		iBgSprite 			= new O2Sprite(mgr.createFromResource(R.drawable.bg, true));
+		//iBgSprite 			= new O2Sprite(mgr.createFromResource(R.drawable.bg, true));
 		iMTaikoSprite		= new O2Sprite(mgr.createFromResource(R.drawable.mtaiko, true));
 		iMTaikoSprite.iValign = O2Sprite.VALIGN_MIDDLE;
 		iMTaikoSprite.iX	= 0;
@@ -94,14 +94,23 @@ public class PlayScene extends O2Scene {
 
 	@Override
 	public void onLeavingScene() {
-		iBgSprite.dispose();
-		iBgSprite = null;
+		if (iBgSprite!=null)
+		{
+			iBgSprite.dispose();
+			iBgSprite = null;
+		}
 		
-		iMTaikoSprite.dispose();
-		iMTaikoSprite = null;
+		if (iMTaikoSprite!=null)
+		{
+			iMTaikoSprite.dispose();
+			iMTaikoSprite = null;
+		}
 		
-		iTargetNoteSprite.dispose();
-		iTargetNoteSprite = null;
+		if (iTargetNoteSprite!=null)
+		{
+			iTargetNoteSprite.dispose();
+			iTargetNoteSprite = null;
+		}
 		
 		if (iTextSprite1!=null)
 		{
@@ -116,6 +125,9 @@ public class PlayScene extends O2Scene {
 		}
 		
 		iNotesSlices = null;
+		
+		iSoundPool.release();
+		iSoundPool = null;
 	}
 	
 	@Override
@@ -129,8 +141,7 @@ public class PlayScene extends O2Scene {
 	}
 
 	@Override
-	public void postDraw(GL10 gl) {
-		FPSHolder.showFPS();
+	public void preDraw(GL10 gl) {
 		MotionEvent e = getMotionEvent();
 		if (e!=null && e.getAction()==MotionEvent.ACTION_DOWN)
 		{
@@ -144,6 +155,16 @@ public class PlayScene extends O2Scene {
 					iSoundPool.play(iSoundKa, 1.0f, 1.0f, 10, 0, 1.0f);
 			}
 		}
+	}
+
+	@Override
+	public void postDraw(GL10 gl) {
+		FPSHolder.getInstance().showFPS();
+	}
+
+	@Override
+	public void dispose() {
+		onLeavingScene();
 	}
 	
 

@@ -83,6 +83,11 @@ public abstract class O2Director extends GLSurfaceView {
 	public final static O2Director getInstance()
 	{	return instance;	}
 	
+	public final void dispose()
+	{
+		instance = null;
+	}
+	
 	public final O2TextureManager getTextureManager()
 	{	return iTextureManager;	}
 	
@@ -237,5 +242,4 @@ class SceneEventQ implements Runnable
 		}
 		
 	}
-	
 }

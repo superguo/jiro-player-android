@@ -61,6 +61,11 @@ public class GameActivity extends Activity
     @Override
     public void onStop ()
     {
+    	director.dispose();
+    	director = null;
+    	FPSHolder.getInstance().dispose();
+    	playScene = null;
+    	gameModel = null;
     	super.onStop();
     }
 }

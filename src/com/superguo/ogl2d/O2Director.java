@@ -3,14 +3,16 @@ package com.superguo.ogl2d;
 import java.util.*;
 import java.util.concurrent.*;
 
-import javax.microedition.khronos.opengles.GL10;
+import javax.microedition.khronos.egl.*;
+import javax.microedition.khronos.opengles.*;
 
 import android.graphics.*;
 import android.opengl.*;
+import android.os.Handler;
 import android.view.*;
 import android.content.*;
 
-public abstract class O2Director extends GLSurfaceView {
+public class O2Director extends SurfaceView implements SurfaceHolder.Callback, Runnable {
 	static O2Director instance;
 	public final static boolean isSingleProcessor = 
 		java.lang.Runtime.getRuntime().availableProcessors() == 1;
@@ -19,12 +21,19 @@ public abstract class O2Director extends GLSurfaceView {
 	O2TextureManager 	iTextureManager;
 	O2SpriteManager 	iSpriteManager;
 	Map<Long, Paint> 	iPaints;
-	O2InternalRenderer 	iRenderer;
 	protected O2Scene 	iCurrentScene;
 	protected Object 	iSceneAccessMutex;
-	private SceneEventQ iSceneEventQ;
+	
 	Config 				iConfig;
 	InternalConfig		iInternalConfig;
+	
+	EGL10 				iEGL;
+	EGLDisplay 			iEGLDisplay;
+	EGLConfig			iEGLConfig;
+	EGLSurface			iEGLSurface;
+	EGLContext			iEGLContext;
+	
+	private Handler 	iDrawHandler;
 
 	public static class Config
 	{
@@ -50,16 +59,14 @@ public abstract class O2Director extends GLSurfaceView {
 	
 	public static O2Director createInstance(Context appContext, Config config)
 	{
-		instance = isSingleProcessor ?
-				new O2DirectorSP(appContext, config)
-		:
-				new O2DirectorMP(appContext, config);
+		instance = new O2Director(appContext, config);
 		return instance;
 	}
 	
 	O2Director(Context appContext, Config config)
 	{
 		super(appContext);
+		getHolder().setFormat(PixelFormat.RGB_565);
 		iAppContext = appContext;
 		this.iConfig = config==null ? new Config() : config;
 		iInternalConfig = new InternalConfig();
@@ -75,9 +82,8 @@ public abstract class O2Director extends GLSurfaceView {
 		defaultPaint.setColor(Color.rgb(255, 255, 255));
 		defaultPaint.setAntiAlias(true);
 		iPaints.put(new Long(0), defaultPaint);
-		iSceneEventQ = new SceneEventQ();
-		iRenderer = new O2InternalRenderer(this);
-		setRenderer(iRenderer);
+		iDrawHandler = new Handler();
+		getHolder().addCallback(this);
 	}
 	
 	public final static O2Director getInstance()
@@ -111,19 +117,25 @@ public abstract class O2Director extends GLSurfaceView {
 		iPaints.remove(new Long(id));
 	}
 
-	public abstract void setCurrentScene(O2Scene scene);
+	public final void setCurrentScene(O2Scene scene)
+	{
+		setCurrentSceneUnsafe(scene);
+	}
 
-	public abstract O2Scene getCurrentScene();
+	public final O2Scene getCurrentScene()
+	{
+		return iCurrentScene;
+	}
 	
 	protected final void setCurrentSceneUnsafe(O2Scene scene)
 	{
 		O2Scene orig = iCurrentScene;
 		if (orig!=null)
-			queueEvent(iSceneEventQ.add(orig, SceneEventQ.EVENT_TYPE_ON_LEAVING_SCENE));
+			orig.onLeavingScene();
 		
 		iCurrentScene = scene;
 		if (iCurrentScene!=null)
-			queueEvent(iSceneEventQ.add(scene, SceneEventQ.EVENT_TYPE_ON_ENTERING_SCENE));
+			iCurrentScene.onEnteringScene();
 	}
 	
 	public float toXLogical(float xDevice)
@@ -158,88 +170,192 @@ public abstract class O2Director extends GLSurfaceView {
 			return yLogical;
 	}
 	
-	@Override
+	/**
+	 * Must be called when app is to be sresumed
+	 */
 	public void onResume()
 	{
 		O2Scene scene = getCurrentScene();
 		if (scene!=null)
-			queueEvent(iSceneEventQ.add(scene, SceneEventQ.EVENT_TYPE_ON_RESUME));
-		super.onResume();
+			scene.onResume();
 	}
 	
-	@Override
+	/**
+	 * Must be called when app is to be paused
+	 */
 	public void onPause()
 	{
 		O2Scene scene = getCurrentScene();
 		if (scene!=null)
+			scene.onPause();
+	}
+	
+	
+	public void surfaceCreated(SurfaceHolder holder) {
+		if (iGl==null)
 		{
-			queueEvent(iSceneEventQ.add(scene, SceneEventQ.EVENT_TYPE_ON_PAUSE));
+			createGl();
+			sizeChanged(getWidth(), getHeight());
 		}
-		super.onPause();
 	}
 
-	@Override
-	public void surfaceDestroyed(SurfaceHolder holder)
-	{
-		super.surfaceDestroyed(holder);
-		iTextureManager.markAllNA();
-		iGl = null;
-	}
-}
-
-class SceneEventQ implements Runnable
-{
-	final static int EVENT_TYPE_ON_PAUSE = 1;
-	final static int EVENT_TYPE_ON_RESUME = 2;
-	final static int EVENT_TYPE_ON_ENTERING_SCENE = 3;
-	final static int EVENT_TYPE_ON_LEAVING_SCENE = 4;
-	public final static int MAX_EVENT = 100; 
-	O2Scene sceneQueue[];
-	int eventQueue[];
-	int eventIndex;
-	
-	public SceneEventQ()
-	{
-		sceneQueue = new O2Scene[MAX_EVENT];
-		eventQueue = new int[MAX_EVENT];
-		eventIndex = 0;
-	}
-	
-	public SceneEventQ add(O2Scene scene, int eventType)
-	{
-		if (eventIndex < MAX_EVENT)
+	public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+		if (iGl!=null)
 		{
-			sceneQueue[eventIndex] = scene;
-			eventQueue[eventIndex++] = eventType;
+			sizeChanged(width, height);
 		}
-		return this;
 	}
-	
+
+	public void surfaceDestroyed(SurfaceHolder holder) {
+		destroyGl();
+	}
+
 	public void run() {
-		if (eventIndex>0)
+		if (iGl!=null)
 		{
-			--eventIndex;
-			switch (eventQueue[eventIndex])
+			drawFrame();
+			if (!iEGL.eglSwapBuffers(iEGLDisplay, iEGLSurface))
 			{
-			case EVENT_TYPE_ON_PAUSE:
-				sceneQueue[eventIndex].onPause();
-				break;
-				
-			case EVENT_TYPE_ON_RESUME:
-				sceneQueue[eventIndex].onResume();
-				break;
-				
-			case EVENT_TYPE_ON_ENTERING_SCENE:
-				sceneQueue[eventIndex].onEnteringScene();
-				break;
-				
-			case EVENT_TYPE_ON_LEAVING_SCENE:
-				sceneQueue[eventIndex].onLeavingScene();
-				break;
-
-			default:;
+				destroyGl();
+				createGl();
 			}
 		}
+		iDrawHandler.post(this);
+	}
+	
+	@Override
+	public boolean onTouchEvent(MotionEvent e) {
+		if (iCurrentScene!=null)
+			return iCurrentScene.onTouchEvent(e);
+		else
+			return false;
+	}
+
+	private final void createGl()
+	{
+		EGL10 egl = iEGL = (EGL10)EGLContext.getEGL();
+		iEGLDisplay = iEGL.eglGetDisplay(EGL10.EGL_DEFAULT_DISPLAY);
+		int[] eglVersion = {0, 0};
+		egl.eglInitialize(iEGLDisplay, eglVersion);
 		
+		int attribs[] = {
+				EGL10.EGL_SURFACE_TYPE, EGL10.EGL_WINDOW_BIT,
+				EGL10.EGL_BLUE_SIZE, 5,
+				EGL10.EGL_GREEN_SIZE, 6,
+				EGL10.EGL_RED_SIZE, 5,
+				EGL10.EGL_NONE
+		};
+		EGLConfig[] eglConfigs = new EGLConfig[1];
+		int[] numElgConfigs = new int[1];
+		egl.eglChooseConfig(iEGLDisplay, attribs, eglConfigs, 1, numElgConfigs);
+		iEGLConfig = eglConfigs[0];
+		
+		iEGLSurface = egl.eglCreateWindowSurface(iEGLDisplay, iEGLConfig, getHolder(), null);
+		iEGLContext = egl.eglCreateContext(iEGLDisplay, iEGLConfig, EGL10.EGL_NO_CONTEXT, null);
+		egl.eglMakeCurrent(iEGLDisplay, iEGLSurface, iEGLSurface, iEGLContext);
+		iGl = (GL10)iEGLContext.getGL();
+		
+		GLES10.glClearColorx(0, 0, 0, 0);
+		
+		// enable vertex array and texture 2d
+		GLES10.glEnableClientState(GLES10.GL_VERTEX_ARRAY);
+		GLES10.glEnableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
+		GLES10.glEnable(GLES10.GL_TEXTURE_2D);
+		
+		// improve the performance 
+		GLES10.glDisable(GLES10.GL_DITHER);
+		GLES10.glHint(GLES10.GL_PERSPECTIVE_CORRECTION_HINT, GLES10.GL_FASTEST);
+		GLES10.glShadeModel(GLES10.GL_FLAT);
+
+        GLES10.glEnable(GLES10.GL_BLEND);
+        GLES10.glBlendFunc(GLES10.GL_SRC_ALPHA, GLES10.GL_ONE_MINUS_SRC_ALPHA);
+
+        iTextureManager.recreateManaged();
+        
+		iDrawHandler.post(this);
+	}
+	
+	private final void sizeChanged(int width, int height)
+	{
+		O2Director.Config config = iConfig;
+		GLES10.glViewport(0, 0, width, height);
+		// for a fixed camera, set the projection too
+		// float ratio = (float) width / height;
+		GLES10.glMatrixMode(GL10.GL_PROJECTION);
+		GLES10.glLoadIdentity();
+		//GLES10.glFrustumf(-ratio, ratio, -1, 1, 1, 10);
+		GLES10.glOrthof(0.0f, width,0.0f,  height, 0.0f, 1.0f);
+
+        // map to normal screen coordination
+        GLES10.glMatrixMode(GLES10.GL_MODELVIEW);
+        GLES10.glLoadIdentity();
+        // Magic offsets to promote consistent rasterization.
+        GLES10.glTranslatef(0.375f, height + 0.375f, 0.0f);
+        GLES10.glRotatef(180.0f, 1.0f, 0.0f, 0.0f);
+		if (config.width > 0 && config.height > 0)
+		{
+			/* (xLogical + xOffset) * scale  = xDeivce
+			 * (yLogical + yOffset) * scale  = yDeivce
+			 */
+			float scale;
+			float xOffset;
+			float yOffset;
+			
+			if (config.width * height > width * config.height)
+			{
+				scale = (float)width/config.width;
+				yOffset = (height/scale - config.height) / 2.0f;
+				
+				GLES10.glScalef(scale, scale, 1.0f);				
+				GLES10.glTranslatef(0.0f, yOffset, 0.0f);
+				
+				iInternalConfig.scale = scale;
+				iInternalConfig.xOffset = 0.0f;
+				iInternalConfig.yOffset = yOffset;
+			}
+			else
+			{
+				scale = (float)height/config.height;
+				xOffset = (width/scale - config.width) / 2.0f;
+				
+				GLES10.glScalef(scale, scale, 1.0f);
+				GLES10.glTranslatef(xOffset, 0.0f, 0.0f);
+				
+				iInternalConfig.scale = scale;
+				iInternalConfig.xOffset = xOffset;
+				iInternalConfig.yOffset = 0.0f;
+			}
+			
+			// set the clipping rect
+			GLES10.glEnable(GLES10.GL_SCISSOR_TEST);
+			GLES10.glScissor(
+					(int)toXDevice(0),
+					(int)toYDevice(0),
+					(int)toXDevice(config.width),
+					(int)toYDevice(config.height));
+		}
+	}
+
+	private final void drawFrame()
+	{
+		GLES10.glClear(GLES10.GL_COLOR_BUFFER_BIT);
+		O2Scene s = iCurrentScene;
+		if (s!=null)	s.preDraw(iGl);
+		iSpriteManager.drawAllSprites(iGl);
+		if (s!=null)	s.postDraw(iGl);
+	}
+	
+	private final void destroyGl()
+	{
+		iDrawHandler.removeCallbacks(this);
+		iTextureManager.markAllNA();
+		if (iEGLSurface!=null && iEGLSurface!=EGL10.EGL_NO_SURFACE)
+		{
+			iEGL.eglMakeCurrent(iEGLDisplay, EGL10.EGL_NO_SURFACE,
+					                         EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_CONTEXT);
+			iEGL.eglDestroySurface(iEGLDisplay, iEGLSurface);
+		}
+		iEGLSurface = null;
+		iGl = null;
 	}
 }

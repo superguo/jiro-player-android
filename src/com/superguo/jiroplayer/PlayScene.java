@@ -156,6 +156,24 @@ public class PlayScene extends O2Scene {
 			}
 		}
 	}
+	
+	@Override
+	public boolean onTouchEvent(MotionEvent e) {
+		if (e!=null && e.getAction()==MotionEvent.ACTION_DOWN && O2Director.getInstance()!=null)
+		{
+			float x = director.toXLogical(e.getX());
+			float y = director.toYLogical(e.getY());
+			if (y>iLayout.iSENotesY)
+			{
+				if (128<x && x<384)
+					iSoundPool.play(iSoundDong, 1.0f, 1.0f, 10, 0, 1.0f);
+				else
+					iSoundPool.play(iSoundKa, 1.0f, 1.0f, 10, 0, 1.0f);
+			}
+			return true;
+		}
+		return false;
+	}
 
 	@Override
 	public void postDraw(GL10 gl) {

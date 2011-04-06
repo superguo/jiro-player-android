@@ -66,4 +66,9 @@ public abstract class O2Scene {
 	public void postDraw(GL10 gl)
 	{	}
 	public abstract void dispose();
+	
+	public boolean onTouchEvent(MotionEvent event) {
+		return false;
+	}
+
 }

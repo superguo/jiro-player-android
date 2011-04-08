@@ -9,6 +9,7 @@ import javax.microedition.khronos.opengles.*;
 import android.content.res.*;
 //import android.graphics.*;
 import android.media.*;
+import android.util.Log;
 import android.view.*;
 
 import com.superguo.ogl2d.*;
@@ -161,6 +162,8 @@ public class PlayScene extends O2Scene {
 	public boolean onTouchEvent(MotionEvent e) {
 		if (e!=null && e.getAction()==MotionEvent.ACTION_DOWN && O2Director.getInstance()!=null)
 		{
+			long delay = android.os.SystemClock.uptimeMillis() - e.getEventTime();
+			Log.i("jiro-player Scene", "touched delay=" + delay);
 			float x = director.toXLogical(e.getX());
 			float y = director.toYLogical(e.getY());
 			if (y>iLayout.iSENotesY)

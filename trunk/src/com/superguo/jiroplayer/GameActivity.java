@@ -68,4 +68,14 @@ public class GameActivity extends Activity
     	gameModel = null;
     	super.onStop();
     }
+    
+    /*
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent e)
+    {
+    	director.fastTouchEvent(e);
+    	getWindow().superDispatchTouchEvent(e);
+    	return true;
+    }
+    */
 }

@@ -1,6 +1,7 @@
 package com.superguo.jiroplayer;
 
 import java.io.*;
+import java.nio.*;
 import java.util.*;
 
 public final class TJAFormat {
@@ -55,10 +56,16 @@ public final class TJAFormat {
 		public float 	iBPM;		// 50 ~ 250
 		public int		iStyle = STYLE_SINGLE;		
 		public int[]	iBalloon;	// number of balloons
-		public int		iScoreInit;	// 1 ~ 100000
-		public int		iScoreDiff;	// 1 ~ 100000
-		public TJAPara[] iParasP1;
-		public TJAPara[] iParasP2;
+		public int		iScoreInit;	// 1 ~ 100000, 0 means auto
+		public int		iScoreDiff;	// 1 ~ 100000, 0 means auto
+		public TJAPara[] iParasP1; 	// cannot be null
+		public TJAPara[] iParasP2;	// cannot be null if iStyle is STYLE_DOUBLE
+	}
+	
+	public final static class TJAPara
+	{
+		TJACommand[] 	iCommands;
+		int[]		 	iNotes;
 	}
 	
 	public final static class TJACommand
@@ -70,12 +77,6 @@ public final class TJAFormat {
 		public int iFloatArg2;
 	}
 	
-	public final static class TJAPara
-	{
-		TJACommand[] 	iCommands;
-		int[]		 	iNotes;
-	}
-	
 	public final static class TJAFormatException extends RuntimeException
 	{
 		/**
@@ -85,12 +86,12 @@ public final class TJAFormat {
 
 		public TJAFormatException(int iLineNo, String iLine, String msg)
 		{
-			super("Line " + iLineNo + " " + msg + "\n" + iLine);
+			super("Line " + iLineNo + " " + msg + "\n" + (iLine == null ? "" : iLine));
 		}
 		
 		public TJAFormatException(int iLineNo, String iLine, Throwable r)
 		{
-			super("Line " + iLineNo + "\n" + iLine, r);
+			super("Line " + iLineNo + "\n" + (iLine == null ? "" : iLine), r);
 		}
 	}
 	
@@ -101,17 +102,19 @@ public final class TJAFormat {
 	String				  iLine;
 	LinkedList<TJACourse> iTempCourses 	= new LinkedList<TJACourse>();
 	LinkedList<TJAPara>   iTempParas 	= new LinkedList<TJAPara>();
-	LinkedList<TJACommand>  iTempCommands 	= new LinkedList<TJACommand>();
 	TJACourse 			  iCurrentCourse;
 	TJAPara				  iCurrentPara;
-	TJACommand			  iCurrentCommand;
-	String				  iCurrentNotes;
+	LinkedList<TJACommand>  iCurrentCommands;
+	IntBuffer			  iCurrentNotes;
+	boolean				  iIsParseingP1;
+	boolean				  iIsStarted;
+	boolean				  iIsGoGoStarted;
+	boolean				  iIsBranchStarted;
 	
 	private static String tidy(String iLine)
 	{
 		String r = iLine;
 		r = r.trim();
-		r = r.toUpperCase();
 		int commentPos = r.indexOf("//");
 		if (commentPos>=0)
 			r = r.substring(0, commentPos);
@@ -132,6 +135,9 @@ public final class TJAFormat {
 	{
 		iLineNo = 0;
 		iCurrentCourse = new TJACourse();
+		iCurrentPara = new TJAPara();
+		iCurrentCommands = new LinkedList<TJACommand>();
+		iCurrentNotes = IntBuffer.wrap(new int[500]);
 		
 		for (	iLine = reader.readLine();
 				iLine != null;
@@ -142,39 +148,151 @@ public final class TJAFormat {
 			if (iLine.length()==0) continue;
 			
 			char firstChar = iLine.charAt(0);
+			int colonPos;
 			if (firstChar=='#') // command
 			{
-				
+				if (iCurrentNotes.position()>0)
+					emitNotes();
+
+				iLine = iLine.toUpperCase();
+				parseCommandOfCurrentLine();
 			}
 			else if (Character.isDigit(firstChar)) // notes
 			{
-				
+				if (iCurrentCommands.size()>0)
+					emitCommands();
+				parseNotesOfCurrentLine();
+			}
+			else if ((colonPos = iLine.indexOf(':')) >= 0)
+			{
+				try
+				{
+					if (iIsStarted)
+						throwEx("No header allowed after #START without #END");
+					
+					if (iCurrentNotes.position()>0)
+						emitNotes();
+					
+					setHeader(	iLine.substring(0, colonPos).trim(),
+								iLine.substring(colonPos+1).trim() );
+				}
+				catch(java.lang.RuntimeException e)
+				{
+					throwEx(e);
+				}
 			}
 			else
 			{
-				int colonPos = iLine.indexOf(':');
-				if (-1==colonPos)
-					throwEx("Unknown header or command");
-				else
-				{
-					try
-					{
-						setHeader(	iLine.substring(0, colonPos).trim(),
-								 	iLine.substring(colonPos+1).trim() );
-					}
-					catch(java.lang.RuntimeException e)
-					{
-						throwEx(e);
-					}
-				}
-
+				throwEx("Unknown header or command");
 			}
 		}
 		
+		if (iIsStarted)
+			throwEx("missing #END");
+		
+		if (iTempCourses.size()==0)
+			throwEx("missing #START");
+
+		if (iTempCourses.getLast().iStyle==STYLE_DOUBLE &&
+			iTempCourses.getLast().iParasP2==null)
+			throwEx("missing #START P2");
+
 		iCourses = (TJACourse[])iTempCourses.toArray();
 	}
+
+	private void parseCommandOfCurrentLine() {
+		if (iLine.startsWith("#START"))
+		{
+			// can start?
+			if (iIsStarted)
+				throwEx("cannot put #START here");
+			String fields[] = iLine.split("\\s");
+			if (fields.length==1 || fields.length==2 && fields[1].equals("P1"))
+			{
+				if (iCurrentCourse.iParasP1!=null)
+					throwEx("cannot #START again");
+				iIsStarted = true;
+				iIsParseingP1 = true;
+			}
+			else if (fields.length==2 && fields[1].equals("P2"))
+			{
+				if (iCurrentCourse.iParasP1==null)
+					throwEx("Must #START P1 first");
+
+				if (iCurrentCourse.iParasP2!=null)
+					throwEx("cannot #START again");
+				
+				iIsStarted = true;
+				iIsParseingP1 = false;
+			}
+			else
+				throwEx("Unknown #START command");
+		}
+		else if (iLine.equals("#END"))
+		{
+			if (!iIsStarted || iIsGoGoStarted || iIsBranchStarted)
+				throwEx("cannot put #END here");
+			emitParas();
+		}
+		// TODO
+	}
 	
-	public void setHeader(String name, String value)
+	private void emitParas()
+	{
+		if (iIsParseingP1)
+			iCurrentCourse.iParasP1 = (TJAPara[]) iTempParas.toArray();
+		else
+			iCurrentCourse.iParasP2 = (TJAPara[]) iTempParas.toArray();
+		
+		if (iCurrentCourse.iStyle == STYLE_SINGLE ||
+			iCurrentCourse.iStyle == STYLE_DOUBLE && !iIsParseingP1)
+		{
+			iTempCourses.add(iCurrentCourse);
+			iCurrentCourse = new TJACourse();
+		}
+
+		iTempParas.clear();
+	
+		iIsStarted = false;
+	}
+	
+	private void parseNotesOfCurrentLine()
+	{
+		char[] lineChars = iLine.toCharArray();
+		for (char c : lineChars)
+		{
+			if ('0'<=c && c<='9')
+				iCurrentNotes.put(c-'0');
+			else if (Character.isSpace(c))
+				continue;
+			else if (c==',')
+				emitNotes();
+		}
+	}
+
+	private void emitCommands() {
+		if (iCurrentCommands.size()>0)
+		{
+			iCurrentPara.iCommands = (TJACommand[]) iCurrentCommands.toArray();
+			iCurrentCommands.clear();
+		}
+	}
+
+	private void emitNotes()
+	{
+		if (iCurrentNotes.position()>0)
+		{
+			iCurrentPara.iNotes = new int[iCurrentNotes.position()]; 
+			System.arraycopy(
+					iCurrentNotes.array(), 0, iCurrentPara.iNotes, 0,
+					iCurrentNotes.position());
+		}
+		iTempParas.add(iCurrentPara);
+		iCurrentNotes.clear();
+		iCurrentPara = new TJAPara();
+	}
+	
+	private void setHeader(String name, String value)
 	{
 		if (name.equals("TITLE"))
 			iTitle = new String(value);

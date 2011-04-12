@@ -3,6 +3,7 @@ package com.superguo.jiroplayer;
 import java.io.*;
 import java.nio.*;
 import java.util.*;
+import java.util.regex.*;
 
 public final class TJAFormat {
 	// unsupported header: GAME, LIFE
@@ -24,7 +25,7 @@ public final class TJAFormat {
 	public final static int COMMAND_TYPE_BPMCHANGE 	= 1; 	// iFloatArg
 	public final static int COMMAND_TYPE_GOGOSTART 	= 2;
 	public final static int COMMAND_TYPE_GOGOEND 	= 3;
-	public final static int COMMAND_TYPE_MEASURE  	= 4; 	// iIntArg / iIntArg2
+	public final static int COMMAND_TYPE_MEASURE  	= 4; 	// iIntArg / iIntArg2, 0 < iIntArg < 100, 0 < iIntArg2 < 100
 	public final static int COMMAND_TYPE_SCROLL 	= 5; 	// iFloatArg, 0.1 - 16.0
 	public final static int COMMAND_TYPE_DELAY 		= 6; 	// iFloatArg, >0.001
 	public final static int COMMAND_TYPE_SECTION 	= 7;
@@ -70,11 +71,17 @@ public final class TJAFormat {
 	
 	public final static class TJACommand
 	{
+		public TJACommand()
+		{		}
+		
+		public TJACommand(int commandType)
+		{	iCommandType = commandType;		}
+		
 		public int iCommandType;
 		public int iIntArg;
 		public int iIntArg2;
-		public int iFloatArg;
-		public int iFloatArg2;
+		public float iFloatArg;
+		public float iFloatArg2;
 	}
 	
 	public final static class TJAFormatException extends RuntimeException
@@ -110,6 +117,7 @@ public final class TJAFormat {
 	boolean				  iIsStarted;
 	boolean				  iIsGoGoStarted;
 	boolean				  iIsBranchStarted;
+	boolean				  iHasSection;
 	
 	private static String tidy(String iLine)
 	{
@@ -201,12 +209,16 @@ public final class TJAFormat {
 	}
 
 	private void parseCommandOfCurrentLine() {
+		String fields[];
+		
+		//TODO judge if started
+		
 		if (iLine.startsWith("#START"))
 		{
 			// can start?
 			if (iIsStarted)
 				throwEx("cannot put #START here");
-			String fields[] = iLine.split("\\s");
+			fields = iLine.split("\\s");
 			if (fields.length==1 || fields.length==2 && fields[1].equals("P1"))
 			{
 				if (iCurrentCourse.iParasP1!=null)
@@ -230,9 +242,73 @@ public final class TJAFormat {
 		}
 		else if (iLine.equals("#END"))
 		{
-			if (!iIsStarted || iIsGoGoStarted || iIsBranchStarted)
-				throwEx("cannot put #END here");
+			if (!iIsStarted)
+				throwEx("#END without #START");
+			if (iIsGoGoStarted)
+				throwEx("missing #GOGOEND");
 			emitParas();
+		}
+		else if (iLine.startsWith("#BPMCHANGE"))
+		{
+			fields = iLine.split("\\s");
+			if (fields.length!=2)
+				throwEx("Unknown #BPMCHANGE command");
+			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_BPMCHANGE));
+		}
+		else if (iLine.equals("#GOGOSTART"))
+		{
+			if (iIsGoGoStarted) throwEx("Already exist #GOGOSTART before #GOGOEND");
+			iIsGoGoStarted = true;
+			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_GOGOSTART));
+		}
+		else if (iLine.equals("#GOGOEND"))
+		{
+			if (!iIsGoGoStarted) throwEx("Missing #GOGOSTART before #GOGOEND");
+			iIsGoGoStarted = false;
+			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_GOGOEND));
+		}
+		else if (iLine.startsWith("#MEASURE"))
+		{
+			Pattern p = Pattern.compile("#MEASURE (\\d+)/(\\d+)");
+			Matcher m = p.matcher(iLine);
+			if (m.find())
+			{
+				TJACommand cmd = new TJACommand(COMMAND_TYPE_MEASURE);
+				cmd.iIntArg = Integer.parseInt(m.group(1));
+				cmd.iIntArg2 = Integer.parseInt(m.group(2));
+				if (cmd.iIntArg<0 || cmd.iIntArg>100 || cmd.iIntArg2<0 || cmd.iIntArg2>100)
+					throwEx("#MEASURE arguments must be 1-99");
+				iCurrentCommands.add(cmd);
+			}
+			else
+				throwEx("Unknown #MEASURE command");
+		}
+		else if (iLine.startsWith("#SCROLL"))
+		{
+			fields = iLine.split("\\s");
+			if (fields.length!=2)
+				throwEx("Unknown #SCROLL command");
+			TJACommand cmd = new TJACommand(COMMAND_TYPE_SCROLL);
+			cmd.iFloatArg = Float.parseFloat(fields[1]);
+			if (cmd.iFloatArg<0.1f || cmd.iFloatArg>16.0f)
+				throwEx("#SCROLL arguments must be 0.1f - 16.0f");
+			iCurrentCommands.add(cmd);
+		}
+		else if (iLine.startsWith("#DELAY"))
+		{
+			fields = iLine.split("\\s");
+			if (fields.length!=2)
+				throwEx("Unknown #DELAY command");
+			TJACommand cmd = new TJACommand(COMMAND_TYPE_DELAY);
+			cmd.iFloatArg = Float.parseFloat(fields[1]);
+			cmd.iFloatArg = (float) (Math.floor(cmd.iFloatArg*1000)/1000);
+
+			iCurrentCommands.add(cmd);
+		}
+		else if (iLine.equals("#SECTION"))
+		{
+			iHasSection = true;
+			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_SECTION));
 		}
 		// TODO
 	}
@@ -254,6 +330,8 @@ public final class TJAFormat {
 		iTempParas.clear();
 	
 		iIsStarted = false;
+		iHasSection = false;
+		iIsBranchStarted = false;
 	}
 	
 	private void parseNotesOfCurrentLine()

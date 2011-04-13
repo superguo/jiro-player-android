@@ -211,7 +211,13 @@ public final class TJAFormat {
 	private void parseCommandOfCurrentLine() {
 		String fields[];
 		
-		//TODO judge if started
+		// judge if started
+		if (!iLine.startsWith("#START") && 
+			!iLine.equals("#BMSCROLL") &&
+			!iLine.equals("#HBSCROLL"))
+		{
+			throwEx("Must put #START before this command");
+		}
 		
 		if (iLine.startsWith("#START"))
 		{
@@ -269,7 +275,7 @@ public final class TJAFormat {
 		}
 		else if (iLine.startsWith("#MEASURE"))
 		{
-			Pattern p = Pattern.compile("#MEASURE (\\d+)/(\\d+)");
+			Pattern p = Pattern.compile("#MEASURE\\s+(\\d+)\\s*/\\s*(\\d+)");
 			Matcher m = p.matcher(iLine);
 			if (m.find())
 			{
@@ -310,8 +316,52 @@ public final class TJAFormat {
 			iHasSection = true;
 			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_SECTION));
 		}
-		// TODO
-	}
+		else if (iLine.startsWith("#BRANCHSTART"))
+		{
+			fields = iLine.substring(12).trim().split(",");
+			if (fields.length!=3) throwEx("Unknown #BRANCHSTART command");
+			fields[0] = fields[0].trim();
+			if (fields[0].length()!=1) throwEx("Unknown #BRANCHSTART command");
+			TJACommand cmd = new TJACommand(COMMAND_TYPE_BRANCHSTART);
+
+			switch (fields[0].charAt(0))
+			{
+			case 'R':
+				cmd.iIntArg = BRANCH_JUDGE_ROLL;
+				break;
+			case 'P':
+				cmd.iIntArg = BRANCH_JUDGE_PRECISION;
+				break;
+			case 'S':
+				cmd.iIntArg = BRANCH_JUDGE_SCORE;
+				break;
+			default:
+				throwEx("Unknown #BRANCHSTART command");
+			} 
+			cmd.iFloatArg = Float.parseFloat(fields[1]);
+			cmd.iFloatArg2 = Float.parseFloat(fields[2]);
+			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_SECTION));
+			iIsBranchStarted = true;
+		}
+		else if (iLine.startsWith("#N"))
+		{
+			if (!iIsBranchStarted)
+				throwEx("Missing #BRANCHSTART");
+			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_N));
+		}
+		else if (iLine.startsWith("#E"))
+		{
+			if (!iIsBranchStarted)
+				throwEx("Missing #BRANCHSTART");
+			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_E));
+		}
+		else if (iLine.startsWith("#M"))
+		{
+			if (!iIsBranchStarted)
+				throwEx("Missing #BRANCHSTART");
+			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_M));
+		}
+	} 
 	
 	private void emitParas()
 	{

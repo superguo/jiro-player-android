@@ -37,5 +37,21 @@ public class TJAFormatTest extends ActivityUnitTestCase<TestActivity> {
 		Log.d("jiro-test", "wave=" + tjaFormat.iWave);
 		br = null;
 		is.close();
+		assertNotNull(tjaFormat.iCourses);
+		assertEquals(4, tjaFormat.iCourses.length);
+	}
+
+	@MediumTest
+	public void testTJAFormat2() throws IOException
+	{
+		TestActivity ac = startActivity(iStartIntent, null, null);
+		InputStream is = ac.getAssets().open("sample2.tja", AssetManager.ACCESS_RANDOM);
+		BufferedReader br = new BufferedReader(new InputStreamReader(is));
+		TJAFormat tjaFormat = new TJAFormat(br);
+		Log.d("jiro-test", "wave=" + tjaFormat.iWave);
+		br = null;
+		is.close();
+		assertNotNull(tjaFormat.iCourses);
+		assertEquals(4, tjaFormat.iCourses.length);
 	}
 }

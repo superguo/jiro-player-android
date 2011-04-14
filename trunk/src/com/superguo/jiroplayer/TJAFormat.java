@@ -16,8 +16,6 @@ public final class TJAFormat {
 	public final static int SIDE_NORMAL		= 1;
 	public final static int SIDE_EX			= 2;
 	public final static int SIDE_BOTH		= 3;
-	public final static int STYLE_SINGLE	= 1;
-	public final static int STYLE_DOUBLE	= 2;
 	public final static int BRANCH_JUDGE_ROLL 		= 0;
 	public final static int BRANCH_JUDGE_PRECISION 	= 1;
 	public final static int BRANCH_JUDGE_SCORE 		= 2;
@@ -55,11 +53,11 @@ public final class TJAFormat {
 		public int		iCourse = COURSE_ONI;	//
 		public int 		iLevel;
 		public float 	iBPM;		// 50 ~ 250
-		public int		iStyle = STYLE_SINGLE;		
 		public int[]	iBalloon;	// number of balloons
 		public int		iScoreInit;	// 1 ~ 100000, 0 means auto
 		public int		iScoreDiff;	// 1 ~ 100000, 0 means auto
-		public TJAPara[] iParasP1; 	// cannot be null
+		public TJAPara[] iParasSingle; 	// cannot be null if iStyle is STYLE_SIGNLE
+		public TJAPara[] iParasP1; 	// cannot be null if iStyle is STYLE_DOUBLE
 		public TJAPara[] iParasP2;	// cannot be null if iStyle is STYLE_DOUBLE
 	}
 	
@@ -113,7 +111,8 @@ public final class TJAFormat {
 	TJAPara				  iCurrentPara;
 	LinkedList<TJACommand>  iCurrentCommands;
 	IntBuffer			  iCurrentNotes;
-	boolean				  iIsParseingP1;
+	boolean				  iIsParsingDouble;
+	boolean				  iIsParsingP2;
 	boolean				  iIsStarted;
 	boolean				  iIsGoGoStarted;
 	boolean				  iIsBranchStarted;
@@ -122,10 +121,10 @@ public final class TJAFormat {
 	private static String tidy(String iLine)
 	{
 		String r = iLine;
-		r = r.trim();
 		int commentPos = r.indexOf("//");
 		if (commentPos>=0)
 			r = r.substring(0, commentPos);
+		r = r.trim();
 		return r;
 	}
 	
@@ -196,23 +195,33 @@ public final class TJAFormat {
 		}
 		
 		if (iIsStarted)
-			throwEx("missing #END");
+			throwEx("Missing #END");
+		
+		if (	iCurrentCourse.iParasSingle != null ||
+				iCurrentCourse.iParasP1 != null &&
+				iCurrentCourse.iParasP2 != null)
+		{
+			emitCourse();
+		}
+		
+		if (iCurrentCourse.iParasP1 != null &&
+			iCurrentCourse.iParasP2 == null)
+		{
+			throwEx("Missing #START P2");
+		}
 		
 		if (iTempCourses.size()==0)
-			throwEx("missing #START");
-
-		if (iTempCourses.getLast().iStyle==STYLE_DOUBLE &&
-			iTempCourses.getLast().iParasP2==null)
-			throwEx("missing #START P2");
-
-		iCourses = (TJACourse[])iTempCourses.toArray();
+			throwEx("Missing #START");
+		else
+			iCourses = iTempCourses.toArray(new TJACourse[iTempCourses.size()]);
 	}
 
 	private void parseCommandOfCurrentLine() {
 		String fields[];
 		
 		// judge if started
-		if (!iLine.startsWith("#START") && 
+		if (!iIsStarted &&
+			!iLine.startsWith("#START") && 
 			!iLine.equals("#BMSCROLL") &&
 			!iLine.equals("#HBSCROLL"))
 		{
@@ -223,25 +232,45 @@ public final class TJAFormat {
 		{
 			// can start?
 			if (iIsStarted)
-				throwEx("cannot put #START here");
+				throwEx("Cannot put #START here");
 			fields = iLine.split("\\s");
-			if (fields.length==1 || fields.length==2 && fields[1].equals("P1"))
-			{
-				if (iCurrentCourse.iParasP1!=null)
-					throwEx("cannot #START again");
-				iIsStarted = true;
-				iIsParseingP1 = true;
-			}
-			else if (fields.length==2 && fields[1].equals("P2"))
-			{
-				if (iCurrentCourse.iParasP1==null)
-					throwEx("Must #START P1 first");
 
-				if (iCurrentCourse.iParasP2!=null)
-					throwEx("cannot #START again");
+			if (fields.length==1)
+			{
+				if (iIsParsingDouble)
+					throwEx("Must #START P1 here");
+				if (iCurrentCourse.iParasSingle!=null)
+					throwEx("Cannot #START again");
 				
 				iIsStarted = true;
-				iIsParseingP1 = false;
+			}
+			else if	(fields.length==2)
+			{
+				fields[1] = fields[1].trim();
+				iIsParsingDouble = true;
+				if (!iIsParsingDouble)
+					throwEx("Must #START here");
+
+				if (fields[1].equals("P1"))
+				{
+					if (iCurrentCourse.iParasP1!=null)
+						throwEx("Cannot #START P1 again");
+					iIsStarted = true;
+					iIsParsingP2 = false;
+				}
+				else if (fields.length==2 && fields[1].equals("P2"))
+				{
+					if (iCurrentCourse.iParasP1==null)
+						throwEx("Must #START P1 first");
+
+					if (iCurrentCourse.iParasP2!=null)
+						throwEx("Cannot #START P2 again");
+				
+					iIsStarted = true;
+					iIsParsingP2 = true;
+				}
+				else
+					throwEx("Unknown #START command");
 			}
 			else
 				throwEx("Unknown #START command");
@@ -365,20 +394,38 @@ public final class TJAFormat {
 	
 	private void emitParas()
 	{
-		if (iIsParseingP1)
-			iCurrentCourse.iParasP1 = (TJAPara[]) iTempParas.toArray();
-		else
-			iCurrentCourse.iParasP2 = (TJAPara[]) iTempParas.toArray();
-		
-		if (iCurrentCourse.iStyle == STYLE_SINGLE ||
-			iCurrentCourse.iStyle == STYLE_DOUBLE && !iIsParseingP1)
+		if (iTempParas.size() == 0)
 		{
-			iTempCourses.add(iCurrentCourse);
-			iCurrentCourse = new TJACourse();
+			throwEx("No notes at all!");
 		}
-
+		else
+		{
+			TJAPara[] paras = iTempParas.toArray(new TJAPara[iTempParas.size()]);
+			if (!iIsParsingDouble)
+				iCurrentCourse.iParasSingle = paras;
+			else if (!iIsParsingP2)
+			{
+				iCurrentCourse.iParasP1 = paras;
+				iIsParsingP2 = false;
+			}
+			else
+			{
+				iCurrentCourse.iParasP2 = paras;
+				iIsParsingDouble = false;
+			}
+		}
 		iTempParas.clear();
+		iIsStarted = false;
+		iHasSection = false;
+		iIsBranchStarted = false;
+	}
 	
+	private void emitCourse()
+	{
+		iTempCourses.add(iCurrentCourse);
+		iCurrentCourse = new TJACourse();
+		iIsParsingP2 = false;
+		iIsParsingDouble = false;		
 		iIsStarted = false;
 		iHasSection = false;
 		iIsBranchStarted = false;
@@ -401,7 +448,8 @@ public final class TJAFormat {
 	private void emitCommands() {
 		if (iCurrentCommands.size()>0)
 		{
-			iCurrentPara.iCommands = (TJACommand[]) iCurrentCommands.toArray();
+			iCurrentPara.iCommands = iCurrentCommands.toArray(
+					new TJACommand[iCurrentCommands.size()]);
 			iCurrentCommands.clear();
 		}
 	}
@@ -422,6 +470,9 @@ public final class TJAFormat {
 	
 	private void setHeader(String name, String value)
 	{
+		// omit the empty value string
+		if (value.length() == 0) return;
+		
 		if (name.equals("TITLE"))
 			iTitle = new String(value);
 		else if (name.equals("LEVEL"))
@@ -441,7 +492,7 @@ public final class TJAFormat {
 			String[] balloons = value.split(",");
 			iCurrentCourse.iBalloon = new int[balloons.length];
 			for (int i=0; i<iCurrentCourse.iBalloon.length; ++i)
-				iCurrentCourse.iBalloon[i] = Integer.parseInt(balloons[i]); 
+				iCurrentCourse.iBalloon[i] = Integer.parseInt(balloons[i].trim()); 
 		}
 		else if (name.equals("SONGVOL"))
 		{
@@ -469,6 +520,19 @@ public final class TJAFormat {
 		}
 		else if (name.equals("COURSE"))
 		{
+			if (	iCurrentCourse.iParasSingle != null ||
+					iCurrentCourse.iParasP1 != null &&
+					iCurrentCourse.iParasP2 != null)
+			{
+				emitCourse();
+			}
+			
+			if (iCurrentCourse.iParasP1 != null &&
+				iCurrentCourse.iParasP2 == null)
+			{
+				throwEx("Missing #START P2");
+			}
+			
 			value = value.trim();
 			
 			if (value.equalsIgnoreCase("Easy") || value.equals(COURSE_EASY))
@@ -491,8 +555,12 @@ public final class TJAFormat {
 		}
 		else if (name.equals("STYLE"))
 		{
-			if (value.equalsIgnoreCase("Double") || value.equalsIgnoreCase("Couple"))
-			iCurrentCourse.iStyle = STYLE_DOUBLE;
+			if (value.equalsIgnoreCase("Single"))
+				iIsParsingDouble = false;
+			else if (value.equalsIgnoreCase("Double") || value.equalsIgnoreCase("Couple"))
+				iIsParsingDouble = true;
+			else
+				throwEx("STYLE must be Single, Double or Couple");
 		}
 		else if (name.equals("DEMOSTART"))
 			iDemoStart = Float.parseFloat(value);

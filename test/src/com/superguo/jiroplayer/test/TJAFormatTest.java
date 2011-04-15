@@ -34,11 +34,11 @@ public class TJAFormatTest extends ActivityUnitTestCase<TestActivity> {
 		InputStream is = ac.getAssets().open("sample.tja", AssetManager.ACCESS_RANDOM);
 		BufferedReader br = new BufferedReader(new InputStreamReader(is));
 		TJAFormat tjaFormat = new TJAFormat(br);
-		Log.d("jiro-test", "wave=" + tjaFormat.iWave);
 		br = null;
 		is.close();
 		assertNotNull(tjaFormat.iCourses);
 		assertEquals(4, tjaFormat.iCourses.length);
+		assertEquals("sample.ogg", tjaFormat.iWave);
 	}
 
 	@MediumTest
@@ -48,10 +48,10 @@ public class TJAFormatTest extends ActivityUnitTestCase<TestActivity> {
 		InputStream is = ac.getAssets().open("sample2.tja", AssetManager.ACCESS_RANDOM);
 		BufferedReader br = new BufferedReader(new InputStreamReader(is));
 		TJAFormat tjaFormat = new TJAFormat(br);
-		Log.d("jiro-test", "wave=" + tjaFormat.iWave);
 		br = null;
 		is.close();
 		assertNotNull(tjaFormat.iCourses);
 		assertEquals(4, tjaFormat.iCourses.length);
+		assertEquals("sample2.ogg", tjaFormat.iWave);
 	}
 }

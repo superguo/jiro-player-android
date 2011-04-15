@@ -23,11 +23,11 @@ public final class TJAFormat {
 	public final static int COMMAND_TYPE_BPMCHANGE 	= 1; 	// iFloatArg
 	public final static int COMMAND_TYPE_GOGOSTART 	= 2;
 	public final static int COMMAND_TYPE_GOGOEND 	= 3;
-	public final static int COMMAND_TYPE_MEASURE  	= 4; 	// iIntArg / iIntArg2, 0 < iIntArg < 100, 0 < iIntArg2 < 100
-	public final static int COMMAND_TYPE_SCROLL 	= 5; 	// iFloatArg, 0.1 - 16.0
-	public final static int COMMAND_TYPE_DELAY 		= 6; 	// iFloatArg, >0.001
+	public final static int COMMAND_TYPE_MEASURE  	= 4; 	// X(int) / Y(int)( 0 < X < 100, 0 < Y < 100)
+	public final static int COMMAND_TYPE_SCROLL 	= 5; 	// float(0.1 - 16.0)
+	public final static int COMMAND_TYPE_DELAY 		= 6; 	// float(>0.001)
 	public final static int COMMAND_TYPE_SECTION 	= 7;
-	public final static int COMMAND_TYPE_BRANCHSTART  = 8; 	// iIntArg, iFloatArg, iFloatArg2
+	public final static int COMMAND_TYPE_BRANCHSTART  = 8; 	// BRANCH_JUDGE_*(r/p/s, int), X(float), Y(float), (index of #N TJAPara, index of #N command), #E, #M
 	public final static int COMMAND_TYPE_BRANCHEND 	= 9;
 	public final static int COMMAND_TYPE_N 			= 10;
 	public final static int COMMAND_TYPE_E 			= 11;
@@ -76,10 +76,7 @@ public final class TJAFormat {
 		{	iCommandType = commandType;		}
 		
 		public int iCommandType;
-		public int iIntArg;
-		public int iIntArg2;
-		public float iFloatArg;
-		public float iFloatArg2;
+		public int iArgs[];
 	}
 	
 	public final static class TJAFormatException extends RuntimeException
@@ -116,6 +113,8 @@ public final class TJAFormat {
 	boolean				  iIsStarted;
 	boolean				  iIsGoGoStarted;
 	boolean				  iIsBranchStarted;
+	TJAPara				  iParaOfStartedBranch;
+	TJACommand			  iCommandOfStartedBranch;
 	boolean				  iHasSection;
 	
 	private static String tidy(String iLine)
@@ -281,6 +280,8 @@ public final class TJAFormat {
 				throwEx("#END without #START");
 			if (iIsGoGoStarted)
 				throwEx("missing #GOGOEND");
+			if (iIsBranchStarted)	// #BRANCHSTART without #BRANCHEND
+				checkBranch();
 			emitParas();
 		}
 		else if (iLine.startsWith("#BPMCHANGE"))
@@ -309,9 +310,10 @@ public final class TJAFormat {
 			if (m.find())
 			{
 				TJACommand cmd = new TJACommand(COMMAND_TYPE_MEASURE);
-				cmd.iIntArg = Integer.parseInt(m.group(1));
-				cmd.iIntArg2 = Integer.parseInt(m.group(2));
-				if (cmd.iIntArg<0 || cmd.iIntArg>100 || cmd.iIntArg2<0 || cmd.iIntArg2>100)
+				cmd.iArgs = new int[2];
+				cmd.iArgs[0] = Integer.parseInt(m.group(1));
+				cmd.iArgs[1] = Integer.parseInt(m.group(2));
+				if (cmd.iArgs[0]<0 || cmd.iArgs[0]>100 || cmd.iArgs[1]<0 || cmd.iArgs[1]>100)
 					throwEx("#MEASURE arguments must be 1-99");
 				iCurrentCommands.add(cmd);
 			}
@@ -324,9 +326,11 @@ public final class TJAFormat {
 			if (fields.length!=2)
 				throwEx("Unknown #SCROLL command");
 			TJACommand cmd = new TJACommand(COMMAND_TYPE_SCROLL);
-			cmd.iFloatArg = Float.parseFloat(fields[1]);
-			if (cmd.iFloatArg<0.1f || cmd.iFloatArg>16.0f)
+			float arg = Float.parseFloat(fields[1]);
+			if (arg<0.1f || arg>16.0f)
 				throwEx("#SCROLL arguments must be 0.1f - 16.0f");
+			cmd.iArgs = new int[1];
+			cmd.iArgs[0] = Float.floatToIntBits(arg);
 			iCurrentCommands.add(cmd);
 		}
 		else if (iLine.startsWith("#DELAY"))
@@ -335,8 +339,9 @@ public final class TJAFormat {
 			if (fields.length!=2)
 				throwEx("Unknown #DELAY command");
 			TJACommand cmd = new TJACommand(COMMAND_TYPE_DELAY);
-			cmd.iFloatArg = Float.parseFloat(fields[1]);
-			cmd.iFloatArg = (float) (Math.floor(cmd.iFloatArg*1000)/1000);
+			float arg = Float.parseFloat(fields[1]);
+			arg = (float) (Math.floor(arg*1000)/1000);
+			cmd.iArgs[0] = Float.floatToIntBits(arg);
 
 			iCurrentCommands.add(cmd);
 		}
@@ -351,44 +356,79 @@ public final class TJAFormat {
 			if (fields.length!=3) throwEx("Unknown #BRANCHSTART command");
 			fields[0] = fields[0].trim();
 			if (fields[0].length()!=1) throwEx("Unknown #BRANCHSTART command");
+			
+			if (iIsBranchStarted)	// #BRANCHSTART again
+				checkBranch();
+
 			TJACommand cmd = new TJACommand(COMMAND_TYPE_BRANCHSTART);
+			cmd.iArgs = new int[9];
 
 			switch (fields[0].charAt(0))
 			{
 			case 'R':
-				cmd.iIntArg = BRANCH_JUDGE_ROLL;
+				cmd.iArgs[0] = BRANCH_JUDGE_ROLL;
 				break;
 			case 'P':
-				cmd.iIntArg = BRANCH_JUDGE_PRECISION;
+				cmd.iArgs[0] = BRANCH_JUDGE_PRECISION;
 				break;
 			case 'S':
-				cmd.iIntArg = BRANCH_JUDGE_SCORE;
+				cmd.iArgs[0] = BRANCH_JUDGE_SCORE;
 				break;
 			default:
 				throwEx("Unknown #BRANCHSTART command");
 			} 
-			cmd.iFloatArg = Float.parseFloat(fields[1]);
-			cmd.iFloatArg2 = Float.parseFloat(fields[2]);
-			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_SECTION));
+			cmd.iArgs[1] = Float.floatToIntBits(Float.parseFloat(fields[1]));
+			cmd.iArgs[2] = Float.floatToIntBits(Float.parseFloat(fields[2]));
+			iCurrentCommands.add(cmd);
 			iIsBranchStarted = true;
+			iParaOfStartedBranch = iCurrentPara;
+			iCommandOfStartedBranch = cmd;
 		}
-		else if (iLine.startsWith("#N"))
+		else if (iLine.equals("#N"))
 		{
 			if (!iIsBranchStarted)
 				throwEx("Missing #BRANCHSTART");
 			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_N));
+			
+			// fill back
+			if (0!=iCommandOfStartedBranch.iArgs[3])
+				throwEx("Duplicated #N");
+			iCommandOfStartedBranch.iArgs[3] = iTempParas.size()-1;
+			iCommandOfStartedBranch.iArgs[4] = iCurrentCommands.size()-1;
 		}
-		else if (iLine.startsWith("#E"))
+		else if (iLine.equals("#E"))
 		{
 			if (!iIsBranchStarted)
 				throwEx("Missing #BRANCHSTART");
 			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_E));
+
+			// fill back
+			if (0!=iCommandOfStartedBranch.iArgs[5])
+				throwEx("Duplicated #E");
+			iCommandOfStartedBranch.iArgs[5] = iTempParas.size()-1;
+			iCommandOfStartedBranch.iArgs[6] = iCurrentCommands.size()-1;
 		}
-		else if (iLine.startsWith("#M"))
+		else if (iLine.equals("#M"))
 		{
 			if (!iIsBranchStarted)
 				throwEx("Missing #BRANCHSTART");
 			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_M));
+
+			// fill back
+			if (0!=iCommandOfStartedBranch.iArgs[7])
+				throwEx("Duplicated #M");
+			iCommandOfStartedBranch.iArgs[7] = iTempParas.size()-1;
+			iCommandOfStartedBranch.iArgs[8] = iCurrentCommands.size()-1;
+		}
+		else if (iLine.equals("#BRANCHEND"))
+		{
+			checkBranch();
+			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_BRANCHEND));
+			iIsBranchStarted = false;
+		}
+		else if (iLine.equals("#LEVELHOLD"))
+		{
+			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_LEVELHOLD));
 		}
 	} 
 	
@@ -580,5 +620,15 @@ public final class TJAFormat {
 		else if (name.equals("GAME"))
 			if (!value.equalsIgnoreCase("Taiko"))
 				throwEx("Unsupported game mode: " + value);
+	}
+	
+	private void checkBranch()
+	{
+		if (iCommandOfStartedBranch.iArgs[3]==0)
+			throwEx("Missing #N");
+		else if (iCommandOfStartedBranch.iArgs[5]==0)
+			throwEx("Missing #E");
+		else if (iCommandOfStartedBranch.iArgs[7]==0)
+			throwEx("Missing #M");
 	}
 }

@@ -6,6 +6,12 @@ import android.opengl.*;
 
 public abstract class O2Texture{
 	public final static int MAX_SIZE 		= 1024;
+	public final static int HALIGN_LEFT 	= 0;
+	public final static int HALIGN_MIDDLE 	= 1;
+	public final static int HALIGN_RIGHT 	= 2;
+	public final static int VALIGN_TOP 		= 0;
+	public final static int VALIGN_MIDDLE 	= 1;
+	public final static int VALIGN_BOTTOM	= 2;
 
 	protected boolean available;
 	protected boolean managed;

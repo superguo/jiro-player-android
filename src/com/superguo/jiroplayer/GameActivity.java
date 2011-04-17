@@ -15,6 +15,12 @@ public class GameActivity extends Activity
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+    }
+    
+    @Override
+    public void onStart()
+    {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(
         		WindowManager.LayoutParams.FLAG_FULLSCREEN,
@@ -31,19 +37,7 @@ public class GameActivity extends Activity
         gameView.setRenderer(new GameRenderer(this));
         setContentView(gameView);
         */
-    }
-    
-    @Override
-    public void onStart()
-    {
-    	try
-    	{
-    	}
-    	catch(Exception e)
-    	{
-    		
-    	}
-    	super.onStart();
+        super.onStart();
     }
     
     @Override
@@ -69,7 +63,7 @@ public class GameActivity extends Activity
     	super.onStop();
     }
     
-    /*
+    
     @Override
     public boolean dispatchTouchEvent(MotionEvent e)
     {
@@ -77,5 +71,5 @@ public class GameActivity extends Activity
     	getWindow().superDispatchTouchEvent(e);
     	return true;
     }
-    */
+    
 }

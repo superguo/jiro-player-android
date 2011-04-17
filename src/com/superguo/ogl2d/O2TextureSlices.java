@@ -64,10 +64,10 @@ public class O2TextureSlices implements Comparable<O2TextureSlices>{
 	{
 		int vertCoods[] = this.vertCoods;
 
-		vertCoods[0] = vertCoods[4] = targetX << 16 - (sizes[index].x << 15) * halign;
-		vertCoods[1] = vertCoods[3] = targetY << 16 - (sizes[index].y << 15) * valign;
-		vertCoods[2] = vertCoods[6] = (targetX + sizes[index].x) << 16;
-		vertCoods[5] = vertCoods[7] = (targetY + sizes[index].y) << 16;
+		vertCoods[0] = vertCoods[4] = (targetX << 16) - (sizes[index].x << 15) * halign;
+		vertCoods[1] = vertCoods[3] = (targetY << 16) - (sizes[index].y << 15) * valign;
+		vertCoods[2] = vertCoods[6] = vertCoods[0] + (sizes[index].x << 16);
+		vertCoods[5] = vertCoods[7] = vertCoods[1] + (sizes[index].y << 16);
 		
 		drawFull(index);
 	}

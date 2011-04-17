@@ -61,14 +61,10 @@ public abstract class O2Scene {
 	public abstract void onLeavingScene();
 	public abstract void onPause();
 	public abstract void onResume();
-	public void preDraw(GL10 gl)
-	{	}
-	public void postDraw(GL10 gl)
-	{	}
+	public void onSizeChanged() {	}
+	public void preDraw(GL10 gl)	{	}
+	public void postDraw(GL10 gl)	{	}
 	public abstract void dispose();
-	
-	public boolean onTouchEvent(MotionEvent event) {
-		return false;
-	}
-
+	public boolean onTouchEvent(MotionEvent event)
+	{	return false;	}
 }

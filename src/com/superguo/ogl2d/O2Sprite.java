@@ -4,13 +4,6 @@ import javax.microedition.khronos.opengles.*;
 
 public class O2Sprite {
 	
-	public final static int HALIGN_LEFT 	= 0;
-	public final static int HALIGN_MIDDLE 	= 1;
-	public final static int HALIGN_RIGHT 	= 2;
-	public final static int VALIGN_TOP 		= 0;
-	public final static int VALIGN_MIDDLE 	= 1;
-	public final static int VALIGN_BOTTOM	= 2;
-	
 	// id to distinct itself from other O2Sprite
 	protected int id;
 	

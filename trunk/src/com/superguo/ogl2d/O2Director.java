@@ -91,6 +91,7 @@ public class O2Director extends SurfaceView implements SurfaceHolder.Callback, R
 	
 	public final void dispose()
 	{
+		setCurrentScene(null);
 		instance = null;
 	}
 	
@@ -157,7 +158,7 @@ public class O2Director extends SurfaceView implements SurfaceHolder.Callback, R
 	public float toXDevice(float xLogical)
 	{
 		if (Math.abs(iInternalConfig.scale) > 1e-5)
-			return xLogical * (iInternalConfig.scale + iInternalConfig.xOffset);
+			return (xLogical + iInternalConfig.xOffset) * iInternalConfig.scale;
 		else
 			return xLogical;
 	}
@@ -165,7 +166,7 @@ public class O2Director extends SurfaceView implements SurfaceHolder.Callback, R
 	public float toYDevice(float yLogical)
 	{
 		if (Math.abs(iInternalConfig.scale) > 1e-5)
-			return yLogical * (iInternalConfig.scale + iInternalConfig.yOffset);
+			return (yLogical + iInternalConfig.yOffset) * iInternalConfig.scale;
 		else
 			return yLogical;
 	}
@@ -222,7 +223,7 @@ public class O2Director extends SurfaceView implements SurfaceHolder.Callback, R
 		}
 		iDrawHandler.post(this);
 	}
-	
+/*
 	@Override
 	public boolean onTouchEvent(MotionEvent e) {
 		if (iCurrentScene!=null)
@@ -230,7 +231,14 @@ public class O2Director extends SurfaceView implements SurfaceHolder.Callback, R
 		else
 			return false;
 	}
-
+*/
+	public boolean fastTouchEvent(MotionEvent e) {
+		if (iCurrentScene!=null)
+			return iCurrentScene.onTouchEvent(e);
+		else
+			return false;
+	}
+	
 	private final void createGl()
 	{
 		EGL10 egl = iEGL = (EGL10)EGLContext.getEGL();
@@ -334,6 +342,7 @@ public class O2Director extends SurfaceView implements SurfaceHolder.Callback, R
 					(int)toXDevice(config.width),
 					(int)toYDevice(config.height));
 		}
+		if (iCurrentScene!=null) iCurrentScene.onSizeChanged();
 	}
 
 	private final void drawFrame()

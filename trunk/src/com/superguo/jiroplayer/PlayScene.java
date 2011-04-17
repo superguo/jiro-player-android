@@ -29,6 +29,9 @@ public class PlayScene extends O2Scene {
 	private O2Sprite iTextSprite1;
 	private O2Sprite iTextSprite2;
 
+	private int iDrumY;
+	private int iDrumX1;
+	private int iDrumX2;
 	
 	/*
 	private Paint paint;
@@ -59,7 +62,7 @@ public class PlayScene extends O2Scene {
 		O2TextureManager mgr = director.getTextureManager();
 		//iBgSprite 			= new O2Sprite(mgr.createFromResource(R.drawable.bg, true));
 		iMTaikoSprite		= new O2Sprite(mgr.createFromResource(R.drawable.mtaiko, true));
-		iMTaikoSprite.iValign = O2Sprite.VALIGN_MIDDLE;
+		iMTaikoSprite.iValign = O2Texture.VALIGN_MIDDLE;
 		iMTaikoSprite.iX	= 0;
 		iMTaikoSprite.iY	= iLayout.iScrollFieldY;
 		
@@ -69,10 +72,9 @@ public class PlayScene extends O2Scene {
 				2,
 				13);
 		iTargetNoteSprite 			= new O2Sprite(iNotesSlices, 0);
-		iTargetNoteSprite.iValign	=  O2Sprite.VALIGN_MIDDLE;
-		iTargetNoteSprite.iX		= 130;
+		iTargetNoteSprite.iValign	= O2Texture.VALIGN_MIDDLE;
+		iTargetNoteSprite.iX		= PlayLayout.iMTaikoWidth;
 		iTargetNoteSprite.iY		= iLayout.iScrollFieldY;
-		
 
 		try
 		{
@@ -132,6 +134,13 @@ public class PlayScene extends O2Scene {
 	}
 	
 	@Override
+	public void onSizeChanged(){
+		iDrumY = (int) director.toYDevice(iLayout.iSENotesY);
+		iDrumX1 = (int) director.toXDevice(178);
+		iDrumX2 = (int) director.toXDevice(334);
+	}
+	
+	@Override
 	public void onPause() {
 		iSoundPool.autoPause();
 	}
@@ -142,33 +151,15 @@ public class PlayScene extends O2Scene {
 	}
 
 	@Override
-	public void preDraw(GL10 gl) {
-		MotionEvent e = getMotionEvent();
-		if (e!=null && e.getAction()==MotionEvent.ACTION_DOWN)
-		{
-			float x = director.toXLogical(e.getX());
-			float y = director.toYLogical(e.getY());
-			if (y>iLayout.iSENotesY)
-			{
-				if (128<x && x<384)
-					iSoundPool.play(iSoundDong, 1.0f, 1.0f, 10, 0, 1.0f);
-				else
-					iSoundPool.play(iSoundKa, 1.0f, 1.0f, 10, 0, 1.0f);
-			}
-		}
-	}
-	
-	@Override
 	public boolean onTouchEvent(MotionEvent e) {
 		if (e!=null && e.getAction()==MotionEvent.ACTION_DOWN && O2Director.getInstance()!=null)
 		{
 			long delay = android.os.SystemClock.uptimeMillis() - e.getEventTime();
 			Log.i("jiro-player Scene", "touched delay=" + delay);
-			float x = director.toXLogical(e.getX());
-			float y = director.toYLogical(e.getY());
-			if (y>iLayout.iSENotesY)
+			if (e.getY()>iDrumY)
 			{
-				if (128<x && x<384)
+				int x = (int) e.getX();
+				if (iDrumX1<e.getX() && e.getX()<iDrumX2)
 					iSoundPool.play(iSoundDong, 1.0f, 1.0f, 10, 0, 1.0f);
 				else
 					iSoundPool.play(iSoundKa, 1.0f, 1.0f, 10, 0, 1.0f);

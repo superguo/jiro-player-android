@@ -24,14 +24,12 @@ public class O2Sprite {
 	public O2Sprite(O2Texture aTexture)
 	{
 		iTexture = aTexture;
-		O2Director.instance.iSpriteManager.addSprite(this);
 	}
 
 	public O2Sprite(O2TextureSlices aTexSli, int anIndex)
 	{
 		iTexSli = aTexSli;
 		iIndexOfSli = anIndex;
-		O2Director.instance.iSpriteManager.addSprite(this);
 	}
 	
 	public void draw(GL10 gl)
@@ -40,10 +38,5 @@ public class O2Sprite {
 			iTexture.draw(iX, iY, iHalign, iValign);
 		else
 			iTexSli.draw(iIndexOfSli, iX, iY, iHalign, iValign);
-	}
-	
-	public void dispose()
-	{
-		O2Director.instance.iSpriteManager.iSpriteSet.remove(this);
 	}
 }

@@ -247,16 +247,34 @@ public class O2Director extends SurfaceView implements SurfaceHolder.Callback, R
 		egl.eglInitialize(iEGLDisplay, eglVersion);
 		
 		int attribs[] = {
-				EGL10.EGL_SURFACE_TYPE, EGL10.EGL_WINDOW_BIT,
 				EGL10.EGL_BLUE_SIZE, 5,
 				EGL10.EGL_GREEN_SIZE, 6,
 				EGL10.EGL_RED_SIZE, 5,
+				EGL10.EGL_ALPHA_SIZE, 0,
+				EGL10.EGL_DEPTH_SIZE, 0,
+				EGL10.EGL_STENCIL_SIZE, 0,
 				EGL10.EGL_NONE
 		};
-		EGLConfig[] eglConfigs = new EGLConfig[1];
+		
 		int[] numElgConfigs = new int[1];
-		egl.eglChooseConfig(iEGLDisplay, attribs, eglConfigs, 1, numElgConfigs);
-		iEGLConfig = eglConfigs[0];
+		egl.eglChooseConfig(iEGLDisplay, attribs, null, 0, numElgConfigs);
+		EGLConfig[] eglConfigs = new EGLConfig[numElgConfigs[0]];
+		egl.eglChooseConfig(iEGLDisplay, attribs, eglConfigs, numElgConfigs[0], numElgConfigs);
+
+		int value[] = new int[1];
+		for (EGLConfig config : eglConfigs)
+		{
+			int r = egl.eglGetConfigAttrib(iEGLDisplay, config, EGL10.EGL_RED_SIZE, value) ? value[0] : 0;
+			int g = egl.eglGetConfigAttrib(iEGLDisplay, config, EGL10.EGL_GREEN_SIZE, value) ? value[0] : 0;
+			int b = egl.eglGetConfigAttrib(iEGLDisplay, config, EGL10.EGL_BLUE_SIZE, value) ? value[0] : 0;
+			int a = egl.eglGetConfigAttrib(iEGLDisplay, config, EGL10.EGL_ALPHA_SIZE, value) ? value[0] : 0;
+			if (r==5 && g==6 && b==5 && a==0)
+			{
+				iEGLConfig = config;
+				break;
+			}
+		}
+		if (iEGLConfig==null) throw new IllegalArgumentException("no config found");
 		
 		iEGLSurface = egl.eglCreateWindowSurface(iEGLDisplay, iEGLConfig, getHolder(), null);
 		iEGLContext = egl.eglCreateContext(iEGLDisplay, iEGLConfig, EGL10.EGL_NO_CONTEXT, null);

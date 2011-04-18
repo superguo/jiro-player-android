@@ -59,22 +59,25 @@ public class PlayScene extends O2Scene {
 		iSoundPool 	= new SoundPool(20, AudioManager.STREAM_MUSIC, 0);
 		iSoundDong 	= iSoundPool.load(director.getContext(), R.raw.dong, 1);
 		iSoundKa  	= iSoundPool.load(director.getContext(), R.raw.ka, 1);
-		O2TextureManager mgr = director.getTextureManager();
+		O2TextureManager tmgr = director.getTextureManager();
+		O2SpriteManager smgr = director.getSpriteManager();
 		//iBgSprite 			= new O2Sprite(mgr.createFromResource(R.drawable.bg, true));
-		iMTaikoSprite		= new O2Sprite(mgr.createFromResource(R.drawable.mtaiko, true));
+		//smgr.addSprite(iBgSprite);
+		iMTaikoSprite		= new O2Sprite(tmgr.createFromResource(R.drawable.mtaiko, true));
 		iMTaikoSprite.iValign = O2Texture.VALIGN_MIDDLE;
 		iMTaikoSprite.iX	= 0;
 		iMTaikoSprite.iY	= iLayout.iScrollFieldY;
+		smgr.addSprite(iMTaikoSprite);
 		
-		// mDebugTextSprite 	= mgr.createFromString("hello", true);
-		iNotesSlices		= mgr.createSpriteSheetWithRowsAndCols(
-				mgr.createFromResource(R.drawable.notes, true),
+		iNotesSlices		= tmgr.createSpriteSheetWithRowsAndCols(
+				tmgr.createFromResource(R.drawable.notes, true),
 				2,
 				13);
 		iTargetNoteSprite 			= new O2Sprite(iNotesSlices, 0);
 		iTargetNoteSprite.iValign	= O2Texture.VALIGN_MIDDLE;
 		iTargetNoteSprite.iX		= PlayLayout.iMTaikoWidth;
 		iTargetNoteSprite.iY		= iLayout.iScrollFieldY;
+		smgr.addSprite(iTargetNoteSprite);
 
 		try
 		{
@@ -83,11 +86,13 @@ public class PlayScene extends O2Scene {
 			String text1 = ir.readLine();
 			String text2 = ir.readLine();
 		
-			iTextSprite1 = new O2Sprite(mgr.createFromString(text1, true));
-			iTextSprite2 = new O2Sprite(mgr.createFromString(text2, true));
-			
+			iTextSprite1 = new O2Sprite(tmgr.createFromString(text1, true));
 			iTextSprite1.iX = 100;
+			smgr.addSprite(iTextSprite1);
+			
+			iTextSprite2 = new O2Sprite(tmgr.createFromString(text2, true));
 			iTextSprite2.iX = 200;
+			smgr.addSprite(iTextSprite2);
 		}
 		catch(IOException e)
 		{
@@ -97,35 +102,22 @@ public class PlayScene extends O2Scene {
 
 	@Override
 	public void onLeavingScene() {
+		O2SpriteManager smgr = director.getSpriteManager();
+
 		if (iBgSprite!=null)
-		{
-			iBgSprite.dispose();
-			iBgSprite = null;
-		}
+			smgr.removeSprite(iBgSprite);
 		
 		if (iMTaikoSprite!=null)
-		{
-			iMTaikoSprite.dispose();
-			iMTaikoSprite = null;
-		}
+			smgr.removeSprite(iMTaikoSprite);
 		
 		if (iTargetNoteSprite!=null)
-		{
-			iTargetNoteSprite.dispose();
-			iTargetNoteSprite = null;
-		}
+			smgr.removeSprite(iTargetNoteSprite);
 		
 		if (iTextSprite1!=null)
-		{
-			iTextSprite1.dispose();
-			iTextSprite1 = null;
-		}
+			smgr.removeSprite(iTextSprite1);
 
 		if (iTextSprite2!=null)
-		{
-			iTextSprite2.dispose();
-			iTextSprite2 = null;
-		}
+			smgr.removeSprite(iTextSprite2);
 		
 		iNotesSlices = null;
 		

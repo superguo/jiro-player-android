@@ -51,4 +51,9 @@ public class O2SpriteManager {
 		aSprite.id = ++iMaxId;
 		iSpriteSet.add(aSprite);
 	}
+	
+	public void removeSprite(O2Sprite aSprite)
+	{
+		iSpriteSet.remove(aSprite);
+	}
 }

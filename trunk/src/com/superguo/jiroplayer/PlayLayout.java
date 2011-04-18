@@ -2,8 +2,11 @@ package com.superguo.jiroplayer;
 
 public class PlayLayout implements Cloneable
 {	
-	public final static int iMTaikoWidth = 94;
-	public final static int iNoteSize = 48;
+	public final static int SCREEN_WIDTH = 512;
+	public final static int MTAIKO_WIDTH = 94;
+	public final static int NOTE_SIZE = 48;
+	public final static int SCROLL_WIDTH =
+		PlayLayout.SCREEN_WIDTH - PlayLayout.MTAIKO_WIDTH - PlayLayout.NOTE_SIZE;
 	public int iMTaikoY = 90;
 	public int iScrollFieldHeight=56;
 	public int iScrollFieldY=125;

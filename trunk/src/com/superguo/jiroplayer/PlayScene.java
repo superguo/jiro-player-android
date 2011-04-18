@@ -75,7 +75,7 @@ public class PlayScene extends O2Scene {
 				13);
 		iTargetNoteSprite 			= new O2Sprite(iNotesSlices, 0);
 		iTargetNoteSprite.iValign	= O2Texture.VALIGN_MIDDLE;
-		iTargetNoteSprite.iX		= PlayLayout.iMTaikoWidth;
+		iTargetNoteSprite.iX		= PlayLayout.MTAIKO_WIDTH;
 		iTargetNoteSprite.iY		= iLayout.iScrollFieldY;
 		smgr.addSprite(iTargetNoteSprite);
 

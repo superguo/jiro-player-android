@@ -51,7 +51,7 @@ public final class TJAFormat {
 	public final static class TJACourse
 	{
 		public int		iCourse = COURSE_ONI;	//
-		public int 		iLevel;
+		public int 		iLevel;		// 1 ~ 12
 		public float 	iBPM;		// 50 ~ 250
 		public int[]	iBalloon;	// number of balloons
 		public int		iScoreInit;	// 1 ~ 100000, 0 means auto
@@ -516,7 +516,11 @@ public final class TJAFormat {
 		if (name.equals("TITLE"))
 			iTitle = new String(value);
 		else if (name.equals("LEVEL"))
+		{
 			iCurrentCourse.iLevel = Integer.parseInt(value);
+			if (iCurrentCourse.iLevel<1 || iCurrentCourse.iLevel>12)
+				throwEx("Bad level");
+		}
 		else if (name.equals("BPM"))
 		{
 			iCurrentCourse.iBPM = Float.parseFloat(value);
@@ -592,6 +596,8 @@ public final class TJAFormat {
 
 			else if (value.equalsIgnoreCase("Tower") || value.equals(COURSE_TOWER))
 				iCurrentCourse.iCourse = COURSE_TOWER;
+			
+			else throwEx("Unknown course");
 		}
 		else if (name.equals("STYLE"))
 		{

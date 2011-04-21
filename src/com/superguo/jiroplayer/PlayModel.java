@@ -1,5 +1,8 @@
 package com.superguo.jiroplayer;
 
+import com.superguo.jiroplayer.*;
+import com.superguo.jiroplayer.TJAFormat.*;
+
 public class PlayModel {
 	public final static int FULL_SCORES[][] =	{
 		{	// easy
@@ -49,8 +52,8 @@ public class PlayModel {
 	public final static int MAX_DIFFICULITES = 4;
 	
 	private TJAFormat iTJA;
-	private TJAFormat.TJACourse iCourse;
-	private TJAFormat.TJAPara[] iParas;
+	private TJACourse iCourse;
+	private TJAPara[] iParas;
 	private int iScoreInit;
 	private int iScoreDiff;
 	private int iScore;
@@ -85,12 +88,74 @@ public class PlayModel {
 		}
 	}
 	
-	// get the total number of notes
+	// get the total number of notes 1,2,3,4 where note index >= 100
 	// choose master if encounters branches
-	private int getNumNotes()
+	// if in GGT, plus 20%
+	private float getScoreCalcNotes()
 	{
 		int numNotes = 0;
-		//TODO
+		int len = iParas.length;
+		int i;
+		
+		boolean inBranch = false;
+		int branchType = 0;	// makes the compiler happy
+		
+		boolean inGGT = false;
+		
+		for (i=0; i<len; )
+		{
+			TJACommand[] cmds = iParas[i].iCommands;
+			if (cmds!=null)
+			{
+				TJACommand cmdBranch = findCommand(
+						TJAFormat.COMMAND_TYPE_BRANCHSTART, cmds);
+				if (cmdBranch != null) {
+					inBranch = true;
+					if (i != cmdBranch.iArgs[7]) {
+						i = cmdBranch.iArgs[7];
+						continue;
+					}
+					branchType = TJAFormat.COMMAND_TYPE_M;
+				}
+				else if (null != findCommand(TJAFormat.COMMAND_TYPE_N, cmds))
+					branchType = TJAFormat.COMMAND_TYPE_N;
+				else if (null != findCommand(TJAFormat.COMMAND_TYPE_E, cmds))
+					branchType = TJAFormat.COMMAND_TYPE_E;
+				else if (null != findCommand(TJAFormat.COMMAND_TYPE_BRANCHEND, cmds))
+					inBranch = false;
+				else if (null != findCommand(TJAFormat.COMMAND_TYPE_GOGOSTART, cmds))
+					inGGT = true;
+				else if (null != findCommand(TJAFormat.COMMAND_TYPE_GOGOEND, cmds))
+					inGGT = false;
+			}
+			
+			if (inBranch && branchType != TJAFormat.COMMAND_TYPE_M)
+			{
+				++i;
+				continue;
+			}
+			
+			for (int note : iParas[i].iNotes)
+			{
+				if (note>=1 && note<=4)
+				{
+					numNotes += 1.0f;
+					if (inGGT)
+						numNotes += .2f;
+				}
+			}
+
+			i++;
+		}
 		return numNotes;
+	}
+	
+	private static TJACommand findCommand(int cmdType, TJACommand[] cmds)
+	{
+		for (TJACommand cmd : cmds)
+		{
+			if (cmd.iCommandType == cmdType) return cmd;
+		}
+		return null;
 	}
 }

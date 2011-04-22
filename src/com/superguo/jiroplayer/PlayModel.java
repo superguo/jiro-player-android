@@ -85,14 +85,19 @@ public class PlayModel {
 			else
 				fullScore = FULL_SCORES[iCourse.iCourse][MAX_LEVEL_OF[iCourse.iCourse]] +
 				100000 * (MAX_LEVEL_OF[iCourse.iCourse] - iCourse.iLevel);
+			float fullNormalNote = (float)fullScore / getScoreCalcNotes();
+			iScoreInit = (int)Math.floor(fullNormalNote * 0.08f) * 10;
+			iScoreDiff = (int)Math.floor(fullNormalNote * 0.02f) * 10;
 		}
 	}
 	
-	// get the total number of notes 1,2,3,4 where note index >= 100
+	// get the total number of notes 1,2,3,4
 	// choose master if encounters branches
 	// if in GGT, plus 20%
+	// half if note index < 100
 	private float getScoreCalcNotes()
 	{
+		float scoredNotes = 0;
 		int numNotes = 0;
 		int len = iParas.length;
 		int i;
@@ -137,17 +142,31 @@ public class PlayModel {
 			
 			for (int note : iParas[i].iNotes)
 			{
-				if (note>=1 && note<=4)
+				switch(note)
 				{
-					numNotes += 1.0f;
+				case 1:
+				case 2:
+					scoredNotes += numNotes<100 ? 0.5f : 1.0f;
 					if (inGGT)
-						numNotes += .2f;
+						scoredNotes += numNotes<100 ? .1f : .2f;
+					++numNotes;
+					break;
+					
+				case 3:
+				case 4:
+					scoredNotes += numNotes<100 ? 1.0f : 2.0f;
+					if (inGGT)
+						scoredNotes += numNotes<100 ? .2f : .4f;
+					++numNotes;
+					break;
+
+				default:;
 				}
 			}
 
 			i++;
 		}
-		return numNotes;
+		return scoredNotes;
 	}
 	
 	private static TJACommand findCommand(int cmdType, TJACommand[] cmds)

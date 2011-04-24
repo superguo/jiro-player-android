@@ -1,6 +1,5 @@
 package com.superguo.jiroplayer;
 
-import com.superguo.jiroplayer.*;
 import com.superguo.jiroplayer.TJAFormat.*;
 
 public class PlayModel {
@@ -56,7 +55,22 @@ public class PlayModel {
 	private TJAPara[] iParas;
 	private int iScoreInit;
 	private int iScoreDiff;
+	
 	private int iScore;
+	private long iSysStartTime;
+	
+	public static class DisplayInfo
+	{
+		public final static int DISPLAY_SEPARATOR	= 0;
+		public final static int DISPLAY_RED 		= 1;
+		public final static int DISPLAY_BLUE 		= 2;
+		public final static int DISPLAY_BIG_RED 	= 3;
+		public final static int DISPLAY_BIG_BLUE 	= 4;
+		public final static int DISPLAY_LENDA_HEAD 	= 5;
+		public final static int DISPLAY_LENDA_BODY 	= 6;
+		public final static int DISPLAY_BALOON_HEAD	= 7;
+		public final static int DISPLAY_BALOON_BODY	= 8;
+	}
 
 	public void prepare(TJAFormat aTJA, int aCourseIndex)
 	{
@@ -69,6 +83,11 @@ public class PlayModel {
 		resetScores();
 	}
 
+	public void start()
+	{
+		iSysStartTime = android.os.SystemClock.uptimeMillis(); 
+	}
+	
 	private void resetScores() {
 		// reset current score
 		iScore = 0;
@@ -177,4 +196,6 @@ public class PlayModel {
 		}
 		return null;
 	}
+	
+
 }

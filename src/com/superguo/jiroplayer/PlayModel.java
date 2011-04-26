@@ -2,7 +2,7 @@ package com.superguo.jiroplayer;
 
 import com.superguo.jiroplayer.TJAFormat.*;
 
-public class PlayModel {
+public final class PlayModel {
 	public final static int FULL_SCORES[][] =	{
 		{	// easy
 			0,
@@ -51,6 +51,10 @@ public class PlayModel {
 	public final static int MAX_DIFFICULITES = 4;
 	public final static long FIXED_OFFSET = -4000;	// start after 4 seconds
 	
+	public final static int HIT_NONE = 0;
+	public final static int HIT_FACE = 1;
+	public final static int HIT_SIDE = 2;
+	
 	private TJAFormat iTJA;
 	private TJACourse iCourse;
 	private TJAPara[] iParas;
@@ -77,6 +81,12 @@ public class PlayModel {
 	{
 		iOffsetTime = FIXED_OFFSET + (long)(iTJA.iOffset * 1000);
 		iStartedSysTime = android.os.SystemClock.uptimeMillis(); 
+	}
+
+	public PlayDisplayInfo onHit(int hit)
+	{
+		
+		return iDisplayInfo;	
 	}
 	
 	private void resetScores() {

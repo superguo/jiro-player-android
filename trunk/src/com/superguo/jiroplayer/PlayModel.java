@@ -49,6 +49,7 @@ public class PlayModel {
 	};
 	public final static int MAX_LEVEL_OF[] = { 5, 7, 8, 10 };
 	public final static int MAX_DIFFICULITES = 4;
+	public final static long FIXED_OFFSET = -4000;	// start after 4 seconds
 	
 	private TJAFormat iTJA;
 	private TJACourse iCourse;
@@ -57,44 +58,10 @@ public class PlayModel {
 	private int iScoreDiff;
 	
 	private int iScore;
-	private long iSysStartTime;
-	private DisplayInfo iDisplayInfo = new DisplayInfo();
+	private long iOffsetTime;		// offset since the first note paragraph
+	private long iStartedSysTime;	// system time when started
+	private PlayDisplayInfo iDisplayInfo = new PlayDisplayInfo();
 	
-	public static class DisplayInfo
-	{
-		public final static int MAX_NOTE_POS = 50;
-		public final static int NOTE_SEPARATOR		= 0;
-		public final static int NOTE_FACE 			= 1;
-		public final static int NOTE_SIDE 			= 2;
-		public final static int NOTE_BIG_FACE 		= 3;
-		public final static int NOTE_BIG_SIDE 		= 4;
-		public final static int NOTE_LENDA_HEAD 	= 5;
-		public final static int NOTE_LENDA_BODY 	= 6;
-		public final static int NOTE_LENDA_TAIL 	= 6;
-		public final static int NOTE_BIG_LENDA_HEAD = 7;
-		public final static int NOTE_BIG_LENDA_BODY = 8;
-		public final static int NOTE_BIG_LENDA_TAIL = 9;
-		public final static int NOTE_BALOON_HEAD	= 10;
-		public final static int NOTE_BALOON_BODY	= 11;
-		
-		public final static int BRANCH_NONE			= 0;
-		public final static int BRANCH_EASY			= 1;
-		public final static int BRANCH_NORMAL		= 2;
-		public final static int BRANCH_MASTER		= 3;
-		
-		public static class NotePos
-		{
-			public int iNoteType;
-			public int iNotePos;
-		}
-		
-		public int iNumNotePos;
-		public NotePos[] iNotePosArray = new NotePos[MAX_NOTE_POS];
-		public int iBranch;
-		public boolean iIsGGT;
-		public int iBaloonLenDaCount;
-	}
-
 	public void prepare(TJAFormat aTJA, int aCourseIndex)
 	{
 		// TODO reset
@@ -108,7 +75,8 @@ public class PlayModel {
 
 	public void start()
 	{
-		iSysStartTime = android.os.SystemClock.uptimeMillis(); 
+		iOffsetTime = FIXED_OFFSET + (long)(iTJA.iOffset * 1000);
+		iStartedSysTime = android.os.SystemClock.uptimeMillis(); 
 	}
 	
 	private void resetScores() {

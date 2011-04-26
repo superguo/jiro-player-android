@@ -1,6 +1,6 @@
 package com.superguo.jiroplayer;
 
-public class PlayDisplayInfo
+public final class PlayDisplayInfo
 {
 	public final static int MAX_NOTE_POS = 50;
 	public final static int NOTE_SEPARATOR		= 0;
@@ -22,7 +22,7 @@ public class PlayDisplayInfo
 	public final static int BRANCH_NORMAL		= 2;
 	public final static int BRANCH_MASTER		= 3;
 	
-	public static class NotePos
+	public final static class NotePos
 	{
 		public int iNoteType;
 		public int iNotePos;

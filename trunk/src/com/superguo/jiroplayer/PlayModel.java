@@ -49,12 +49,33 @@ public final class PlayModel {
 	};
 	public final static int MAX_LEVEL_OF[] = { 5, 7, 8, 10 };
 	public final static int MAX_DIFFICULITES = 4;
-	public final static long FIXED_OFFSET = -4000;	// start after 4 seconds
+	public final static long FIXED_OFFSET = -2000;	// start after 4 seconds
+	public final static int BEAT_DIST = 64;	// pixel distance between two beats
 	
 	public final static int HIT_NONE = 0;
 	public final static int HIT_FACE = 1;
 	public final static int HIT_SIDE = 2;
 	
+	public final static int MAX_COMPILED_PARA = 3;
+
+	private final static class NoteOffset
+	{
+		public int 		iNoteType;		// see PlayDisplayInfo
+		public short 	iTimeOffset;	// time offset since its para
+		public int 		iPosOffset;
+	}
+	
+	private final class CompiledPara
+	{
+		public long iTimeOffset;	// time offset since first para
+		public float iSpeed;
+		public NoteOffset[] iNoteOffset = new NoteOffset[PlayDisplayInfo.MAX_NOTE_POS];
+		public int iNumNoteOffset;
+		public int iNoteIndexToHit;	// only for face notes/side notes
+	}
+	
+	private PlayDisplayInfo iDisplayInfo = new PlayDisplayInfo();
+
 	private TJAFormat iTJA;
 	private TJACourse iCourse;
 	private TJAPara[] iParas;
@@ -64,17 +85,32 @@ public final class PlayModel {
 	private int iScore;
 	private long iOffsetTime;		// offset since the first note paragraph
 	private long iStartedSysTime;	// system time when started
-	private PlayDisplayInfo iDisplayInfo = new PlayDisplayInfo();
+	private int iNumMaxCombo;
+	private int iNumMaxNotes;
+	private int iNumHitNotes;
+	private int iNumLenDa;
 	
+	private CompiledPara[] iCompiledParas = 
+		new CompiledPara[MAX_COMPILED_PARA];
+	private int iNumAvailableCompiledParas;
+	private int iCurrentCompiledPara;
+
 	public void prepare(TJAFormat aTJA, int aCourseIndex)
 	{
-		// TODO reset
 		iTJA = aTJA;
 		iCourse = iTJA.iCourses[aCourseIndex];
 		iParas = iCourse.iParasSingle;
+		
 		// Play as P1 if Single STYLE is not defined
 		if (iParas==null) iParas = iCourse.iParasP1;
+		
+		// reset the score info
 		resetScores();
+		
+		// reset the display info
+		iDisplayInfo = new PlayDisplayInfo();
+
+		// TODO reset
 	}
 
 	public void start()

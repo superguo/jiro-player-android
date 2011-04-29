@@ -102,7 +102,6 @@ public final class PlayModel {
 	private int iNumHitNotes;
 	private int iNumLenDa;
 
-	
 	private RuntimePara[] iRuntimeParas = 
 		new RuntimePara[MAX_COMPILED_PARA];
 	private int iNumAvailableRuntimeParas;

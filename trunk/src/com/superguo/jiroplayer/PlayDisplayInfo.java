@@ -31,6 +31,9 @@ public final class PlayDisplayInfo
 	public NotePos[] iNotePosArray = new NotePos[MAX_NOTE_POS];
 	public int iBranch;
 	public boolean iIsGGT;
-	public int iLenDaCount;	// for balloon (count-down) or lenda bar (count-up) 
+	public int iBallonLenDaCount;	// balloon down counter   
+									// 0 means just finished
+									// -1 means failed
+									// -2 means no lenda
 	public int iNumCombo;
 }

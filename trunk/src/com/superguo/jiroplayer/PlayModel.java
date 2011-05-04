@@ -67,21 +67,43 @@ public final class PlayModel {
 	
 	private final class RuntimePara
 	{
-		public long iTimeOffset;	// time offset since first para
-		public float iSpeed;
+		public int 		iIndexOfTJAPara;
+		public long 	iTimeOffset;	// time offset since first para
+		public float 	iSpeed;
 		public NoteOffset[] iNoteOffset = new NoteOffset[PlayDisplayInfo.MAX_NOTE_POS];
-		public int iNumNoteOffset;	//
-		public int iNoteIndexToHit;	// 0 ~ iNumNoteOffset - 1,
+		public int 		iNumNoteOffset;	//
+		public int 		iNoteIndexToHit;	// 0 ~ iNumNoteOffset - 1,
 									// the next note to hit, only for face notes/side notes, 
 		public boolean iIsGGT;
 		
 		public void clear()
 		{
+			iIndexOfTJAPara = -1;
 			iTimeOffset = 0;
 			iSpeed = 0.0f;
 			iNumNoteOffset = 0;
 			iNoteIndexToHit = -1;
 			iIsGGT = false;
+		}
+	}
+	
+	private final class SectionStat
+	{
+		public int iNumGood;
+		public int iNumNormal;
+		public int iNumTotal;
+		public int iNumRolled;
+		
+		public final void reset()
+		{
+			iNumGood = iNumNormal = iNumTotal = iNumRolled = 0;
+		}
+		
+		// 0.0f ~ 1.0f
+		public final float precision()
+		{
+			if (iNumTotal==0) return 0.0f;
+			return (iNumGood * 2.0f + iNumNormal) / (iNumTotal * 2.0f);  
 		}
 	}
 	
@@ -94,22 +116,25 @@ public final class PlayModel {
 	private int iScoreDiff;
 	
 	private float iCurrentBPM;
-	private int iScore;
 	private long iOffsetTime;		// offset since the first note paragraph
 	private long iStartedSysTime;	// system time when started
 	private int iNumMaxCombo;
 	private int iNumMaxNotes;
 	private int iNumHitNotes;
-	private int iNumLenDa;
+	private int iNumTotalRolling;
 
 	private RuntimePara[] iRuntimeParas = 
 		new RuntimePara[MAX_COMPILED_PARA];
 	private int iNumAvailableRuntimeParas;
-	private int iIndexOfLastRuntimePara;	// 0 ~ iNumAvailableRuntimeParas - 1
+	private int iLastCompiledRuntimeParaSlot;	// 0 ~ iNumAvailableRuntimeParas - 1
 	private int iIndexOfLastCompiledTJAPara;	// 0 ~ iParas.length - 1 
 	private int iMeasureX;
 	private int iMeasureY;
 	private float iScroll;
+	private int iJustPlayingParaSlot;	// 0 ~ iNumAvailableRuntimeParas - 1
+	private int iInPlayingParaSlot;
+	
+	private SectionStat iSectionStat = new SectionStat();
 
 	public void prepare(TJAFormat aTJA, int aCourseIndex)
 	{
@@ -124,19 +149,23 @@ public final class PlayModel {
 		resetScores();
 		
 		// reset the display info
-		iDisplayInfo = new PlayDisplayInfo();
+		iDisplayInfo.reset();
 
 		// reset some counters
-		iNumMaxCombo = iNumMaxNotes = iNumHitNotes = iNumLenDa = 0;
+		iNumMaxCombo = iNumMaxNotes = iNumHitNotes = iNumTotalRolling = 0;
 		
 		// reset runtime values
 		iCurrentBPM = iCourse.iBPM;
 		iNumAvailableRuntimeParas = 0;
-		iIndexOfLastRuntimePara = -1;
+		iLastCompiledRuntimeParaSlot = -1;
 		iMeasureX = iMeasureY = 4;
 		iScroll = 1.0f;
 
-		// TODO reset
+		// reset section
+		iSectionStat.reset();
+		
+		// reset playing para
+		iJustPlayingParaSlot = iInPlayingParaSlot = -1;
 	}
 
 	public void start()
@@ -147,13 +176,11 @@ public final class PlayModel {
 
 	public PlayDisplayInfo onHit(int hit)
 	{
-		
+		// TODO
 		return iDisplayInfo;	
 	}
 	
 	private void resetScores() {
-		// reset current score
-		iScore = 0;
 		if (iCourse.iScoreInit > 0 && iCourse.iScoreDiff > 0)
 		{
 			iScoreInit = iCourse.iScoreInit;
@@ -269,13 +296,13 @@ public final class PlayModel {
 		if (iIndexOfLastCompiledTJAPara >= iParas.length-1) return false;
 		
 		// get the last compiled
-		RuntimePara lastRuntimePara = 	iIndexOfLastRuntimePara == -1 ? 
+		RuntimePara lastRuntimePara = 	iLastCompiledRuntimeParaSlot == -1 ? 
 										null : 
-										iRuntimeParas[iIndexOfLastRuntimePara];
+										iRuntimeParas[iLastCompiledRuntimeParaSlot];
 
 		// get the free slot for compilation
-		int indexOfNextRuntimePara = nextFreeRuntimePara();
-		RuntimePara newRuntimePara = iRuntimeParas[indexOfNextRuntimePara];
+		int nextRuntimeParaSlot = nextFreeRuntimeParaSlot();
+		RuntimePara newRuntimePara = iRuntimeParas[nextRuntimeParaSlot];
 		newRuntimePara.clear();
 		
 		// get the TJA para to compile
@@ -283,6 +310,7 @@ public final class PlayModel {
 		
 		// execute the commands
 		boolean hasChangedBPM = false;
+		boolean hasSection = false;
 		float delay = 0.0f;
 		int prevMeasureX = iMeasureX;
 		int prevMeasureY = iMeasureY;
@@ -318,10 +346,16 @@ public final class PlayModel {
 				break;
 				
 			case TJAFormat.COMMAND_TYPE_SECTION:
-				//TODO
+				hasSection = true;
 				break;
 				
 			case TJAFormat.COMMAND_TYPE_BRANCHSTART: 	// BRANCH_JUDGE_*(r/p/s, int), X(float), Y(float), (index of #N TJAPara, index of #N command), #E, #M
+				switch(cmd.iArgs[0])
+				{
+				case TJAFormat.BRANCH_JUDGE_ROLL:
+				case TJAFormat.BRANCH_JUDGE_SCORE:
+				case TJAFormat.BRANCH_JUDGE_PRECISION:
+				}
 				//TODO
 				break;
 				
@@ -343,6 +377,9 @@ public final class PlayModel {
 			}
 		}
 		
+		// fill iIndexOfTJAPara
+		newRuntimePara.iIndexOfTJAPara = iIndexOfLastCompiledTJAPara + 1;
+		
 		// fill iTimeOffset
 		if (null==lastRuntimePara)
 			newRuntimePara.iTimeOffset = 0;
@@ -358,19 +395,21 @@ public final class PlayModel {
 		else
 			newRuntimePara.iSpeed = lastRuntimePara.iSpeed;
 		
+		// TODO deals with hasSection
+		
 		// TODO: fill the notes
 
-		iIndexOfLastRuntimePara = indexOfNextRuntimePara;
+		iLastCompiledRuntimeParaSlot = nextRuntimeParaSlot;
 		++iIndexOfLastCompiledTJAPara;
 		return true;
 	}
 	
-	private final int nextFreeRuntimePara()
+	private final int nextFreeRuntimeParaSlot()
 	{
-		int indexOfNextRuntimePara = iIndexOfLastRuntimePara + 1;
+		int indexOfNextRuntimePara = iLastCompiledRuntimeParaSlot + 1;
 		if (indexOfNextRuntimePara == MAX_COMPILED_PARA) indexOfNextRuntimePara = 0;
-		return 	iIndexOfLastRuntimePara < MAX_COMPILED_PARA - 1 ?
-				iIndexOfLastRuntimePara + 1:
+		return 	iLastCompiledRuntimeParaSlot < MAX_COMPILED_PARA - 1 ?
+				iLastCompiledRuntimeParaSlot + 1:
 				0;
 	}
 

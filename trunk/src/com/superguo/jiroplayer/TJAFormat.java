@@ -27,7 +27,7 @@ public final class TJAFormat {
 	public final static int COMMAND_TYPE_SCROLL 	= 5; 	// float(0.1 - 16.0)
 	public final static int COMMAND_TYPE_DELAY 		= 6; 	// float(>0.001)
 	public final static int COMMAND_TYPE_SECTION 	= 7;
-	public final static int COMMAND_TYPE_BRANCHSTART  = 8; 	// BRANCH_JUDGE_*(r/p/s, int), X(float), Y(float), (index of #N TJAPara, index of #N command), #E, #M
+	public final static int COMMAND_TYPE_BRANCHSTART  = 8; 	// BRANCH_JUDGE_*(r/p/s, int), X(float), Y(float), #N index, #E index, #M index, exit index(may be invalid) 
 	public final static int COMMAND_TYPE_BRANCHEND 	= 9;
 	public final static int COMMAND_TYPE_N 			= 10;
 	public final static int COMMAND_TYPE_E 			= 11;
@@ -56,17 +56,11 @@ public final class TJAFormat {
 		public int[]	iBalloon;	// number of balloons
 		public int		iScoreInit;	// 1 ~ 100000, 0 means auto
 		public int		iScoreDiff;	// 1 ~ 100000, 0 means auto
-		public TJAPara[] iParasSingle; 	// cannot be null if iStyle is STYLE_SIGNLE
-		public TJAPara[] iParasP1; 	// cannot be null if iStyle is STYLE_DOUBLE
-		public TJAPara[] iParasP2;	// cannot be null if iStyle is STYLE_DOUBLE
+		public TJACommand[] iNotationSingle; 	// cannot be null if iStyle is STYLE_SIGNLE
+		public TJACommand[] iNotationP1; 	// cannot be null if iStyle is STYLE_DOUBLE
+		public TJACommand[] iNotationP2;	// cannot be null if iStyle is STYLE_DOUBLE
 	}
-	
-	public final static class TJAPara
-	{
-		TJACommand[] 	iCommands;
-		int[]		 	iNotes;
-	}
-	
+
 	public final static class TJACommand
 	{
 		public TJACommand()
@@ -102,18 +96,15 @@ public final class TJAFormat {
 	// parse states
 	int					  iLineNo;
 	String				  iLine;
-	LinkedList<TJACourse> iTempCourses 	= new LinkedList<TJACourse>();
-	LinkedList<TJAPara>   iTempParas 	= new LinkedList<TJAPara>();
-	TJACourse 			  iCurrentCourse;
-	TJAPara				  iCurrentPara;
-	LinkedList<TJACommand>  iCurrentCommands;
-	IntBuffer			  iCurrentNotes;
+	LinkedList<TJACourse> iParsedCourses 	= new LinkedList<TJACourse>();
+	LinkedList<TJACommand>  iParsedCommands;
+	TJACourse 			  iParsingCourse;
+	IntBuffer			  iParsingNotes;
 	boolean				  iIsParsingDouble;
 	boolean				  iIsParsingP2;
 	boolean				  iIsStarted;
 	boolean				  iIsGoGoStarted;
 	boolean				  iIsBranchStarted;
-	TJAPara				  iParaOfStartedBranch;
 	TJACommand			  iCommandOfStartedBranch;
 	boolean				  iHasSection;
 	
@@ -140,10 +131,9 @@ public final class TJAFormat {
 	public TJAFormat(BufferedReader reader)  throws IOException
 	{
 		iLineNo = 0;
-		iCurrentCourse = new TJACourse();
-		iCurrentPara = new TJAPara();
-		iCurrentCommands = new LinkedList<TJACommand>();
-		iCurrentNotes = IntBuffer.wrap(new int[500]);
+		iParsingCourse = new TJACourse();
+		iParsedCommands = new LinkedList<TJACommand>();
+		iParsingNotes = IntBuffer.wrap(new int[500]);
 		
 		for (	iLine = reader.readLine();
 				iLine != null;
@@ -155,18 +145,16 @@ public final class TJAFormat {
 			
 			char firstChar = iLine.charAt(0);
 			int colonPos;
-			if (firstChar=='#') // command
+			if (firstChar=='#') // command begins with #
 			{
-				if (iCurrentNotes.position()>0)
+				if (iParsingNotes.position()>0)
 					emitNotes();
 
 				iLine = iLine.toUpperCase();
 				parseCommandOfCurrentLine();
 			}
-			else if (Character.isDigit(firstChar)) // notes
+			else if (Character.isDigit(firstChar)) // 0-9, it is note
 			{
-				if (iCurrentCommands.size()>0)
-					emitCommands();
 				parseNotesOfCurrentLine();
 			}
 			else if ((colonPos = iLine.indexOf(':')) >= 0)
@@ -176,7 +164,7 @@ public final class TJAFormat {
 					if (iIsStarted)
 						throwEx("No header allowed after #START without #END");
 					
-					if (iCurrentNotes.position()>0)
+					if (iParsingNotes.position()>0)
 						emitNotes();
 					
 					setHeader(	iLine.substring(0, colonPos).trim(),
@@ -196,23 +184,23 @@ public final class TJAFormat {
 		if (iIsStarted)
 			throwEx("Missing #END");
 		
-		if (	iCurrentCourse.iParasSingle != null ||
-				iCurrentCourse.iParasP1 != null &&
-				iCurrentCourse.iParasP2 != null)
+		if (	iParsingCourse.iNotationSingle != null ||
+				iParsingCourse.iNotationP1 != null &&
+				iParsingCourse.iNotationP2 != null)
 		{
 			emitCourse();
 		}
 		
-		if (iCurrentCourse.iParasP1 != null &&
-			iCurrentCourse.iParasP2 == null)
+		if (iParsingCourse.iNotationP1 != null &&
+			iParsingCourse.iNotationP2 == null)
 		{
 			throwEx("Missing #START P2");
 		}
 		
-		if (iTempCourses.size()==0)
+		if (iParsedCourses.size()==0)
 			throwEx("Missing #START");
 		else
-			iCourses = iTempCourses.toArray(new TJACourse[iTempCourses.size()]);
+			iCourses = iParsedCourses.toArray(new TJACourse[iParsedCourses.size()]);
 	}
 
 	private void parseCommandOfCurrentLine() {
@@ -238,7 +226,7 @@ public final class TJAFormat {
 			{
 				if (iIsParsingDouble)
 					throwEx("Must #START P1 here");
-				if (iCurrentCourse.iParasSingle!=null)
+				if (iParsingCourse.iNotationSingle!=null)
 					throwEx("Cannot #START again");
 				
 				iIsStarted = true;
@@ -252,17 +240,17 @@ public final class TJAFormat {
 
 				if (fields[1].equals("P1"))
 				{
-					if (iCurrentCourse.iParasP1!=null)
+					if (iParsingCourse.iNotationP1!=null)
 						throwEx("Cannot #START P1 again");
 					iIsStarted = true;
 					iIsParsingP2 = false;
 				}
 				else if (fields.length==2 && fields[1].equals("P2"))
 				{
-					if (iCurrentCourse.iParasP1==null)
+					if (iParsingCourse.iNotationP1==null)
 						throwEx("Must #START P1 first");
 
-					if (iCurrentCourse.iParasP2!=null)
+					if (iParsingCourse.iNotationP2!=null)
 						throwEx("Cannot #START P2 again");
 				
 					iIsStarted = true;
@@ -281,27 +269,27 @@ public final class TJAFormat {
 			if (iIsGoGoStarted)
 				throwEx("missing #GOGOEND");
 			if (iIsBranchStarted)	// #BRANCHSTART without #BRANCHEND
-				checkBranch();
-			emitParas();
+				emitBranch();
+			emitNotation();
 		}
 		else if (iLine.startsWith("#BPMCHANGE"))
 		{
 			fields = iLine.split("\\s");
 			if (fields.length!=2)
 				throwEx("Unknown #BPMCHANGE command");
-			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_BPMCHANGE));
+			iParsedCommands.add(new TJACommand(COMMAND_TYPE_BPMCHANGE));
 		}
 		else if (iLine.equals("#GOGOSTART"))
 		{
 			if (iIsGoGoStarted) throwEx("Already exist #GOGOSTART before #GOGOEND");
 			iIsGoGoStarted = true;
-			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_GOGOSTART));
+			iParsedCommands.add(new TJACommand(COMMAND_TYPE_GOGOSTART));
 		}
 		else if (iLine.equals("#GOGOEND"))
 		{
 			if (!iIsGoGoStarted) throwEx("Missing #GOGOSTART before #GOGOEND");
 			iIsGoGoStarted = false;
-			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_GOGOEND));
+			iParsedCommands.add(new TJACommand(COMMAND_TYPE_GOGOEND));
 		}
 		else if (iLine.startsWith("#MEASURE"))
 		{
@@ -315,7 +303,7 @@ public final class TJAFormat {
 				cmd.iArgs[1] = Integer.parseInt(m.group(2));
 				if (cmd.iArgs[0]<0 || cmd.iArgs[0]>100 || cmd.iArgs[1]<0 || cmd.iArgs[1]>100)
 					throwEx("#MEASURE arguments must be 1-99");
-				iCurrentCommands.add(cmd);
+				iParsedCommands.add(cmd);
 			}
 			else
 				throwEx("Unknown #MEASURE command");
@@ -331,7 +319,7 @@ public final class TJAFormat {
 				throwEx("#SCROLL arguments must be 0.1f - 16.0f");
 			cmd.iArgs = new int[1];
 			cmd.iArgs[0] = Float.floatToIntBits(arg);
-			iCurrentCommands.add(cmd);
+			iParsedCommands.add(cmd);
 		}
 		else if (iLine.startsWith("#DELAY"))
 		{
@@ -343,12 +331,12 @@ public final class TJAFormat {
 			arg = (float) (Math.floor(arg*1000)/1000);
 			cmd.iArgs[0] = Float.floatToIntBits(arg);
 
-			iCurrentCommands.add(cmd);
+			iParsedCommands.add(cmd);
 		}
 		else if (iLine.equals("#SECTION"))
 		{
 			iHasSection = true;
-			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_SECTION));
+			iParsedCommands.add(new TJACommand(COMMAND_TYPE_SECTION));
 		}
 		else if (iLine.startsWith("#BRANCHSTART"))
 		{
@@ -358,10 +346,10 @@ public final class TJAFormat {
 			if (fields[0].length()!=1) throwEx("Unknown #BRANCHSTART command");
 			
 			if (iIsBranchStarted)	// #BRANCHSTART again
-				checkBranch();
+				emitBranch();
 
 			TJACommand cmd = new TJACommand(COMMAND_TYPE_BRANCHSTART);
-			cmd.iArgs = new int[9];
+			cmd.iArgs = new int[7];
 
 			switch (fields[0].charAt(0))
 			{
@@ -379,82 +367,93 @@ public final class TJAFormat {
 			} 
 			cmd.iArgs[1] = Float.floatToIntBits(Float.parseFloat(fields[1]));
 			cmd.iArgs[2] = Float.floatToIntBits(Float.parseFloat(fields[2]));
-			iCurrentCommands.add(cmd);
+			iParsedCommands.add(cmd);
 			iIsBranchStarted = true;
-			iParaOfStartedBranch = iCurrentPara;
 			iCommandOfStartedBranch = cmd;
 		}
 		else if (iLine.equals("#N"))
 		{
 			if (!iIsBranchStarted)
 				throwEx("Missing #BRANCHSTART");
-			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_N));
+			iParsedCommands.add(new TJACommand(COMMAND_TYPE_N));
 			
 			// fill back
 			if (0!=iCommandOfStartedBranch.iArgs[3])
 				throwEx("Duplicated #N");
-			iCommandOfStartedBranch.iArgs[3] = iTempParas.size()-1;
-			iCommandOfStartedBranch.iArgs[4] = iCurrentCommands.size()-1;
+			iCommandOfStartedBranch.iArgs[3] = iParsedCommands.size()-1;
 		}
 		else if (iLine.equals("#E"))
 		{
 			if (!iIsBranchStarted)
 				throwEx("Missing #BRANCHSTART");
-			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_E));
+			iParsedCommands.add(new TJACommand(COMMAND_TYPE_E));
 
 			// fill back
-			if (0!=iCommandOfStartedBranch.iArgs[5])
+			if (0!=iCommandOfStartedBranch.iArgs[4])
 				throwEx("Duplicated #E");
-			iCommandOfStartedBranch.iArgs[5] = iTempParas.size()-1;
-			iCommandOfStartedBranch.iArgs[6] = iCurrentCommands.size()-1;
+			iCommandOfStartedBranch.iArgs[4] = iParsedCommands.size()-1;
 		}
 		else if (iLine.equals("#M"))
 		{
 			if (!iIsBranchStarted)
 				throwEx("Missing #BRANCHSTART");
-			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_M));
+			iParsedCommands.add(new TJACommand(COMMAND_TYPE_M));
 
 			// fill back
-			if (0!=iCommandOfStartedBranch.iArgs[7])
+			if (0!=iCommandOfStartedBranch.iArgs[5])
 				throwEx("Duplicated #M");
-			iCommandOfStartedBranch.iArgs[7] = iTempParas.size()-1;
-			iCommandOfStartedBranch.iArgs[8] = iCurrentCommands.size()-1;
+			iCommandOfStartedBranch.iArgs[5] = iParsedCommands.size()-1;
 		}
 		else if (iLine.equals("#BRANCHEND"))
 		{
-			checkBranch();
-			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_BRANCHEND));
+			emitBranch();
+			iParsedCommands.add(new TJACommand(COMMAND_TYPE_BRANCHEND));
 			iIsBranchStarted = false;
 		}
 		else if (iLine.equals("#LEVELHOLD"))
 		{
-			iCurrentCommands.add(new TJACommand(COMMAND_TYPE_LEVELHOLD));
+			iParsedCommands.add(new TJACommand(COMMAND_TYPE_LEVELHOLD));
 		}
 	} 
 	
-	private void emitParas()
+	private void emitNotation()
 	{
-		if (iTempParas.size() == 0)
+		if (iParsedCommands.size()==0)
 		{
 			throwEx("No notes at all!");
 		}
 		else
 		{
-			TJAPara[] paras = iTempParas.toArray(new TJAPara[iTempParas.size()]);
+			TJACommand[] notation = iParsedCommands.toArray(
+					new TJACommand[iParsedCommands.size()]);
+			iParsedCommands.clear();
+
+			boolean hasNote = false;
+			for (TJACommand cmd:notation)
+			{
+				if (COMMAND_TYPE_NOTE == cmd.iCommandType)
+				{
+					hasNote = true;
+					break;
+				}
+			}
+			
+			if (!hasNote)
+				throwEx("No note at all!");
+
 			if (!iIsParsingDouble)
-				iCurrentCourse.iParasSingle = paras;
+				iParsingCourse.iNotationSingle = notation;
 			else if (!iIsParsingP2)
 			{
-				iCurrentCourse.iParasP1 = paras;
+				iParsingCourse.iNotationP1 = notation;
 				iIsParsingP2 = false;
 			}
 			else
 			{
-				iCurrentCourse.iParasP2 = paras;
+				iParsingCourse.iNotationP2 = notation;
 				iIsParsingDouble = false;
 			}
 		}
-		iTempParas.clear();
 		iIsStarted = false;
 		iHasSection = false;
 		iIsBranchStarted = false;
@@ -462,8 +461,8 @@ public final class TJAFormat {
 	
 	private void emitCourse()
 	{
-		iTempCourses.add(iCurrentCourse);
-		iCurrentCourse = new TJACourse();
+		iParsedCourses.add(iParsingCourse);
+		iParsingCourse = new TJACourse();
 		iIsParsingP2 = false;
 		iIsParsingDouble = false;		
 		iIsStarted = false;
@@ -477,7 +476,7 @@ public final class TJAFormat {
 		for (char c : lineChars)
 		{
 			if ('0'<=c && c<='9')
-				iCurrentNotes.put(c-'0');
+				iParsingNotes.put(c-'0');
 			else if (Character.isSpace(c))
 				continue;
 			else if (c==',')
@@ -485,27 +484,17 @@ public final class TJAFormat {
 		}
 	}
 
-	private void emitCommands() {
-		if (iCurrentCommands.size()>0)
-		{
-			iCurrentPara.iCommands = iCurrentCommands.toArray(
-					new TJACommand[iCurrentCommands.size()]);
-			iCurrentCommands.clear();
-		}
-	}
-
 	private void emitNotes()
 	{
-		if (iCurrentNotes.position()>0)
-		{
-			iCurrentPara.iNotes = new int[iCurrentNotes.position()]; 
-			System.arraycopy(
-					iCurrentNotes.array(), 0, iCurrentPara.iNotes, 0,
-					iCurrentNotes.position());
-		}
-		iTempParas.add(iCurrentPara);
-		iCurrentNotes.clear();
-		iCurrentPara = new TJAPara();
+		if (iParsingNotes.position()<=0) return;
+
+		TJACommand cmd = new TJACommand(COMMAND_TYPE_NOTE);
+		cmd.iArgs = new int[iParsingNotes.position()];
+		System.arraycopy(
+				iParsingNotes.array(), 0, cmd.iArgs, 0,
+				iParsingNotes.position());
+		iParsedCommands.add(cmd);
+		iParsingNotes.clear();
 	}
 	
 	private void setHeader(String name, String value)
@@ -517,14 +506,14 @@ public final class TJAFormat {
 			iTitle = new String(value);
 		else if (name.equals("LEVEL"))
 		{
-			iCurrentCourse.iLevel = Integer.parseInt(value);
-			if (iCurrentCourse.iLevel<1 || iCurrentCourse.iLevel>12)
+			iParsingCourse.iLevel = Integer.parseInt(value);
+			if (iParsingCourse.iLevel<1 || iParsingCourse.iLevel>12)
 				throwEx("Bad level");
 		}
 		else if (name.equals("BPM"))
 		{
-			iCurrentCourse.iBPM = Float.parseFloat(value);
-			if (iCurrentCourse.iBPM < 50 || iCurrentCourse.iBPM > 250)
+			iParsingCourse.iBPM = Float.parseFloat(value);
+			if (iParsingCourse.iBPM < 50 || iParsingCourse.iBPM > 250)
 				throwEx("BPM must be 50-250");
 		}
 		else if (name.equals("WAVE"))
@@ -534,9 +523,9 @@ public final class TJAFormat {
 		else if (name.equals("BALLOON"))
 		{
 			String[] balloons = value.split(",");
-			iCurrentCourse.iBalloon = new int[balloons.length];
-			for (int i=0; i<iCurrentCourse.iBalloon.length; ++i)
-				iCurrentCourse.iBalloon[i] = Integer.parseInt(balloons[i].trim()); 
+			iParsingCourse.iBalloon = new int[balloons.length];
+			for (int i=0; i<iParsingCourse.iBalloon.length; ++i)
+				iParsingCourse.iBalloon[i] = Integer.parseInt(balloons[i].trim()); 
 		}
 		else if (name.equals("SONGVOL"))
 		{
@@ -552,27 +541,27 @@ public final class TJAFormat {
 		}
 		else if (name.equals("SCOREINIT"))
 		{
-			iCurrentCourse.iScoreInit = Integer.parseInt(value);
-			if (iCurrentCourse.iScoreInit<0)
+			iParsingCourse.iScoreInit = Integer.parseInt(value);
+			if (iParsingCourse.iScoreInit<0)
 				throwEx("SCOREINIT must be positive");
 		}
 		else if (name.equals("SCOREDIFF"))
 		{
-			iCurrentCourse.iScoreDiff = Integer.parseInt(value);
-			if (iCurrentCourse.iScoreDiff<0)
+			iParsingCourse.iScoreDiff = Integer.parseInt(value);
+			if (iParsingCourse.iScoreDiff<0)
 				throwEx("SCOREDIFF must be positive");
 		}
 		else if (name.equals("COURSE"))
 		{
-			if (	iCurrentCourse.iParasSingle != null ||
-					iCurrentCourse.iParasP1 != null &&
-					iCurrentCourse.iParasP2 != null)
+			if (	iParsingCourse.iNotationSingle != null ||
+					iParsingCourse.iNotationP1 != null &&
+					iParsingCourse.iNotationP2 != null)
 			{
 				emitCourse();
 			}
 			
-			if (iCurrentCourse.iParasP1 != null &&
-				iCurrentCourse.iParasP2 == null)
+			if (iParsingCourse.iNotationP1 != null &&
+				iParsingCourse.iNotationP2 == null)
 			{
 				throwEx("Missing #START P2");
 			}
@@ -580,22 +569,22 @@ public final class TJAFormat {
 			value = value.trim();
 			
 			if (value.equalsIgnoreCase("Easy") || value.equals(COURSE_EASY))
-				iCurrentCourse.iCourse = COURSE_EASY;
+				iParsingCourse.iCourse = COURSE_EASY;
 			
 			else if (value.equalsIgnoreCase("Normal") || value.equals(COURSE_NORMAL))
-				iCurrentCourse.iCourse = COURSE_NORMAL;
+				iParsingCourse.iCourse = COURSE_NORMAL;
 			
 			else if (value.equalsIgnoreCase("Hard") || value.equals(COURSE_HARD))
-				iCurrentCourse.iCourse = COURSE_HARD;
+				iParsingCourse.iCourse = COURSE_HARD;
 			
 			else if (value.equalsIgnoreCase("Oni") || value.equals(COURSE_ONI))
-				iCurrentCourse.iCourse = COURSE_ONI;
+				iParsingCourse.iCourse = COURSE_ONI;
 			
 			else if (value.equalsIgnoreCase("Edit") || value.equals(COURSE_EDIT))
-				iCurrentCourse.iCourse = COURSE_EDIT;
+				iParsingCourse.iCourse = COURSE_EDIT;
 
 			else if (value.equalsIgnoreCase("Tower") || value.equals(COURSE_TOWER))
-				iCurrentCourse.iCourse = COURSE_TOWER;
+				iParsingCourse.iCourse = COURSE_TOWER;
 			
 			else throwEx("Unknown course");
 		}
@@ -628,13 +617,15 @@ public final class TJAFormat {
 				throwEx("Unsupported game mode: " + value);
 	}
 	
-	private void checkBranch()
+	private void emitBranch()
 	{
 		if (iCommandOfStartedBranch.iArgs[3]==0)
 			throwEx("Missing #N");
-		else if (iCommandOfStartedBranch.iArgs[5]==0)
+		else if (iCommandOfStartedBranch.iArgs[4]==0)
 			throwEx("Missing #E");
-		else if (iCommandOfStartedBranch.iArgs[7]==0)
+		else if (iCommandOfStartedBranch.iArgs[5]==0)
 			throwEx("Missing #M");
+
+		iCommandOfStartedBranch.iArgs[6] = iParsedCommands.size();
 	}
 }

@@ -111,7 +111,7 @@ public final class PlayModel {
 
 	private TJAFormat iTJA;
 	private TJACourse iCourse;
-	private TJAPara[] iParas;
+	private TJACommand[] iNotation;
 	private int iScoreInit;
 	private int iScoreDiff;
 	
@@ -140,10 +140,10 @@ public final class PlayModel {
 	{
 		iTJA = aTJA;
 		iCourse = iTJA.iCourses[aCourseIndex];
-		iParas = iCourse.iParasSingle;
+		iNotation = iCourse.iNotationSingle;
 		
 		// Play as P1 if Single STYLE is not defined
-		if (iParas==null) iParas = iCourse.iParasP1;
+		if (iNotation==null) iNotation = iCourse.iNotationP1;
 		
 		// reset the score info
 		resetScores();
@@ -208,83 +208,66 @@ public final class PlayModel {
 	{
 		float scoredNotes = 0;
 		int numNotes = 0;
-		int len = iParas.length;
+		int len = iNotation.length;
 		int i;
-		
-		boolean inBranch = false;
-		int branchType = 0;	// makes the compiler happy
 		
 		boolean inGGT = false;
 		
 		for (i=0; i<len; )
 		{
-			TJACommand[] cmds = iParas[i].iCommands;
-			if (cmds!=null)
-			{
-				TJACommand cmdBranch = findCommand(
-						TJAFormat.COMMAND_TYPE_BRANCHSTART, cmds);
-				if (cmdBranch != null) {
-					inBranch = true;
-					if (i != cmdBranch.iArgs[7]) {
-						i = cmdBranch.iArgs[7];
-						continue;
-					}
-					branchType = TJAFormat.COMMAND_TYPE_M;
-				}
-				else if (null != findCommand(TJAFormat.COMMAND_TYPE_N, cmds))
-					branchType = TJAFormat.COMMAND_TYPE_N;
-				else if (null != findCommand(TJAFormat.COMMAND_TYPE_E, cmds))
-					branchType = TJAFormat.COMMAND_TYPE_E;
-				else if (null != findCommand(TJAFormat.COMMAND_TYPE_BRANCHEND, cmds))
-					inBranch = false;
-				else if (null != findCommand(TJAFormat.COMMAND_TYPE_GOGOSTART, cmds))
-					inGGT = true;
-				else if (null != findCommand(TJAFormat.COMMAND_TYPE_GOGOEND, cmds))
-					inGGT = false;
-			}
-			
-			if (inBranch && branchType != TJAFormat.COMMAND_TYPE_M)
-			{
-				++i;
-				continue;
-			}
-			
-			for (int note : iParas[i].iNotes)
-			{
-				switch(note)
-				{
-				case 1:
-				case 2:
-					scoredNotes += numNotes<100 ? 0.5f : 1.0f;
-					if (inGGT)
-						scoredNotes += numNotes<100 ? .1f : .2f;
-					++numNotes;
-					break;
-					
-				case 3:
-				case 4:
-					scoredNotes += numNotes<100 ? 1.0f : 2.0f;
-					if (inGGT)
-						scoredNotes += numNotes<100 ? .2f : .4f;
-					++numNotes;
-					break;
+			TJACommand cmd = iNotation[i];
 
-				default:;
+			switch (cmd.iCommandType)
+			{
+			case TJAFormat.COMMAND_TYPE_BRANCHSTART:
+				i = cmd.iArgs[5];	// Go to the index of COMMAND_TYPE_M
+				continue;
+
+			case TJAFormat.COMMAND_TYPE_N:	// Encounters other difficulty
+			case TJAFormat.COMMAND_TYPE_E:	// Encounters other difficulty
+			case TJAFormat.COMMAND_TYPE_BRANCHEND:
+				i = cmd.iArgs[6];
+				continue;
+
+			case TJAFormat.COMMAND_TYPE_GOGOSTART:
+				inGGT = true;
+				break;
+
+			case TJAFormat.COMMAND_TYPE_GOGOEND:
+				inGGT = false;
+				break;
+				
+			// other cases are ignored
+			}
+
+			if (TJAFormat.COMMAND_TYPE_NOTE == cmd.iCommandType) {
+				for (int note : cmd.iArgs) {
+					switch (note) {
+					case 1:
+					case 2:
+						scoredNotes += numNotes < 100 ? 0.5f : 1.0f;
+						if (inGGT)
+							scoredNotes += numNotes < 100 ? .1f : .2f;
+						++numNotes;
+						break;
+
+					case 3:
+					case 4:
+						scoredNotes += numNotes < 100 ? 1.0f : 2.0f;
+						if (inGGT)
+							scoredNotes += numNotes < 100 ? .2f : .4f;
+						++numNotes;
+						break;
+
+					default:
+						;
+					}
 				}
 			}
 
 			i++;
 		}
 		return scoredNotes;
-	}
-	
-	private static TJACommand findCommand(int cmdType, TJACommand[] cmds)
-	{
-		for (TJACommand cmd : cmds)
-		{
-			if (cmd.iCommandType == cmdType) return cmd;
-		}
-		return null;
 	}
 	
 	private boolean compileNext()

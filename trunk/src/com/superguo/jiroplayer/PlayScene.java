@@ -151,7 +151,7 @@ public class PlayScene extends O2Scene {
 			if (e.getY()>iDrumY)
 			{
 				int x = (int) e.getX();
-				if (iDrumX1<e.getX() && e.getX()<iDrumX2)
+				if (iDrumX1<x && x<iDrumX2)
 					iSoundPool.play(iSoundDong, 1.0f, 1.0f, 10, 0, 1.0f);
 				else
 					iSoundPool.play(iSoundKa, 1.0f, 1.0f, 10, 0, 1.0f);

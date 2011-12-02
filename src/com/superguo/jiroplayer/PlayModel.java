@@ -58,13 +58,9 @@ public final class PlayModel {
 	
 	public final static int MAX_COMPILED_PARA = 3;
 
-	private final static class NoteOffset
-	{
-		public int 		iNoteType;		// see PlayDisplayInfo
-		public short 	iTimeOffset;	// time offset since its para
-		public int 		iPosOffset;
-	}
+
 	
+	/*
 	private final class RuntimePara
 	{
 		public int 		iIndexOfTJAPara;
@@ -106,7 +102,7 @@ public final class PlayModel {
 			return (iNumGood * 2.0f + iNumNormal) / (iNumTotal * 2.0f);  
 		}
 	}
-	
+	*/
 	private PlayDisplayInfo iDisplayInfo = new PlayDisplayInfo();
 
 	private TJAFormat iTJA;
@@ -123,18 +119,101 @@ public final class PlayModel {
 	private int iNumHitNotes;
 	private int iNumTotalRolling;
 
+	/*
 	private RuntimePara[] iRuntimeParas = 
 		new RuntimePara[MAX_COMPILED_PARA];
 	private int iNumAvailableRuntimeParas;
 	private int iLastCompiledRuntimeParaSlot;	// 0 ~ iNumAvailableRuntimeParas - 1
 	private int iIndexOfLastCompiledTJAPara;	// 0 ~ iParas.length - 1 
+	*/
 	private int iMeasureX;
 	private int iMeasureY;
 	private float iScroll;
 	private int iJustPlayingParaSlot;	// 0 ~ iNumAvailableRuntimeParas - 1
 	private int iInPlayingParaSlot;
 	
-	private SectionStat iSectionStat = new SectionStat();
+	// private SectionStat iSectionStat = new SectionStat();
+
+	private final static class NoteOffset
+	{
+		public int 		iNoteType;		// see PlayDisplayInfo
+		public short 	iTimeOffset;	// time offset since its para
+		public int 		iPosOffset;
+	}
+	
+	private final static class Bar
+	{
+		/** The duration in microseconds */
+		public long iDuration;	
+		
+		/** The length in pixels */
+		public int iLength;		
+		
+		/** The speed of one note in pixels per 1000 seconds */
+		public int iSpeed;
+		
+		/** The tail note at the end of this bar */
+		public int iTailNote;
+		public NoteOffset[] iNoteOffsets = new NoteOffset[PlayDisplayInfo.MAX_NOTE_POS];
+		public int iNumNotes;
+	}
+	
+	private float iCompilingBPM;
+	private int iCompilingMeasureX;
+	private int iCompilingMeasureY;
+	
+	/** The microseconds per beat = 60 000 000 / BPM */
+	private long iCompilingMicSecPerBeat;
+	
+	/** The speed of one note in pixels per 1000 seconds */
+	private int iCompilingSpeed;
+	
+	/** = BEAT_DIST * scroll */
+	private double iCompilingBeatDist;
+	
+	private final void calcCompilingSpeed()
+	{
+		iCompilingSpeed = (int) (iCompilingBeatDist * 2 * iCompilingBPM / 60 * 1000 );
+	}
+	
+	private final void setComplingBPM(float BPM)
+	{
+		iCompilingBPM = BPM;
+		iCompilingMicSecPerBeat = (long) (60000000 / BPM);
+		calcCompilingSpeed();
+	}
+	
+	private final void setCompilingScroll(float scroll)
+	{
+		iCompilingBeatDist = BEAT_DIST * scroll;
+		calcCompilingSpeed();
+	}
+
+	// Compiles a bar of notes
+	// iCompilingMicSecPerBeat = 60 000 000 / BPM 
+	private void compileBar(Bar bar, int barNotes[], int tailNotePrevBar)
+	{
+		// The number of beats in a bar is measureX / measureY
+		double numBeats = (double)iCompilingMeasureX / iCompilingMeasureY;
+		
+		// The duration in minutes is numBeats / BPM
+		// To convert the minutes to microseconds, just make it times 60 000 000
+		bar.iDuration = (long) (iCompilingMicSecPerBeat * numBeats);
+
+		// When scroll is 1.0, one beat is two notes' length in pixels
+		bar.iLength = (int) (iCompilingBeatDist * 2 * numBeats);
+		
+		bar.iSpeed = iCompilingSpeed; // = bar.iLength / bar.iDuration * 1e9
+		
+		switch (tailNotePrevBar)
+		{
+		case 5:
+		case 6:
+		case 7:
+			// rolling is not complete
+			
+		}
+	}
 
 	public void prepare(TJAFormat aTJA, int aCourseIndex)
 	{
@@ -156,13 +235,17 @@ public final class PlayModel {
 		
 		// reset runtime values
 		iCurrentBPM = iCourse.iBPM;
-		iNumAvailableRuntimeParas = 0;
-		iLastCompiledRuntimeParaSlot = -1;
-		iMeasureX = iMeasureY = 4;
 		iScroll = 1.0f;
+		// iNumAvailableRuntimeParas = 0;
+		// iLastCompiledRuntimeParaSlot = -1;
+		iMeasureX = iMeasureY = 4;
+		setComplingBPM(iCurrentBPM);
+		setCompilingScroll(iScroll);
+		iCompilingMeasureX = iMeasureX;
+		iCompilingMeasureY = iMeasureY;
 
 		// reset section
-		iSectionStat.reset();
+		// iSectionStat.reset();
 		
 		// reset playing para
 		iJustPlayingParaSlot = iInPlayingParaSlot = -1;
@@ -269,6 +352,7 @@ public final class PlayModel {
 		}
 		return scoredNotes;
 	}
+	
 	/*
 	private boolean compileNext()
 	{
@@ -395,7 +479,7 @@ public final class PlayModel {
 				iLastCompiledRuntimeParaSlot + 1:
 				0;
 	}
-*/
+
 	private final float calcSpeed()
 	{
 		return doCalcSpeed(iCurrentBPM, BEAT_DIST);
@@ -405,4 +489,5 @@ public final class PlayModel {
 	{
 		return BPM * beatDist / 60;
 	}
+	*/
 }

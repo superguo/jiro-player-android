@@ -269,7 +269,7 @@ public final class PlayModel {
 		}
 		return scoredNotes;
 	}
-	
+	/*
 	private boolean compileNext()
 	{
 		int i;
@@ -395,7 +395,7 @@ public final class PlayModel {
 				iLastCompiledRuntimeParaSlot + 1:
 				0;
 	}
-
+*/
 	private final float calcSpeed()
 	{
 		return doCalcSpeed(iCurrentBPM, BEAT_DIST);

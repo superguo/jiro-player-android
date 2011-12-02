@@ -30,24 +30,6 @@
 		<nature>com.android.ide.eclipse.adt.AndroidNature</nature>
 		<nature>org.eclipse.jdt.core.javanature</nature>
 	</natures>
-	<linkedResources>
-		<link>
-			<name>jiro-player-src</name>
-			<type>2</type>
-			<locationURI>MAINPROJ_LOC/src</locationURI>
-		</link>
-	</linkedResources>
-	<filteredResources>
-		<filter>
-			<id>1302937597759</id>
-			<name>jiro-player-src/com/superguo/jiroplayer</name>
-			<type>5</type>
-			<matcher>
-				<id>org.eclipse.ui.ide.multiFilter</id>
-				<arguments>1.0-name-matches-false-false-TJAFormat.java</arguments>
-			</matcher>
-		</filter>
-	</filteredResources>
 	<variableList>
 		<variable>
 			<name>MAINPROJ_LOC</name>

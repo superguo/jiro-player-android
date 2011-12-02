@@ -2,7 +2,7 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="src" path="gen"/>
-	<classpathentry kind="src" path="jiro-player-src"/>
 	<classpathentry kind="con" path="com.android.ide.eclipse.adt.ANDROID_FRAMEWORK"/>
-	<classpathentry kind="output" path="bin"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/jiro-player-android"/>
+	<classpathentry kind="output" path="bin/classes"/>
 </classpath>

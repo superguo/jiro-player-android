@@ -134,14 +134,14 @@ public final class PlayModel {
 	
 	// private SectionStat iSectionStat = new SectionStat();
 
-	private final static class NoteOffset
+	private final static class CompiledNote
 	{
 		public int 		iNoteType;		// see PlayDisplayInfo
-		public short 	iTimeOffset;	// time offset since its para
+		public short 	iTimeOffset;	// time offset in milliseconds since its begin of bar
 		public int 		iPosOffset;
 	}
 	
-	private final static class Bar
+	private final static class CompiledBar
 	{
 		/** The duration in microseconds */
 		public long iDuration;	
@@ -154,8 +154,19 @@ public final class PlayModel {
 		
 		/** The tail note at the end of this bar */
 		public int iTailNote;
-		public NoteOffset[] iNoteOffsets = new NoteOffset[PlayDisplayInfo.MAX_NOTE_POS];
-		public int iNumNotes;
+		
+		public CompiledNote[] iCompiledNotes = new CompiledNote[PlayDisplayInfo.MAX_NOTE_POS];
+		
+		/** The number of compiled notes. The note 0 is omitted if not rolling */
+		public int iNumCompiledNotes;
+		
+		public void addCompiledNote(int noteType, int origIndex, int origTotal)
+		{
+			CompiledNote noteOffset = iCompiledNotes[iNumCompiledNotes++];
+			noteOffset.iNoteType 	= noteType;
+			noteOffset.iTimeOffset = (short) (iDuration * origIndex / origTotal / 1000);
+			noteOffset.iPosOffset 	=  iLength * origIndex / origTotal;
+		}
 	}
 	
 	private float iCompilingBPM;
@@ -191,7 +202,7 @@ public final class PlayModel {
 
 	// Compiles a bar of notes
 	// iCompilingMicSecPerBeat = 60 000 000 / BPM 
-	private void compileBar(Bar bar, int barNotes[], int tailNotePrevBar)
+	private void compileBar(CompiledBar bar, int barNotes[], int tailNotePrevBar)
 	{
 		// The number of beats in a bar is measureX / measureY
 		double numBeats = (double)iCompilingMeasureX / iCompilingMeasureY;
@@ -202,16 +213,41 @@ public final class PlayModel {
 
 		// When scroll is 1.0, one beat is two notes' length in pixels
 		bar.iLength = (int) (iCompilingBeatDist * 2 * numBeats);
-		
+
 		bar.iSpeed = iCompilingSpeed; // = bar.iLength / bar.iDuration * 1e9
+
+		bar.iNumCompiledNotes = 0;
 		
-		switch (tailNotePrevBar)
+		int numNotes = barNotes.length;
+		CompiledNote noteOffset = bar.iCompiledNotes[bar.iNumCompiledNotes++];
+		noteOffset.iNoteType = PlayDisplayInfo.NOTE_SEPARATOR;
+		noteOffset.iTimeOffset = 0;
+		noteOffset.iPosOffset = 0;
+		
+		for (int i=0; i<numNotes; ++i)
 		{
-		case 5:
-		case 6:
-		case 7:
-			// rolling is not complete
-			
+			int note = barNotes[i];
+			switch (tailNotePrevBar)
+			{
+			case 5:	// len-da (combo)
+			case 6:	// Big len-da
+			case 7:	// Balloon
+			case 9:	// Potato
+				// rolling is not complete last time
+				if (note==8)	// 8 means finished
+				{
+					bar.addCompiledNote(PlayDisplayInfo.NOTE_STOP_ROLLING, i, numNotes);
+				}
+				break;
+				
+			default:
+				switch (note)
+				{
+				case 0:	break;
+				default:
+					bar.addCompiledNote(note, i, numNotes);
+				}
+			}
 		}
 	}
 

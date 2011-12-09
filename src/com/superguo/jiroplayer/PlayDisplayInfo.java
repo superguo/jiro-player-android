@@ -8,20 +8,17 @@ public final class PlayDisplayInfo
 		public int iNotePos;
 	}
 	public final static int MAX_NOTE_POS = 64;
-	public final static int NOTE_SEPARATOR		= 0;
+	public final static int NOTE_SEPARATOR		= -1;
 	public final static int NOTE_FACE 			= 1;
 	public final static int NOTE_SIDE 			= 2;
 	public final static int NOTE_BIG_FACE 		= 3;
 	public final static int NOTE_BIG_SIDE 		= 4;
-	public final static int NOTE_LENDA_HEAD 	= 5;
-	public final static int NOTE_LENDA_BODY 	= 6;
-	public final static int NOTE_LENDA_TAIL 	= 6;
-	public final static int NOTE_BIG_LENDA_HEAD = 7;
-	public final static int NOTE_BIG_LENDA_BODY = 8;
-	public final static int NOTE_BIG_LENDA_TAIL = 9;
-	public final static int NOTE_BALOON_HEAD	= 10;
-	public final static int NOTE_BALOON_BODY	= 11;
-	
+	public final static int NOTE_START_ROLLING_LENDA_ 		= 5;
+	public final static int NOTE_START_ROLLING_BIG_LENDA 	= 6;
+	public final static int NOTE_START_ROLLING_BALOON		= 7;
+	public final static int NOTE_START_ROLLING_POTATO		= 9;
+	public final static int NOTE_STOP_ROLLING	= 8;
+
 	public final static int BRANCH_NONE			= 0;
 	public final static int BRANCH_EASY			= 1;
 	public final static int BRANCH_NORMAL		= 2;

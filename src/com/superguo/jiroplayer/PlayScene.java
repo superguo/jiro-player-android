@@ -61,7 +61,7 @@ public class PlayScene extends O2Scene {
 		iSoundKa  	= iSoundPool.load(director.getContext(), R.raw.ka, 1);
 		O2TextureManager tmgr = director.getTextureManager();
 		O2SpriteManager smgr = director.getSpriteManager();
-		//iBgSprite 			= new O2Sprite(mgr.createFromResource(R.drawable.bg, true));
+		//iBgSprite 			= new O2Sprite(tmgr.createFromResource(R.drawable.bg, true));
 		//smgr.addSprite(iBgSprite);
 		iMTaikoSprite		= new O2Sprite(tmgr.createFromResource(R.drawable.mtaiko, true));
 		iMTaikoSprite.iValign = O2Texture.VALIGN_MIDDLE;

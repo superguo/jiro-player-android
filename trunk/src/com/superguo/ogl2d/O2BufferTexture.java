@@ -24,6 +24,10 @@ public final class O2BufferTexture extends O2Texture {
 		tex = intArr[0];
 		fbo = intArr[1];
 		depthBuf = intArr[2];
+	}
+
+	public final void begin()
+	{
 
 		// use frame buffer
 		GLES11Ext.glBindFramebufferOES(GLES11Ext.GL_FRAMEBUFFER_OES, fbo);
@@ -57,19 +61,11 @@ public final class O2BufferTexture extends O2Texture {
         GLES10.glTranslatef(0.375f, height + 0.375f, 0.0f);
         GLES10.glRotatef(180.0f, 1.0f, 0.0f, 0.0f);
         
-		GLES11Ext.glBindFramebufferOES(GLES11Ext.GL_FRAMEBUFFER_OES, 0);
-	}
-
-	public final void begin()
-	{
-		GLES10.glBindTexture(GLES10.GL_TEXTURE_2D, 0);
-		GLES11Ext.glBindFramebufferOES(GLES11Ext.GL_FRAMEBUFFER_OES, fbo);
 	}
 
 	public final void end()
 	{
 		GLES11Ext.glBindFramebufferOES(GLES11Ext.GL_FRAMEBUFFER_OES, 0);
-		GLES10.glBindTexture(GLES10.GL_TEXTURE_2D, tex);
 	}
 	
 	@Override

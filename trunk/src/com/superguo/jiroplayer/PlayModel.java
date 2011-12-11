@@ -49,7 +49,7 @@ public final class PlayModel {
 	};
 	public final static int MAX_LEVEL_OF[] = { 5, 7, 8, 10 };
 	public final static int MAX_DIFFICULITES = 4;
-	public final static long FIXED_OFFSET = -2000;	// start after 4 seconds
+	public final static long FIXED_TIME_OFFSET = -2000;	// start after 2 seconds
 	public final static int BEAT_DIST = 64;	// pixel distance between two beats
 	
 	public final static int HIT_NONE = 0;
@@ -111,9 +111,7 @@ public final class PlayModel {
 	private int iScoreInit;
 	private int iScoreDiff;
 	
-	private float iCurrentBPM;
 	private long iOffsetTime;		// offset since the first note paragraph
-	private long iStartedSysTime;	// system time when started
 	private int iNumMaxCombo;
 	private int iNumMaxNotes;
 	private int iNumHitNotes;
@@ -126,9 +124,6 @@ public final class PlayModel {
 	private int iLastCompiledRuntimeParaSlot;	// 0 ~ iNumAvailableRuntimeParas - 1
 	private int iIndexOfLastCompiledTJAPara;	// 0 ~ iParas.length - 1 
 	*/
-	private int iMeasureX;
-	private int iMeasureY;
-	private float iScroll;
 	private int iJustPlayingParaSlot;	// 0 ~ iNumAvailableRuntimeParas - 1
 	private int iInPlayingParaSlot;
 	
@@ -152,8 +147,8 @@ public final class PlayModel {
 		/** The speed of one note in pixels per 1000 seconds */
 		public int iSpeed;
 		
-		/** The tail note at the end of this bar */
-		public int iTailNote;
+		/** Indicates whether the rolling is still on at the end of this bar */
+		public boolean iLastNoteRolling;
 		
 		public CompiledNote[] iCompiledNotes = new CompiledNote[PlayDisplayInfo.MAX_NOTE_POS];
 		
@@ -202,7 +197,7 @@ public final class PlayModel {
 
 	// Compiles a bar of notes
 	// iCompilingMicSecPerBeat = 60 000 000 / BPM 
-	private void compileBar(CompiledBar bar, int barNotes[], int tailNotePrevBar)
+	private void compCmdNote(CompiledBar bar, int barNotes[], boolean isPrevNoteRolling)
 	{
 		// The number of beats in a bar is measureX / measureY
 		double numBeats = (double)iCompilingMeasureX / iCompilingMeasureY;
@@ -227,28 +222,32 @@ public final class PlayModel {
 		for (int i=0; i<numNotes; ++i)
 		{
 			int note = barNotes[i];
-			switch (tailNotePrevBar)
-			{
-			case 5:	// len-da (combo)
-			case 6:	// Big len-da
-			case 7:	// Balloon
-			case 9:	// Potato
-				// rolling is not complete last time
+			if (isPrevNoteRolling)
+			{	// rolling is not complete last time
 				if (note==8)	// 8 means finished
 				{
+					isPrevNoteRolling = false;
 					bar.addCompiledNote(PlayDisplayInfo.NOTE_STOP_ROLLING, i, numNotes);
 				}
-				break;
-				
-			default:
+			}
+			else
+			{
 				switch (note)
 				{
 				case 0:	break;
+				case 5:	// len-da (combo)
+				case 6:	// Big len-da
+				case 7:	// Balloon
+				case 9:	// Potato
+					isPrevNoteRolling = true;
+
 				default:
 					bar.addCompiledNote(note, i, numNotes);
 				}
 			}
 		}
+		
+		bar.iLastNoteRolling = isPrevNoteRolling;
 	}
 
 	public void prepare(TJAFormat aTJA, int aCourseIndex)
@@ -268,17 +267,12 @@ public final class PlayModel {
 
 		// reset some counters
 		iNumMaxCombo = iNumMaxNotes = iNumHitNotes = iNumTotalRolling = 0;
-		
+
 		// reset runtime values
-		iCurrentBPM = iCourse.iBPM;
-		iScroll = 1.0f;
-		// iNumAvailableRuntimeParas = 0;
-		// iLastCompiledRuntimeParaSlot = -1;
-		iMeasureX = iMeasureY = 4;
-		setComplingBPM(iCurrentBPM);
-		setCompilingScroll(iScroll);
-		iCompilingMeasureX = iMeasureX;
-		iCompilingMeasureY = iMeasureY;
+		setComplingBPM(iCourse.iBPM);
+		setCompilingScroll(1.0f);
+		iCompilingMeasureX = 4;
+		iCompilingMeasureY = 4;
 
 		// reset section
 		// iSectionStat.reset();
@@ -289,11 +283,10 @@ public final class PlayModel {
 
 	public void start()
 	{
-		iOffsetTime = FIXED_OFFSET + (long)(iTJA.iOffset * 1000);
-		iStartedSysTime = android.os.SystemClock.uptimeMillis(); 
+		iOffsetTime = FIXED_TIME_OFFSET + (long)(iTJA.iOffset * 1000);
 	}
 
-	public PlayDisplayInfo onHit(int hit)
+	public PlayDisplayInfo onEvent(long timeSinceStarted, int hit)
 	{
 		// TODO
 		return iDisplayInfo;	

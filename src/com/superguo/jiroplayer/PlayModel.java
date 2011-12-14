@@ -138,6 +138,8 @@ public final class PlayModel {
 	
 	private final static class CompiledBar
 	{
+		public TJACommand[] iRunTimeCommand;	// All commands that cannot be executed in compile time will be here
+		
 		/** The duration in microseconds */
 		public long iDuration;	
 		
@@ -146,9 +148,6 @@ public final class PlayModel {
 		
 		/** The speed of one note in pixels per 1000 seconds */
 		public int iSpeed;
-		
-		/** Indicates whether the rolling is still on at the end of this bar */
-		public boolean iLastNoteRolling;
 		
 		public CompiledNote[] iCompiledNotes = new CompiledNote[PlayDisplayInfo.MAX_NOTE_POS];
 		
@@ -177,6 +176,8 @@ public final class PlayModel {
 	/** = BEAT_DIST * scroll */
 	private double iCompilingBeatDist;
 	
+	private boolean iCompilingLastNoteRolling;
+	
 	private final void calcCompilingSpeed()
 	{
 		iCompilingSpeed = (int) (iCompilingBeatDist * 2 * iCompilingBPM / 60 * 1000 );
@@ -197,7 +198,7 @@ public final class PlayModel {
 
 	// Compiles a bar of notes
 	// iCompilingMicSecPerBeat = 60 000 000 / BPM 
-	private void compCmdNote(CompiledBar bar, int barNotes[], boolean isPrevNoteRolling)
+	private void compCmdNote(CompiledBar bar, int barNotes[])
 	{
 		// The number of beats in a bar is measureX / measureY
 		double numBeats = (double)iCompilingMeasureX / iCompilingMeasureY;
@@ -219,14 +220,17 @@ public final class PlayModel {
 		noteOffset.iTimeOffset = 0;
 		noteOffset.iPosOffset = 0;
 		
+		// transfer field variable to local variable
+		boolean isLastNoteRolling = iCompilingLastNoteRolling;
+		
 		for (int i=0; i<numNotes; ++i)
 		{
 			int note = barNotes[i];
-			if (isPrevNoteRolling)
+			if (isLastNoteRolling)
 			{	// rolling is not complete last time
 				if (note==8)	// 8 means finished
 				{
-					isPrevNoteRolling = false;
+					isLastNoteRolling = false;
 					bar.addCompiledNote(PlayDisplayInfo.NOTE_STOP_ROLLING, i, numNotes);
 				}
 			}
@@ -234,20 +238,23 @@ public final class PlayModel {
 			{
 				switch (note)
 				{
-				case 0:	break;
+				case 0:
+				case 8:	// Bad note here
+					break;
+
 				case 5:	// len-da (combo)
 				case 6:	// Big len-da
 				case 7:	// Balloon
 				case 9:	// Potato
-					isPrevNoteRolling = true;
-
+					isLastNoteRolling = true;
 				default:
 					bar.addCompiledNote(note, i, numNotes);
 				}
 			}
 		}
 		
-		bar.iLastNoteRolling = isPrevNoteRolling;
+		// transfer local variable back to field variable
+		iCompilingLastNoteRolling = isLastNoteRolling;
 	}
 
 	public void prepare(TJAFormat aTJA, int aCourseIndex)
@@ -273,7 +280,8 @@ public final class PlayModel {
 		setCompilingScroll(1.0f);
 		iCompilingMeasureX = 4;
 		iCompilingMeasureY = 4;
-
+		iCompilingLastNoteRolling = false;
+		
 		// reset section
 		// iSectionStat.reset();
 		

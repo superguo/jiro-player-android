@@ -1,4 +1,9 @@
+/** PlayModel the playing model for TJAFormat
+ * @author superguo
+ */
 package com.superguo.jiroplayer;
+
+import java.util.LinkedList;
 
 import com.superguo.jiroplayer.TJAFormat.*;
 
@@ -56,7 +61,7 @@ public final class PlayModel {
 	public final static int HIT_FACE = 1;
 	public final static int HIT_SIDE = 2;
 	
-	public final static int MAX_COMPILED_PARA = 3;
+	public final static int MAX_PREPROCESSED_PARA = 3;
 
 
 	
@@ -117,28 +122,144 @@ public final class PlayModel {
 	private int iNumHitNotes;
 	private int iNumTotalRolling;
 
-	/*
-	private RuntimePara[] iRuntimeParas = 
-		new RuntimePara[MAX_COMPILED_PARA];
-	private int iNumAvailableRuntimeParas;
-	private int iLastCompiledRuntimeParaSlot;	// 0 ~ iNumAvailableRuntimeParas - 1
-	private int iIndexOfLastCompiledTJAPara;	// 0 ~ iParas.length - 1 
-	*/
-	private int iJustPlayingParaSlot;	// 0 ~ iNumAvailableRuntimeParas - 1
-	private int iInPlayingParaSlot;
+	private Preprocessor iPreprocessor = new Preprocessor();
+	private Bar[] iBar = new Bar[MAX_PREPROCESSED_PARA];
+	private int iPlayingBarIndex;
+	private int iPreprocessedCommandIndex;
 	
 	// private SectionStat iSectionStat = new SectionStat();
 
-	private final static class CompiledNote
+	final static class Preprocessor
+	{
+		/** The pre-processing BPM */
+		public float iBPM;
+		
+		/** The pre-processing X in MEASURE X/Y */
+		public int iMeasureX;
+		
+		/** The pre-processing Y in MEASURE X/Y */
+		public int iMeasureY;
+		
+		/** The pre-processing  microseconds per beat = 60 000 000 / BPM */
+		public long iMicSecPerBeat;
+		
+		/** The pre-processing speed of one note in pixels per 1000 seconds */
+		public int iSpeed;
+		
+		/** The pre-processing beat distance = BEAT_DIST * scroll */
+		public double iBeatDist;
+		
+		/** The pre-processing flag indicating if the last pre-processed note is rolling */
+		public boolean iLastNoteRolling;
+
+		/** Reset all pre-processing state variables */
+		public final void reset(float aBMP)
+		{
+			setBPM(aBMP);
+			setScroll(1.0f);
+			iMeasureX = 4;
+			iMeasureY = 4;
+			iLastNoteRolling = false;
+		}
+		
+		public final void calcSpeed()
+		{
+			iSpeed = (int) (iBeatDist * 2 * iBPM / 60 * 1000 );
+		}
+		
+		public final void setBPM(float aBPM)
+		{
+			iBPM = aBPM;
+			iMicSecPerBeat = (long) (60000000 / aBPM);
+			calcSpeed();
+		}
+		
+		public final void setScroll(float scroll)
+		{
+			iBeatDist = BEAT_DIST * scroll;
+			calcSpeed();
+		}
+
+		public final void preprocessCmdNote(Bar bar, int[] barNotes)
+		{
+			// The number of beats in a bar is measureX / measureY
+			double numBeats = (double)iMeasureX / iMeasureY;
+			
+			// The duration in minutes is numBeats / BPM
+			// To convert the minutes to microseconds, just make it times 60 000 000
+			bar.iDuration = (long) (iMicSecPerBeat * numBeats);
+		
+			// When scroll is 1.0, one beat is two notes' length in pixels
+			bar.iLength = (int) (iBeatDist * 2 * numBeats);
+		
+			bar.iSpeed = iSpeed; // = bar.iLength / bar.iDuration * 1e9
+		
+			bar.iNumPreprocessedNotes = 0;
+			
+			int numNotes = barNotes.length;
+			PreprocessedNote noteOffset = bar.iNotes[bar.iNumPreprocessedNotes++];
+			noteOffset.iNoteType = PlayDisplayInfo.NOTE_SEPARATOR;
+			noteOffset.iTimeOffset = 0;
+			noteOffset.iPosOffset = 0;
+			
+			// transfer field variable to local variable
+			boolean isLastNoteRolling = iLastNoteRolling;
+			
+			for (int i=0; i<numNotes; ++i)
+			{
+				int note = barNotes[i];
+				if (isLastNoteRolling)
+				{	// rolling is not complete last time
+					if (note==8)	// 8 means finished
+					{
+						isLastNoteRolling = false;
+						bar.addCompiledNote(PlayDisplayInfo.NOTE_STOP_ROLLING, i, numNotes);
+					}
+				}
+				else
+				{
+					switch (note)
+					{
+					case 5:	// len-da (combo)
+					case 6:	// Big len-da
+					case 7:	// Balloon
+					case 9:	// Potato
+						isLastNoteRolling = true;
+						// DO NOT break here
+					case 1:
+					case 2:
+					case 3:
+					case 4:
+						bar.addCompiledNote(note, i, numNotes);
+						break;
+		
+					case 0:
+					case 8:	// Bad note here
+					default:
+						break;
+					}
+				}
+			}
+			
+			// transfer local variable back to field variable
+			iLastNoteRolling = isLastNoteRolling;
+		}
+	}
+	
+	final static class PreprocessedNote
 	{
 		public int 		iNoteType;		// see PlayDisplayInfo
 		public short 	iTimeOffset;	// time offset in milliseconds since its begin of bar
 		public int 		iPosOffset;
 	}
 	
-	private final static class CompiledBar
+	final static class Bar
 	{
-		public TJACommand[] iRunTimeCommand;	// All commands that cannot be executed in compile time will be here
+		public boolean iPreprocessed;
+		
+		public TJACommand[] iUnprocessedCommand;	// All commands that cannot be preprocessed in compile time will be here
+		
+		// The fields below are set by compCmdNote
 		
 		/** The duration in microseconds */
 		public long iDuration;	
@@ -149,114 +270,69 @@ public final class PlayModel {
 		/** The speed of one note in pixels per 1000 seconds */
 		public int iSpeed;
 		
-		public CompiledNote[] iCompiledNotes = new CompiledNote[PlayDisplayInfo.MAX_NOTE_POS];
+		public PreprocessedNote[] iNotes = new PreprocessedNote[PlayDisplayInfo.MAX_NOTE_POS];
 		
 		/** The number of compiled notes. The note 0 is omitted if not rolling */
-		public int iNumCompiledNotes;
+		public int iNumPreprocessedNotes;
 		
 		public void addCompiledNote(int noteType, int origIndex, int origTotal)
 		{
-			CompiledNote noteOffset = iCompiledNotes[iNumCompiledNotes++];
+			PreprocessedNote noteOffset = iNotes[iNumPreprocessedNotes++];
 			noteOffset.iNoteType 	= noteType;
 			noteOffset.iTimeOffset = (short) (iDuration * origIndex / origTotal / 1000);
 			noteOffset.iPosOffset 	=  iLength * origIndex / origTotal;
 		}
 	}
-	
-	private float iCompilingBPM;
-	private int iCompilingMeasureX;
-	private int iCompilingMeasureY;
-	
-	/** The microseconds per beat = 60 000 000 / BPM */
-	private long iCompilingMicSecPerBeat;
-	
-	/** The speed of one note in pixels per 1000 seconds */
-	private int iCompilingSpeed;
-	
-	/** = BEAT_DIST * scroll */
-	private double iCompilingBeatDist;
-	
-	private boolean iCompilingLastNoteRolling;
-	
-	private final void calcCompilingSpeed()
+
+	private static int nextIndexOfBar(int index)
 	{
-		iCompilingSpeed = (int) (iCompilingBeatDist * 2 * iCompilingBPM / 60 * 1000 );
+		++index;
+		if (index==MAX_PREPROCESSED_PARA)
+			index=0;
+		return index;
 	}
 	
-	private final void setComplingBPM(float BPM)
+	private boolean preprocessNextBar()
 	{
-		iCompilingBPM = BPM;
-		iCompilingMicSecPerBeat = (long) (60000000 / BPM);
-		calcCompilingSpeed();
-	}
-	
-	private final void setCompilingScroll(float scroll)
-	{
-		iCompilingBeatDist = BEAT_DIST * scroll;
-		calcCompilingSpeed();
-	}
-
-	// Compiles a bar of notes
-	// iCompilingMicSecPerBeat = 60 000 000 / BPM 
-	private void compCmdNote(CompiledBar bar, int barNotes[])
-	{
-		// The number of beats in a bar is measureX / measureY
-		double numBeats = (double)iCompilingMeasureX / iCompilingMeasureY;
+		// Get the next unprocessed bar
+		int index;
+		for (	index=nextIndexOfBar(iPlayingBarIndex);
+				index!=iPlayingBarIndex;
+				index=nextIndexOfBar(iPlayingBarIndex))
+		{	if ( ! iBar[index].iPreprocessed ) break;	}
+		if (index==iPlayingBarIndex) return false;
 		
-		// The duration in minutes is numBeats / BPM
-		// To convert the minutes to microseconds, just make it times 60 000 000
-		bar.iDuration = (long) (iCompilingMicSecPerBeat * numBeats);
-
-		// When scroll is 1.0, one beat is two notes' length in pixels
-		bar.iLength = (int) (iCompilingBeatDist * 2 * numBeats);
-
-		bar.iSpeed = iCompilingSpeed; // = bar.iLength / bar.iDuration * 1e9
-
-		bar.iNumCompiledNotes = 0;
+		// Init the bar value
+		Bar bar = iBar[index];
+		bar.iPreprocessed = false;
+		LinkedList<TJACommand> unprocCmd = new LinkedList<TJACommand>();
 		
-		int numNotes = barNotes.length;
-		CompiledNote noteOffset = bar.iCompiledNotes[bar.iNumCompiledNotes++];
-		noteOffset.iNoteType = PlayDisplayInfo.NOTE_SEPARATOR;
-		noteOffset.iTimeOffset = 0;
-		noteOffset.iPosOffset = 0;
-		
-		// transfer field variable to local variable
-		boolean isLastNoteRolling = iCompilingLastNoteRolling;
-		
-		for (int i=0; i<numNotes; ++i)
+		// Transfer the field reference to local reference 
+		TJACommand[] notation = iNotation;
+		for(;	!bar.iPreprocessed &&
+				++iPreprocessedCommandIndex < notation.length;)
 		{
-			int note = barNotes[i];
-			if (isLastNoteRolling)
-			{	// rolling is not complete last time
-				if (note==8)	// 8 means finished
-				{
-					isLastNoteRolling = false;
-					bar.addCompiledNote(PlayDisplayInfo.NOTE_STOP_ROLLING, i, numNotes);
-				}
-			}
-			else
+			TJACommand cmd = notation[iPreprocessedCommandIndex];
+			switch (cmd.iCommandType)
 			{
-				switch (note)
-				{
-				case 0:
-				case 8:	// Bad note here
-					break;
-
-				case 5:	// len-da (combo)
-				case 6:	// Big len-da
-				case 7:	// Balloon
-				case 9:	// Potato
-					isLastNoteRolling = true;
-				default:
-					bar.addCompiledNote(note, i, numNotes);
-				}
+			case TJAFormat.COMMAND_TYPE_NOTE:
+				iPreprocessor.preprocessCmdNote(bar, cmd.iArgs);
+				bar.iPreprocessed = true;
+				if (unprocCmd.size()>0)
+					bar.iUnprocessedCommand = 
+						unprocCmd.toArray(new TJAFormat.TJACommand[unprocCmd.size()]);
+				else
+					bar.iUnprocessedCommand = null;
+				break;
+				
+			case TJAFormat.COMMAND_TYPE_BPMCHANGE:
+				// iPreprocessor.setBPM(cmd.iArgs);
+				break;
 			}
 		}
-		
-		// transfer local variable back to field variable
-		iCompilingLastNoteRolling = isLastNoteRolling;
+		return true;
 	}
-
+	
 	public void prepare(TJAFormat aTJA, int aCourseIndex)
 	{
 		iTJA = aTJA;
@@ -275,18 +351,16 @@ public final class PlayModel {
 		// reset some counters
 		iNumMaxCombo = iNumMaxNotes = iNumHitNotes = iNumTotalRolling = 0;
 
-		// reset runtime values
-		setComplingBPM(iCourse.iBPM);
-		setCompilingScroll(1.0f);
-		iCompilingMeasureX = 4;
-		iCompilingMeasureY = 4;
-		iCompilingLastNoteRolling = false;
+		// reset preprocessor values
+		iPreprocessor.reset(iCourse.iBPM);
+		
+		iPlayingBarIndex = -1;
+		iPreprocessedCommandIndex = -1;
 		
 		// reset section
 		// iSectionStat.reset();
 		
 		// reset playing para
-		iJustPlayingParaSlot = iInPlayingParaSlot = -1;
 	}
 
 	public void start()

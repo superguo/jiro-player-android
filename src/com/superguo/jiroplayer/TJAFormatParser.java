@@ -211,7 +211,12 @@ public final class TJAFormatParser
 			fields = iLine.split("\\s");
 			if (fields.length!=2)
 				throwEx("Unknown #BPMCHANGE command");
-			iParsedCommands.add(new TJACommand(TJAFormat.COMMAND_TYPE_BPMCHANGE));
+			TJACommand cmd = new TJACommand(TJAFormat.COMMAND_TYPE_BPMCHANGE);
+			cmd.iArgs = new int[1];
+			float arg = Float.parseFloat(fields[1]);
+			arg = (float) (Math.floor(arg*1000)/1000);
+			cmd.iArgs[0] = Float.floatToIntBits(arg);
+			iParsedCommands.add(cmd);
 		}
 		else if (iLine.equals("#GOGOSTART"))
 		{

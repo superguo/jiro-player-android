@@ -3,7 +3,6 @@
  */
 package com.superguo.jiroplayer;
 
-import java.util.LinkedList;
 
 import com.superguo.jiroplayer.TJAFormat.*;
 
@@ -122,196 +121,13 @@ public final class PlayModel {
 	private int iNumHitNotes;
 	private int iNumTotalRolling;
 
-	private Preprocessor iPreprocessor = new Preprocessor();
+	private PlayPreprocessor iPreprocessor = new PlayPreprocessor();
 	private Bar[] iBar = new Bar[MAX_PREPROCESSED_PARA];
 	private int iPlayingBarIndex;
 	private int iPreprocessedCommandIndex;
 	
 	// private SectionStat iSectionStat = new SectionStat();
 
-	final static class Preprocessor
-	{
-		/** The pre-processing BPM */
-		public float iBPM;
-		
-		/** The pre-processing X in MEASURE X/Y */
-		public int iMeasureX;
-		
-		/** The pre-processing Y in MEASURE X/Y */
-		public int iMeasureY;
-		
-		/** The pre-processing  microseconds per beat = 60 000 000 / BPM */
-		public long iMicSecPerBeat;
-		
-		/** The pre-processing speed of one note in pixels per 1000 seconds */
-		public int iSpeed;
-		
-		/** The pre-processing beat distance = BEAT_DIST * scroll */
-		public double iBeatDist;
-		
-		/** The pre-processing flag indicating if the last pre-processed note is rolling */
-		public boolean iLastNoteRolling;
-
-		/** Reset all pre-processing state variables */
-		public final void reset(float aBMP)
-		{
-			setBPM(aBMP);
-			setScroll(1.0f);
-			iMeasureX = 4;
-			iMeasureY = 4;
-			iLastNoteRolling = false;
-		}
-		
-		public final void calcSpeed()
-		{
-			iSpeed = (int) (iBeatDist * 2 * iBPM / 60 * 1000 );
-		}
-		
-		public final void setBPM(float aBPM)
-		{
-			iBPM = aBPM;
-			iMicSecPerBeat = (long) (60000000 / aBPM);
-			calcSpeed();
-		}
-		
-		public final void setScroll(float scroll)
-		{
-			iBeatDist = BEAT_DIST * scroll;
-			calcSpeed();
-		}
-
-		private final void processCmdNote(Bar bar, int[] barNotes)
-		{
-			// The number of beats in a bar is measureX / measureY
-			double numBeats = (double)iMeasureX / iMeasureY;
-			
-			// The duration in minutes is numBeats / BPM
-			// To convert the minutes to microseconds, just make it times 60 000 000
-			bar.iDuration = (long) (iMicSecPerBeat * numBeats);
-		
-			// When scroll is 1.0, one beat is two notes' length in pixels
-			bar.iLength = (int) (iBeatDist * 2 * numBeats);
-		
-			bar.iSpeed = iSpeed; // = bar.iLength / bar.iDuration * 1e9
-		
-			bar.iNumPreprocessedNotes = 0;
-			
-			int numNotes = barNotes.length;
-			PreprocessedNote noteOffset = bar.iNotes[bar.iNumPreprocessedNotes++];
-			noteOffset.iNoteType = PlayDisplayInfo.NOTE_SEPARATOR;
-			noteOffset.iTimeOffset = 0;
-			noteOffset.iPosOffset = 0;
-			
-			// transfer field variable to local variable
-			boolean isLastNoteRolling = iLastNoteRolling;
-			
-			for (int i=0; i<numNotes; ++i)
-			{
-				int note = barNotes[i];
-				if (isLastNoteRolling)
-				{	// rolling is not complete last time
-					if (note==8)	// 8 means finished
-					{
-						isLastNoteRolling = false;
-						bar.addPreprocessedNote(PlayDisplayInfo.NOTE_STOP_ROLLING, i, numNotes);
-					}
-				}
-				else
-				{
-					switch (note)
-					{
-					case 5:	// len-da (combo)
-					case 6:	// Big len-da
-					case 7:	// Balloon
-					case 9:	// Potato
-						isLastNoteRolling = true;
-						// DO NOT break here
-					case 1:
-					case 2:
-					case 3:
-					case 4:
-						bar.addPreprocessedNote(note, i, numNotes);
-						break;
-		
-					case 0:
-					case 8:	// Bad note here
-					default:
-						break;
-					}
-				}
-			}
-			
-			// transfer local variable back to field variable
-			iLastNoteRolling = isLastNoteRolling;
-		}
-
-		public int processNextBar(
-				int aPlayingBarIndex,
-				Bar[] aBars,
-				TJACommand[] notation,
-				int aProcessedCommandIndex)
-		{
-			// Get the next unprocessed bar
-			int index;
-			for (	index=PlayModel.nextIndexOfBar(aPlayingBarIndex);
-					index!=aPlayingBarIndex;
-					index=PlayModel.nextIndexOfBar(aPlayingBarIndex))
-			{	if ( ! aBars[index].iPreprocessed ) break;	}
-			if (index==aPlayingBarIndex) return aProcessedCommandIndex;
-			
-			// Init the bar value
-			Bar bar = aBars[index];
-			bar.iPreprocessed = false;
-			LinkedList<TJACommand> unprocCmd = new LinkedList<TJACommand>();
-			
-			for(;	!bar.iPreprocessed &&
-					++aProcessedCommandIndex < notation.length;)
-			{
-				TJACommand cmd = notation[aProcessedCommandIndex];
-				switch (cmd.iCommandType)
-				{
-				case TJAFormat.COMMAND_TYPE_NOTE:
-					processCmdNote(bar, cmd.iArgs);
-					bar.iPreprocessed = true;
-					if (unprocCmd.size()>0)
-						bar.iUnprocessedCommand = 
-							unprocCmd.toArray(new TJACommand[unprocCmd.size()]);
-					else
-						bar.iUnprocessedCommand = null;
-					break;
-					
-				case TJAFormat.COMMAND_TYPE_BPMCHANGE:
-				{
-					float BPM = Float.intBitsToFloat(cmd.iArgs[0]);
-					setBPM(BPM);
-					break;
-				}
-		
-				case TJAFormat.COMMAND_TYPE_MEASURE:
-					iMeasureX = cmd.iArgs[0];
-					iMeasureY = cmd.iArgs[1];
-					break;
-				
-				case TJAFormat.COMMAND_TYPE_SCROLL:
-				{
-					float scroll = Float.intBitsToFloat(cmd.iArgs[0]);
-					setScroll(scroll);
-					break;
-				}
-				
-				case TJAFormat.COMMAND_TYPE_GOGOSTART:
-				case TJAFormat.COMMAND_TYPE_GOGOEND:
-				{
-					unprocCmd.addLast(cmd.clone());
-					break;
-				}
-				
-				}
-			}
-			return aProcessedCommandIndex;
-		}
-	}
-	
 	final static class PreprocessedNote
 	{
 		public int 		iNoteType;		// see PlayDisplayInfo
@@ -348,7 +164,8 @@ public final class PlayModel {
 		}
 	}
 
-	private static int nextIndexOfBar(int index)
+	// package private
+	static int nextIndexOfBar(int index)
 	{
 		++index;
 		if (index==MAX_PREPROCESSED_PARA)

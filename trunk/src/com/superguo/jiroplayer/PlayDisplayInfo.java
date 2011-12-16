@@ -8,7 +8,7 @@ public final class PlayDisplayInfo
 		public int iNotePos;
 	}
 	public final static int MAX_NOTE_POS = 64;
-	public final static int NOTE_SEPARATOR		= -1;
+	public final static int NOTE_BARLINE		= -1;
 	public final static int NOTE_FACE 			= 1;
 	public final static int NOTE_SIDE 			= 2;
 	public final static int NOTE_BIG_FACE 		= 3;

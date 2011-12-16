@@ -180,7 +180,7 @@ public final class PlayModel {
 			calcSpeed();
 		}
 
-		public final void preprocessCmdNote(Bar bar, int[] barNotes)
+		private final void processCmdNote(Bar bar, int[] barNotes)
 		{
 			// The number of beats in a bar is measureX / measureY
 			double numBeats = (double)iMeasureX / iMeasureY;
@@ -213,7 +213,7 @@ public final class PlayModel {
 					if (note==8)	// 8 means finished
 					{
 						isLastNoteRolling = false;
-						bar.addCompiledNote(PlayDisplayInfo.NOTE_STOP_ROLLING, i, numNotes);
+						bar.addPreprocessedNote(PlayDisplayInfo.NOTE_STOP_ROLLING, i, numNotes);
 					}
 				}
 				else
@@ -230,7 +230,7 @@ public final class PlayModel {
 					case 2:
 					case 3:
 					case 4:
-						bar.addCompiledNote(note, i, numNotes);
+						bar.addPreprocessedNote(note, i, numNotes);
 						break;
 		
 					case 0:
@@ -243,6 +243,72 @@ public final class PlayModel {
 			
 			// transfer local variable back to field variable
 			iLastNoteRolling = isLastNoteRolling;
+		}
+
+		public int processNextBar(
+				int aPlayingBarIndex,
+				Bar[] aBars,
+				TJACommand[] notation,
+				int aProcessedCommandIndex)
+		{
+			// Get the next unprocessed bar
+			int index;
+			for (	index=PlayModel.nextIndexOfBar(aPlayingBarIndex);
+					index!=aPlayingBarIndex;
+					index=PlayModel.nextIndexOfBar(aPlayingBarIndex))
+			{	if ( ! aBars[index].iPreprocessed ) break;	}
+			if (index==aPlayingBarIndex) return aProcessedCommandIndex;
+			
+			// Init the bar value
+			Bar bar = aBars[index];
+			bar.iPreprocessed = false;
+			LinkedList<TJACommand> unprocCmd = new LinkedList<TJACommand>();
+			
+			for(;	!bar.iPreprocessed &&
+					++aProcessedCommandIndex < notation.length;)
+			{
+				TJACommand cmd = notation[aProcessedCommandIndex];
+				switch (cmd.iCommandType)
+				{
+				case TJAFormat.COMMAND_TYPE_NOTE:
+					processCmdNote(bar, cmd.iArgs);
+					bar.iPreprocessed = true;
+					if (unprocCmd.size()>0)
+						bar.iUnprocessedCommand = 
+							unprocCmd.toArray(new TJACommand[unprocCmd.size()]);
+					else
+						bar.iUnprocessedCommand = null;
+					break;
+					
+				case TJAFormat.COMMAND_TYPE_BPMCHANGE:
+				{
+					float BPM = Float.intBitsToFloat(cmd.iArgs[0]);
+					setBPM(BPM);
+					break;
+				}
+		
+				case TJAFormat.COMMAND_TYPE_MEASURE:
+					iMeasureX = cmd.iArgs[0];
+					iMeasureY = cmd.iArgs[1];
+					break;
+				
+				case TJAFormat.COMMAND_TYPE_SCROLL:
+				{
+					float scroll = Float.intBitsToFloat(cmd.iArgs[0]);
+					setScroll(scroll);
+					break;
+				}
+				
+				case TJAFormat.COMMAND_TYPE_GOGOSTART:
+				case TJAFormat.COMMAND_TYPE_GOGOEND:
+				{
+					unprocCmd.addLast(cmd.clone());
+					break;
+				}
+				
+				}
+			}
+			return aProcessedCommandIndex;
 		}
 	}
 	
@@ -259,8 +325,6 @@ public final class PlayModel {
 		
 		public TJACommand[] iUnprocessedCommand;	// All commands that cannot be preprocessed in compile time will be here
 		
-		// The fields below are set by compCmdNote
-		
 		/** The duration in microseconds */
 		public long iDuration;	
 		
@@ -275,7 +339,7 @@ public final class PlayModel {
 		/** The number of compiled notes. The note 0 is omitted if not rolling */
 		public int iNumPreprocessedNotes;
 		
-		public void addCompiledNote(int noteType, int origIndex, int origTotal)
+		public void addPreprocessedNote(int noteType, int origIndex, int origTotal)
 		{
 			PreprocessedNote noteOffset = iNotes[iNumPreprocessedNotes++];
 			noteOffset.iNoteType 	= noteType;
@@ -290,47 +354,6 @@ public final class PlayModel {
 		if (index==MAX_PREPROCESSED_PARA)
 			index=0;
 		return index;
-	}
-	
-	private boolean preprocessNextBar()
-	{
-		// Get the next unprocessed bar
-		int index;
-		for (	index=nextIndexOfBar(iPlayingBarIndex);
-				index!=iPlayingBarIndex;
-				index=nextIndexOfBar(iPlayingBarIndex))
-		{	if ( ! iBar[index].iPreprocessed ) break;	}
-		if (index==iPlayingBarIndex) return false;
-		
-		// Init the bar value
-		Bar bar = iBar[index];
-		bar.iPreprocessed = false;
-		LinkedList<TJACommand> unprocCmd = new LinkedList<TJACommand>();
-		
-		// Transfer the field reference to local reference 
-		TJACommand[] notation = iNotation;
-		for(;	!bar.iPreprocessed &&
-				++iPreprocessedCommandIndex < notation.length;)
-		{
-			TJACommand cmd = notation[iPreprocessedCommandIndex];
-			switch (cmd.iCommandType)
-			{
-			case TJAFormat.COMMAND_TYPE_NOTE:
-				iPreprocessor.preprocessCmdNote(bar, cmd.iArgs);
-				bar.iPreprocessed = true;
-				if (unprocCmd.size()>0)
-					bar.iUnprocessedCommand = 
-						unprocCmd.toArray(new TJAFormat.TJACommand[unprocCmd.size()]);
-				else
-					bar.iUnprocessedCommand = null;
-				break;
-				
-			case TJAFormat.COMMAND_TYPE_BPMCHANGE:
-				// iPreprocessor.setBPM(cmd.iArgs);
-				break;
-			}
-		}
-		return true;
 	}
 	
 	public void prepare(TJAFormat aTJA, int aCourseIndex)

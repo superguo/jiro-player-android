@@ -70,6 +70,18 @@ public final class TJAFormat {
 		
 		public int iCommandType;
 		public int iArgs[];
+		
+		@Override
+		public TJACommand clone()
+		{
+			try {
+				TJACommand copy = (TJACommand)super.clone();
+				copy.iArgs = iArgs.clone();
+				return copy;
+			} catch (CloneNotSupportedException e) {
+				return null;
+			}
+		}
 	}
 	
 	public final static class TJAFormatException extends RuntimeException

@@ -73,7 +73,8 @@ public final class PlayModel {
 
 	public final static int MAX_LEVEL_OF[] = { 5, 7, 8, 10 };
 	public final static int MAX_DIFFICULITES = 4;
-	public final static long FIXED_TIME_OFFSET = -2000;	// start after 2 seconds
+	public final static int FIXED_START_TIME_OFFSET = -2000;	// start after 2 seconds
+	public final static int FIXED_END_TIME_OFFSET = 2000;		// 2 seconds after notes end 
 	public final static int BEAT_DIST = 64;	// pixel distance between two beats
 	
 	public final static int HIT_NONE = 0;
@@ -101,14 +102,15 @@ public final class PlayModel {
 	private TJACommand[] iNotation;
 
 	private PlayerData iPlayerData = new PlayerData();
-	private Bar[] iBar = new Bar[PlayModel.MAX_PREPROCESSED_BAR];
-	private int iPlayingBarIndex;
+	private Bar[] iBars = new Bar[PlayModel.MAX_PREPROCESSED_BAR];
 	private int iPreprocessedCommandIndex;
+	private int iPreprocessedBarIndex;
+	private int iPlayingBarIndex;
 	private int iScoreInit;
 	private int iScoreDiff;
 	private SectionStat iSectionStat = new SectionStat();
 	
-	private long iOffsetTime;		// offset since the first note paragraph
+	private long iStartOffsetTime;		// offset since started in milliseconds
 	private PlayPreprocessor iPreprocessor = new PlayPreprocessor();
 	
 	// private SectionStat iSectionStat = new SectionStat();
@@ -122,6 +124,13 @@ public final class PlayModel {
 	
 	final static class Bar
 	{
+		/** The beginning time in microseconds.	 */
+		public long iRuntimeOffset;
+		
+		/** Indicates whether it is pre-processed
+		 * Will changed to false if this Bar has finished
+		 * been played 
+		 */
 		public boolean iPreprocessed;
 		
 		public TJACommand[] iUnprocessedCommand;	// All commands that cannot be preprocessed in compile time will be here
@@ -170,8 +179,9 @@ public final class PlayModel {
 		
 		// Reset internal values 
 		iNotation = iCourse.iNotationSingle;
-		iPlayingBarIndex = -1;
 		iPreprocessedCommandIndex = -1;
+		iPreprocessedBarIndex = -1;
+		iPlayingBarIndex = -1;
 		if (iNotation == null)	// Play as P1 if Single STYLE is not defined
 			iNotation = iCourse.iNotationP1;	
 		resetScores();	// Reset the score info
@@ -183,7 +193,9 @@ public final class PlayModel {
 
 	public void start()
 	{
-		iOffsetTime = FIXED_TIME_OFFSET + (long)(iTJA.iOffset * 1000);
+		iStartOffsetTime = FIXED_START_TIME_OFFSET + (int)(iTJA.iOffset * 1000);
+		while(tryPreprocessNextBar());
+		// TODO
 	}
 
 	public PlayerData onEvent(long timeSinceStarted, int hit)
@@ -191,7 +203,39 @@ public final class PlayModel {
 		// TODO
 		return iPlayerData;	
 	}
-	
+
+	private boolean tryPreprocessNextBar()
+	{
+		if (-1 == iPreprocessedBarIndex
+			|| !iBars[iPreprocessedBarIndex].iHasBranchStartNextBar)
+		{	
+			// No #BRANCHSTART in next bar
+
+			IntegerRef preprocessedCommandIndexRef = new IntegerRef(
+					iPreprocessedCommandIndex);
+
+			IntegerRef preprocessedBarIndexRef = new IntegerRef(
+					iPreprocessedBarIndex);
+
+			if (iPreprocessor.processNextBar(iBars, iNotation,
+					preprocessedCommandIndexRef, preprocessedBarIndexRef))
+			{
+				iPreprocessedCommandIndex = preprocessedCommandIndexRef.get();
+				iPreprocessedBarIndex = preprocessedBarIndexRef.get();
+			}
+			
+			// TODO
+		}
+		else
+		{
+			// TODO Handle case: #BRANCHSTART in next bar
+			// TODO May change iPreprocessedCommandIndex
+			// TODO May change iPreprocessedBarIndex
+			// TODO May add a virtual pre-processed bar
+		}
+		return false;
+	}
+
 	private void resetScores() {
 		TJACourse course = iCourse;
 		if (course.iScoreInit > 0 && course.iScoreDiff > 0)
@@ -213,10 +257,10 @@ public final class PlayModel {
 		}
 	}
 	
-	// get the total number of notes 1,2,3,4
-	// choose master if encounters branches
-	// if in GGT, plus 20%
-	// half if note index < 100
+	// Get the total number of notes 1,2,3,4
+	// Choose master if encounters branches
+	// Take 20% more if in GGT, 
+	// Take half if note index < 100
 	private float getScoreCalcNotes()
 	{
 		float scoredNotes = 0;
@@ -306,8 +350,8 @@ public final class PlayModel {
 			break;
 
 		case TJAFormat.BRANCH_JUDGE_PRECISION:
-			limitE = (int) (aSectionStat.iPrecisionTotal * Math.ceil(Float.intBitsToFloat(args[1])));
-			limitM = (int) (aSectionStat.iPrecisionTotal * Math.ceil(Float.intBitsToFloat(args[2])));
+			limitE = (int) Math.ceil((aSectionStat.iPrecisionTotal * Float.intBitsToFloat(args[1])));
+			limitM = (int) Math.ceil((aSectionStat.iPrecisionTotal * Float.intBitsToFloat(args[2])));
 			played = aSectionStat.iPrecisionPlayed;
 			break;
 

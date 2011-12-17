@@ -145,47 +145,63 @@ final class PlayPreprocessor
 		iLastNoteRolling = isLastNoteRolling;
 	}
 
-	public int processNextBar(
-			int aPlayingBarIndex,
+	/**
+	 * 
+	 * @param aPlayingBarIndex
+	 * @param aBars
+	 * @param notation
+	 * @param [in/out] aProcessedCommandIndexRef
+	 * @param [out] aProcessedBarIndexRef
+	 * @return
+	 */
+	public boolean processNextBar(
 			Bar[] aBars,
 			TJACommand[] notation,
-			int aProcessedCommandIndex)
+			IntegerRef aProcessedCommandIndexRef,
+			IntegerRef aProcessedBarIndexRef)
 	{
-		if (aProcessedCommandIndex>=notation.length-1) return aProcessedCommandIndex;
+		int processedCommandIndex = aProcessedCommandIndexRef.get();
+		if (processedCommandIndex>=notation.length-1) return false;
+		int lastProcessedBarIndex = aProcessedBarIndexRef.get();
 		
 		// Get the next unprocessed bar
-		int index;
-		for (	index=PlayModel.nextIndexOfBar(aPlayingBarIndex);
-				index!=aPlayingBarIndex;
-				index=PlayModel.nextIndexOfBar(aPlayingBarIndex))
-		{	if ( ! aBars[index].iPreprocessed ) break;	}
-		if (index==aPlayingBarIndex) return aProcessedCommandIndex;
+		int barIndex = PlayModel.nextIndexOfBar(lastProcessedBarIndex);
 		
-		// Init the bar value
-		Bar bar = aBars[index];
+		if (barIndex==lastProcessedBarIndex) return false;
+		if ( ! aBars[barIndex].iPreprocessed ) return false;
+		
+		// Initialize the bar value
+		Bar bar = aBars[barIndex];
 		bar.iPreprocessed = false;
 		bar.iHasBranchStartNextBar = false;
 		bar.iNumPreprocessedNotes = 0;
+
 		LinkedList<TJACommand> unprocCmd = null;
 		// Do not allocate memory until next command is not COMMAND_TYPE_NOTE
-		if (notation[aProcessedCommandIndex+1].iCommandType != TJAFormat.COMMAND_TYPE_NOTE)
+		if (notation[processedCommandIndex+1].iCommandType != TJAFormat.COMMAND_TYPE_NOTE)
 		{	unprocCmd = new LinkedList<TJACommand>();	}
 		
-		new LinkedList<TJACommand>();
 		float delay = 0.0f;
 		
 		for(;	!bar.iPreprocessed &&
-				++aProcessedCommandIndex < notation.length;)
+				++processedCommandIndex < notation.length;)
 		{
-			TJACommand cmd = notation[aProcessedCommandIndex];
+			TJACommand cmd = notation[processedCommandIndex];
 			switch (cmd.iCommandType)
 			{
 			case TJAFormat.COMMAND_TYPE_NOTE:
 				// Emit notes
 				processCmdNote(bar, cmd.iArgs, delay);
-				
+
+				// Set runtime offset
+				if (lastProcessedBarIndex==-1)
+					bar.iRuntimeOffset = 0;
+				else
+					bar.iRuntimeOffset = 
+						aBars[lastProcessedBarIndex].iRuntimeOffset + 
+						aBars[lastProcessedBarIndex].iDuration;
 				// Check #BRACHSTART
-				for (int i=aProcessedCommandIndex+1; i<notation.length; ++i)
+				for (int i=processedCommandIndex+1; i<notation.length; ++i)
 				{
 					TJACommand cmd2 = notation[i];
 					if (cmd2.iCommandType == TJAFormat.COMMAND_TYPE_NOTE)
@@ -241,6 +257,10 @@ final class PlayPreprocessor
 			
 			case TJAFormat.COMMAND_TYPE_BRANCHSTART:
 				// Emit a special bar containing no notes
+
+				// No length at all
+				bar.iDuration = 0;
+				bar.iLength = 0;
 				
 				// Will be executed in running bar before this!
 				unprocCmd.addLast(cmd.clone());
@@ -278,6 +298,8 @@ final class PlayPreprocessor
 			default:;
 			}
 		}
-		return aProcessedCommandIndex;
+		aProcessedCommandIndexRef.set(processedCommandIndex);
+		aProcessedBarIndexRef.set(barIndex);
+		return true;
 	}
 }

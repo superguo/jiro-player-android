@@ -14,8 +14,8 @@ public final class PlayerData
 		public int iNoteType;
 		public int iNotePos;
 	}
-	public final static int MAX_NOTE_POS = 64;
 	
+	public final static int MAX_NOTE_POS = 64;	
 
 	public int iScore;
 	public int iAddedScore;
@@ -36,9 +36,7 @@ public final class PlayerData
 								// 0 means just finished
 								// -1 means failed
 								// -2 means no lenda
-
-	
-
+	public boolean iIsCompletedEnded;
 	
 	public void reset(TJACourse aCourse)
 	{
@@ -66,5 +64,6 @@ public final class PlayerData
 		// reset some counters
 		iNumMaxCombo = iNumMaxNotes = iNumHitNotes = iNumTotalRolling = 0;
 		
+		iIsCompletedEnded = false;
 	}
 }

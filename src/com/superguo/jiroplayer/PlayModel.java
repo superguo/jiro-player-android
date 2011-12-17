@@ -3,7 +3,6 @@
  */
 package com.superguo.jiroplayer;
 
-
 import com.superguo.jiroplayer.TJAFormat.*;
 
 public final class PlayModel {
@@ -51,6 +50,27 @@ public final class PlayModel {
 			1200000		// 10
 		}
 	};
+	public final static int NOTE_BARLINE		= -1;
+	public final static int NOTE_FACE 			= 1;
+	public final static int NOTE_SIDE 			= 2;
+	public final static int NOTE_BIG_FACE 		= 3;
+	public final static int NOTE_BIG_SIDE 		= 4;
+	public final static int NOTE_START_ROLLING_LENDA_ 		= 5;
+	public final static int NOTE_START_ROLLING_BIG_LENDA 	= 6;
+	public final static int NOTE_START_ROLLING_BALOON		= 7;
+	public final static int NOTE_START_ROLLING_POTATO		= 9;
+	public final static int NOTE_STOP_ROLLING	= 8;
+
+	public final static int BRANCH_NONE			= 0;
+	public final static int BRANCH_NORMAL		= 1;
+	public final static int BRANCH_EASY			= 2;
+	public final static int BRANCH_MASTER		= 3;
+	
+	public final static int ROLLING_NONE		= 0;
+	public final static int ROLLING_BAR			= 1;
+	public final static int ROLLING_BALLOON		= 2;
+	public final static int ROLLING_POTATO		= 3;
+
 	public final static int MAX_LEVEL_OF[] = { 5, 7, 8, 10 };
 	public final static int MAX_DIFFICULITES = 4;
 	public final static long FIXED_TIME_OFFSET = -2000;	// start after 2 seconds
@@ -60,71 +80,36 @@ public final class PlayModel {
 	public final static int HIT_FACE = 1;
 	public final static int HIT_SIDE = 2;
 	
-	public final static int MAX_PREPROCESSED_PARA = 3;
+	public final static int MAX_PREPROCESSED_BAR = 3;
 
-
-	
-	/*
-	private final class RuntimePara
-	{
-		public int 		iIndexOfTJAPara;
-		public long 	iTimeOffset;	// time offset since first para
-		public float 	iSpeed;
-		public NoteOffset[] iNoteOffset = new NoteOffset[PlayDisplayInfo.MAX_NOTE_POS];
-		public int 		iNumNoteOffset;	//
-		public int 		iNoteIndexToHit;	// 0 ~ iNumNoteOffset - 1,
-									// the next note to hit, only for face notes/side notes, 
-		public boolean iIsGGT;
-		
-		public void clear()
-		{
-			iIndexOfTJAPara = -1;
-			iTimeOffset = 0;
-			iSpeed = 0.0f;
-			iNumNoteOffset = 0;
-			iNoteIndexToHit = -1;
-			iIsGGT = false;
-		}
-	}
-	
+	// SECTION statistics
 	private final class SectionStat
 	{
-		public int iNumGood;
-		public int iNumNormal;
-		public int iNumTotal;
-		public int iNumRolled;
+		int iNumRolled;
+		int iScore;
+		int iPrecisionPlayed;
+		int iPrecisionTotal;
 		
-		public final void reset()
+		void reset()
 		{
-			iNumGood = iNumNormal = iNumTotal = iNumRolled = 0;
-		}
-		
-		// 0.0f ~ 1.0f
-		public final float precision()
-		{
-			if (iNumTotal==0) return 0.0f;
-			return (iNumGood * 2.0f + iNumNormal) / (iNumTotal * 2.0f);  
+			iNumRolled = iScore = iPrecisionPlayed = iPrecisionTotal = 0;
 		}
 	}
-	*/
-	private PlayDisplayInfo iDisplayInfo = new PlayDisplayInfo();
 
 	private TJAFormat iTJA;
 	private TJACourse iCourse;
 	private TJACommand[] iNotation;
-	private int iScoreInit;
-	private int iScoreDiff;
-	
-	private long iOffsetTime;		// offset since the first note paragraph
-	private int iNumMaxCombo;
-	private int iNumMaxNotes;
-	private int iNumHitNotes;
-	private int iNumTotalRolling;
 
-	private PlayPreprocessor iPreprocessor = new PlayPreprocessor();
-	private Bar[] iBar = new Bar[MAX_PREPROCESSED_PARA];
+	private PlayerData iPlayerData = new PlayerData();
+	private Bar[] iBar = new Bar[PlayModel.MAX_PREPROCESSED_BAR];
 	private int iPlayingBarIndex;
 	private int iPreprocessedCommandIndex;
+	private int iScoreInit;
+	private int iScoreDiff;
+	private SectionStat iSectionStat = new SectionStat();
+	
+	private long iOffsetTime;		// offset since the first note paragraph
+	private PlayPreprocessor iPreprocessor = new PlayPreprocessor();
 	
 	// private SectionStat iSectionStat = new SectionStat();
 
@@ -150,7 +135,11 @@ public final class PlayModel {
 		/** The speed of one note in pixels per 1000 seconds */
 		public int iSpeed;
 		
-		public PreprocessedNote[] iNotes = new PreprocessedNote[PlayDisplayInfo.MAX_NOTE_POS];
+		/** Indicates if there is #BRANCHSTART before next bar */
+		public boolean iHasBranchStartNextBar;
+		
+		/** The processed notes */
+		public PreprocessedNote[] iNotes = new PreprocessedNote[PlayerData.MAX_NOTE_POS];
 		
 		/** The number of compiled notes. The note 0 is omitted if not rolling */
 		public int iNumPreprocessedNotes;
@@ -168,7 +157,7 @@ public final class PlayModel {
 	static int nextIndexOfBar(int index)
 	{
 		++index;
-		if (index==MAX_PREPROCESSED_PARA)
+		if (index==MAX_PREPROCESSED_BAR)
 			index=0;
 		return index;
 	}
@@ -177,28 +166,17 @@ public final class PlayModel {
 	{
 		iTJA = aTJA;
 		iCourse = iTJA.iCourses[aCourseIndex];
+		iPlayerData.reset(iCourse);
+		
+		// Reset internal values 
 		iNotation = iCourse.iNotationSingle;
-		
-		// Play as P1 if Single STYLE is not defined
-		if (iNotation==null) iNotation = iCourse.iNotationP1;
-		
-		// reset the score info
-		resetScores();
-		
-		// reset the display info
-		iDisplayInfo.reset();
-
-		// reset some counters
-		iNumMaxCombo = iNumMaxNotes = iNumHitNotes = iNumTotalRolling = 0;
-
-		// reset preprocessor values
-		iPreprocessor.reset(iCourse.iBPM);
-		
 		iPlayingBarIndex = -1;
 		iPreprocessedCommandIndex = -1;
-		
-		// reset section
-		// iSectionStat.reset();
+		if (iNotation == null)	// Play as P1 if Single STYLE is not defined
+			iNotation = iCourse.iNotationP1;	
+		resetScores();	// Reset the score info
+		iSectionStat.reset();	// Reset the SECTION statistics
+		iPreprocessor.reset(iCourse.iBPM);	// reset preprocessor values
 		
 		// reset playing para
 	}
@@ -208,26 +186,27 @@ public final class PlayModel {
 		iOffsetTime = FIXED_TIME_OFFSET + (long)(iTJA.iOffset * 1000);
 	}
 
-	public PlayDisplayInfo onEvent(long timeSinceStarted, int hit)
+	public PlayerData onEvent(long timeSinceStarted, int hit)
 	{
 		// TODO
-		return iDisplayInfo;	
+		return iPlayerData;	
 	}
 	
 	private void resetScores() {
-		if (iCourse.iScoreInit > 0 && iCourse.iScoreDiff > 0)
+		TJACourse course = iCourse;
+		if (course.iScoreInit > 0 && course.iScoreDiff > 0)
 		{
-			iScoreInit = iCourse.iScoreInit;
-			iScoreDiff = iCourse.iScoreDiff;
+			iScoreInit = course.iScoreInit;
+			iScoreDiff = course.iScoreDiff;
 		}
 		else
 		{
 			int fullScore;	// approximate value of full score
-			if (iCourse.iLevel <= MAX_LEVEL_OF[iCourse.iCourse])
-				fullScore = FULL_SCORES[iCourse.iCourse][iCourse.iLevel];
+			if (course.iLevel <= MAX_LEVEL_OF[course.iCourse])
+				fullScore = FULL_SCORES[course.iCourse][course.iLevel];
 			else
-				fullScore = FULL_SCORES[iCourse.iCourse][MAX_LEVEL_OF[iCourse.iCourse]] +
-				100000 * (MAX_LEVEL_OF[iCourse.iCourse] - iCourse.iLevel);
+				fullScore = FULL_SCORES[course.iCourse][MAX_LEVEL_OF[course.iCourse]] +
+				100000 * (MAX_LEVEL_OF[course.iCourse] - course.iLevel);
 			float fullNormalNote = (float)fullScore / getScoreCalcNotes();
 			iScoreInit = (int)Math.floor(fullNormalNote * 0.08f) * 10;
 			iScoreDiff = (int)Math.floor(fullNormalNote * 0.02f) * 10;
@@ -242,14 +221,15 @@ public final class PlayModel {
 	{
 		float scoredNotes = 0;
 		int numNotes = 0;
-		int len = iNotation.length;
+		TJACommand[] notation = iNotation;
+		int len = notation.length;
 		int i;
 		
 		boolean inGGT = false;
 		
 		for (i=0; i<len; )
 		{
-			TJACommand cmd = iNotation[i];
+			TJACommand cmd = notation[i];
 
 			switch (cmd.iCommandType)
 			{
@@ -303,142 +283,41 @@ public final class PlayModel {
 		}
 		return scoredNotes;
 	}
-	
-	/*
-	private boolean compileNext()
-	{
-		int i;
-		
-		// restriction check
-		if (iNumAvailableRuntimeParas >= MAX_COMPILED_PARA-1) return false;
-		if (iIndexOfLastCompiledTJAPara >= iParas.length-1) return false;
-		
-		// get the last compiled
-		RuntimePara lastRuntimePara = 	iLastCompiledRuntimeParaSlot == -1 ? 
-										null : 
-										iRuntimeParas[iLastCompiledRuntimeParaSlot];
 
-		// get the free slot for compilation
-		int nextRuntimeParaSlot = nextFreeRuntimeParaSlot();
-		RuntimePara newRuntimePara = iRuntimeParas[nextRuntimeParaSlot];
-		newRuntimePara.clear();
+	private static int getBranch(TJACommand aStartBranchCommand, SectionStat aSectionStat)
+	{
+		// N < E < M
+		// Normal < Easy < Master !
 		
-		// get the TJA para to compile
-		TJAPara tjaPara = iParas[iIndexOfLastCompiledTJAPara + 1];
-		
-		// execute the commands
-		boolean hasChangedBPM = false;
-		boolean hasSection = false;
-		float delay = 0.0f;
-		int prevMeasureX = iMeasureX;
-		int prevMeasureY = iMeasureY;
-		for (i=0; i<tjaPara.iCommands.length; ++i)
+		int args[] = aStartBranchCommand.iArgs;
+		int limitE, limitM, played;
+		switch (args[0])
 		{
-			TJACommand cmd = tjaPara.iCommands[i];
-			switch (cmd.iCommandType)
-			{
-			case TJAFormat.COMMAND_TYPE_BPMCHANGE:
-				iCurrentBPM = Float.intBitsToFloat(cmd.iArgs[0]);
-				hasChangedBPM = true;
-				break;
-				
-			case TJAFormat.COMMAND_TYPE_GOGOSTART:
-				newRuntimePara.iIsGGT = true;
-				break;
-				
-			case TJAFormat.COMMAND_TYPE_GOGOEND:
-				newRuntimePara.iIsGGT = false;
-				break;
+		case TJAFormat.BRANCH_JUDGE_ROLL:
+			limitE =(int)Float.intBitsToFloat(args[1]);
+			limitM =(int)Float.intBitsToFloat(args[2]);
+			played = aSectionStat.iNumRolled;
+			break;
 
-			case TJAFormat.COMMAND_TYPE_MEASURE: 	// X(int) / Y(int)( 0 < X < 100, 0 < Y < 100)
-				iMeasureX = cmd.iArgs[0];
-				iMeasureY = cmd.iArgs[1];
-				break;
-				
-			case TJAFormat.COMMAND_TYPE_SCROLL: 	// float(0.1 - 16.0)
-				iScroll = Float.intBitsToFloat(cmd.iArgs[0]);
-				break;
-				
-			case TJAFormat.COMMAND_TYPE_DELAY: 	// float(>0.001)
-				delay = Float.intBitsToFloat(cmd.iArgs[0]);
-				break;
-				
-			case TJAFormat.COMMAND_TYPE_SECTION:
-				hasSection = true;
-				break;
-				
-			case TJAFormat.COMMAND_TYPE_BRANCHSTART: 	// BRANCH_JUDGE_*(r/p/s, int), X(float), Y(float), (index of #N TJAPara, index of #N command), #E, #M
-				switch(cmd.iArgs[0])
-				{
-				case TJAFormat.BRANCH_JUDGE_ROLL:
-				case TJAFormat.BRANCH_JUDGE_SCORE:
-				case TJAFormat.BRANCH_JUDGE_PRECISION:
-				}
-				//TODO
-				break;
-				
-			case TJAFormat.COMMAND_TYPE_BRANCHEND:
-				//TODO
-				break;
-				
-			case TJAFormat.COMMAND_TYPE_LEVELHOLD:
-				// TODO: to be supported
-				break;
-				
-			case TJAFormat.COMMAND_TYPE_BARLINEOFF:
-				// TODO: to be supported
-				break;
+		case TJAFormat.BRANCH_JUDGE_SCORE:
+			limitE =(int)Float.intBitsToFloat(args[1]);
+			limitM =(int)Float.intBitsToFloat(args[2]);
+			played = aSectionStat.iScore;
+			break;
 
-			case TJAFormat.COMMAND_TYPE_BARLINEON:
-				// TODO: to be supported
-				break;
-			}
+		case TJAFormat.BRANCH_JUDGE_PRECISION:
+			limitE = (int) (aSectionStat.iPrecisionTotal * Math.ceil(Float.intBitsToFloat(args[1])));
+			limitM = (int) (aSectionStat.iPrecisionTotal * Math.ceil(Float.intBitsToFloat(args[2])));
+			played = aSectionStat.iPrecisionPlayed;
+			break;
+
+		default:
+			return BRANCH_NONE;
 		}
-		
-		// fill iIndexOfTJAPara
-		newRuntimePara.iIndexOfTJAPara = iIndexOfLastCompiledTJAPara + 1;
-		
-		// fill iTimeOffset
-		if (null==lastRuntimePara)
-			newRuntimePara.iTimeOffset = 0;
-		else
-			newRuntimePara.iTimeOffset = lastRuntimePara.iTimeOffset + 
-			(long)(lastRuntimePara.iSpeed * prevMeasureX * 4000 / prevMeasureY);
 
-		// adjust iTimeOffset if delayed
-		if (delay!=0.0f) newRuntimePara.iTimeOffset += (long)(delay*1000);
-
-		if (null==lastRuntimePara || hasChangedBPM)
-			newRuntimePara.iSpeed = calcSpeed();
-		else
-			newRuntimePara.iSpeed = lastRuntimePara.iSpeed;
-		
-		// TODO deals with hasSection
-		
-		// TODO: fill the notes
-
-		iLastCompiledRuntimeParaSlot = nextRuntimeParaSlot;
-		++iIndexOfLastCompiledTJAPara;
-		return true;
+		// Normal, Easy, Master!
+		if (played < limitE) return BRANCH_NORMAL;
+		else if (played < limitM) return BRANCH_EASY;
+		else return BRANCH_MASTER;
 	}
-	
-	private final int nextFreeRuntimeParaSlot()
-	{
-		int indexOfNextRuntimePara = iLastCompiledRuntimeParaSlot + 1;
-		if (indexOfNextRuntimePara == MAX_COMPILED_PARA) indexOfNextRuntimePara = 0;
-		return 	iLastCompiledRuntimeParaSlot < MAX_COMPILED_PARA - 1 ?
-				iLastCompiledRuntimeParaSlot + 1:
-				0;
-	}
-
-	private final float calcSpeed()
-	{
-		return doCalcSpeed(iCurrentBPM, BEAT_DIST);
-	}
-
-	private final static float doCalcSpeed(float BPM, int beatDist)
-	{
-		return BPM * beatDist / 60;
-	}
-	*/
 }

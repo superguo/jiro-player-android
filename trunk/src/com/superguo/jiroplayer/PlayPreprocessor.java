@@ -73,7 +73,7 @@ final class PlayPreprocessor
 		
 		// The duration in minutes is numBeats / BPM
 		// To convert the minutes to microseconds, just make it times 60 000 000
-		bar.iDuration = (long) (iMicSecPerBeat * numBeats);
+		bar.iDurationMicros = (long) (iMicSecPerBeat * numBeats);
 	
 		// When scroll is 1.0, one beat is two notes' length in pixels
 		bar.iLength = (int) (iBeatDist * 2 * numBeats);
@@ -87,8 +87,8 @@ final class PlayPreprocessor
 		{
 			PreprocessedNote noteOffset = bar.iNotes[bar.iNumPreprocessedNotes++];
 			noteOffset.iNoteType = PlayModel.NOTE_BARLINE;
-			noteOffset.iTimeOffset = 0;
-			noteOffset.iPosOffset = 0;
+			noteOffset.iOffsetTimeMillis = 0;
+			noteOffset.iOffsetPos = 0;
 		}
 		
 		// transfer field variable to local variable
@@ -135,7 +135,7 @@ final class PlayPreprocessor
 		// iDuration & iLength
 		if (delay>0.001f)
 		{
-			bar.iDuration += delay * 1000000;
+			bar.iDurationMicros += delay * 1000000;
 			bar.iLength += delay * bar.iSpeed / 1000;
 			
 			// Reset after being pre-processed
@@ -195,11 +195,11 @@ final class PlayPreprocessor
 
 				// Set runtime offset
 				if (lastProcessedBarIndex==-1)
-					bar.iRuntimeOffset = 0;
+					bar.iOffsetTimeMicros = 0;
 				else
-					bar.iRuntimeOffset = 
-						aBars[lastProcessedBarIndex].iRuntimeOffset + 
-						aBars[lastProcessedBarIndex].iDuration;
+					bar.iOffsetTimeMicros = 
+						aBars[lastProcessedBarIndex].iOffsetTimeMicros + 
+						aBars[lastProcessedBarIndex].iDurationMicros;
 				// Check #BRACHSTART
 				for (int i=processedCommandIndex+1; i<notation.length; ++i)
 				{
@@ -259,7 +259,7 @@ final class PlayPreprocessor
 				// Emit a special bar containing no notes
 
 				// No length at all
-				bar.iDuration = 0;
+				bar.iDurationMicros = 0;
 				bar.iLength = 0;
 				
 				// Will be executed in running bar before this!

@@ -75,7 +75,7 @@ public final class PlayModel {
 
 	public final static int MAX_LEVEL_OF[] = { 5, 7, 8, 10 };
 	public final static int MAX_DIFFICULITES = 4;
-	public final static int FIXED_START_TIME_OFFSET = -2000;	// start after 2 seconds
+	public final static int FIXED_START_TIME_OFFSET = 2000;	// start after 2 seconds
 	public final static int FIXED_END_TIME_OFFSET = 2000;		// 2 seconds after notes end 
 	public final static int BEAT_DIST = 64;	// pixel distance between two beats
 	
@@ -109,15 +109,26 @@ public final class PlayModel {
 
 	private PlayerMessage iPlayerMessage = new PlayerMessage();
 	private Bar[] iBars = new Bar[PlayModel.MAX_PREPROCESSED_BAR];
-	private int iPreprocessedCommandIndex;
-	private int iPreprocessedBarIndex;
+	private IntegerRef iPreprocessedCommandIndexRef = new IntegerRef();
+	private IntegerRef iPreprocessedBarIndexRef = new IntegerRef();
 	private int iPlayingBarIndex;
 	private int iRollingBaloonIndex;
 	private int iScoreInit;
 	private int iScoreDiff;
 	private SectionStat iSectionStat = new SectionStat();
+
+	/** The adjusted offset time before first bar begins.
+	 * In milliseconds.
+	 * It can be positive or negative.
+	 */
+	private long iStartOffsetTimeMillis;
 	
-	private long iStartOffsetTime;		// offset since started in milliseconds
+	/** The last adjusted event time in microseconds
+	 * The event time is relative to start() is called
+	 * It is always 0 after start() is called	 
+	 */
+	private long iLastEventTimeMicros;
+
 	private PlayPreprocessor iPreprocessor = new PlayPreprocessor();
 	
 	// private SectionStat iSectionStat = new SectionStat();
@@ -133,18 +144,18 @@ public final class PlayModel {
 		/** The time offset of the note
 		 * in milliseconds since beginning of its bar
 		 */
-		public short 	iTimeOffset;
+		public short 	iOffsetTimeMillis;
 
 		/** The distance offset of the note
 		 * in pixels since beginning of its bar
 		 */
-		public int 		iPosOffset; 
+		public int 		iOffsetPos; 
 	}
 	
 	final static class Bar
 	{
 		/** The beginning time in microseconds since first playing .	 */
-		public long iRuntimeOffset;
+		public long iOffsetTimeMicros;
 		
 		/** Indicates whether it is pre-processed
 		 * Will changed to false if this Bar has finished
@@ -158,7 +169,7 @@ public final class PlayModel {
 		public TJACommand[] iUnprocessedCommand;
 		
 		/** The duration in microseconds */
-		public long iDuration;	
+		public long iDurationMicros;	
 		
 		/** The length in pixels */
 		public int iLength;		
@@ -179,8 +190,8 @@ public final class PlayModel {
 		{
 			PreprocessedNote noteOffset = iNotes[iNumPreprocessedNotes++];
 			noteOffset.iNoteType 	= noteType;
-			noteOffset.iTimeOffset = (short) (iDuration * origIndex / origTotal / 1000);
-			noteOffset.iPosOffset 	=  iLength * origIndex / origTotal;
+			noteOffset.iOffsetTimeMillis = (short) (iDurationMicros * origIndex / origTotal / 1000);
+			noteOffset.iOffsetPos 	=  iLength * origIndex / origTotal;
 		}
 	}
 
@@ -201,8 +212,8 @@ public final class PlayModel {
 		
 		// Reset internal values 
 		iNotation = iCourse.iNotationSingle;
-		iPreprocessedCommandIndex = -1;
-		iPreprocessedBarIndex = -1;
+		iPreprocessedCommandIndexRef.set(-1);
+		iPreprocessedBarIndexRef.set(-1);
 		iPlayingBarIndex = -1;
 		iRollingBaloonIndex = -1;
 		if (iNotation == null)	// Play as P1 if Single STYLE is not defined
@@ -216,38 +227,57 @@ public final class PlayModel {
 
 	public void start()
 	{
-		iStartOffsetTime = FIXED_START_TIME_OFFSET + (int)(iTJA.iOffset * 1000);
+		iStartOffsetTimeMillis = FIXED_START_TIME_OFFSET + (int)(iTJA.iOffset * 1000);
+		iLastEventTimeMicros = 0;
 		while(tryPreprocessNextBar());
-		// TODO
+		translateNotePos(
+				iPlayerMessage.iNotePosArray, 
+				-iStartOffsetTimeMillis * 1000,
+				iBars,
+				iPlayingBarIndex);
 	}
 
-	public boolean onEvent(long timeSinceStarted, int hit)
+	/**
+	 * 
+	 * @param aTimeMillisSinceStarted The time in milliseconds since
+	 * start() is called 
+	 * @param aHit one of HIT_NONE, HIT_FACE and HIT_SIDE
+	 * @return true if and only if the playing is not finished.
+	 */
+	public boolean onEvent(long aTimeMillisSinceStarted, int aHit)
 	{
+		long currentEventTimeMicros = 
+			(aTimeMillisSinceStarted - iStartOffsetTimeMillis) * 1000;
+
 		// TODO
+		
+		while(tryPreprocessNextBar());
+		translateNotePos(
+				iPlayerMessage.iNotePosArray, 
+				currentEventTimeMicros,
+				iBars,
+				iPlayingBarIndex);
+
+		iLastEventTimeMicros = currentEventTimeMicros;
 		return false;	
 	}
 
 	private boolean tryPreprocessNextBar()
 	{
-		if (-1 == iPreprocessedBarIndex
-			|| !iBars[iPreprocessedBarIndex].iHasBranchStartNextBar)
+		if (-1 == iPreprocessedBarIndexRef.get()
+			|| !iBars[iPreprocessedBarIndexRef.get()].iHasBranchStartNextBar)
 		{	
 			// No #BRANCHSTART in next bar
 
-			IntegerRef preprocessedCommandIndexRef = new IntegerRef(
-					iPreprocessedCommandIndex);
-
-			IntegerRef preprocessedBarIndexRef = new IntegerRef(
-					iPreprocessedBarIndex);
-
 			if (iPreprocessor.processNextBar(iBars, iNotation,
-					preprocessedCommandIndexRef, preprocessedBarIndexRef))
+					iPreprocessedCommandIndexRef, iPreprocessedBarIndexRef))
 			{
-				iPreprocessedCommandIndex = preprocessedCommandIndexRef.get();
-				iPreprocessedBarIndex = preprocessedBarIndexRef.get();
+				return true;
 			}
-			
-			// TODO
+			else
+			{
+				return false;
+			}
 		}
 		else
 		{
@@ -358,14 +388,14 @@ public final class PlayModel {
 	 * Translate the playing bars into the display purpose
 	 * NotePos
 	 * @param aNotePos [out]
-	 * @param aPlayingTimeOffset
+	 * @param aCurrentTimeMicros
 	 * @param aBars
 	 * @param aPlayingBarIndex
 	 * @return The number of translated note positions
 	 */
 	private static int translateNotePos(
 			PlayerMessage.NotePos[] aNotePos,
-			long aCurrentTimeOffset,
+			long aCurrentTimeMicros,
 			Bar[] aBars,
 			int aPlayingBarIndex)
 	{
@@ -380,8 +410,8 @@ public final class PlayModel {
 				continue;
 			
 			// Cache some value to speed up
-			long barRuntimeOffset = aCurrentTimeOffset - bar.iRuntimeOffset;
-			int barSpeed = bar.iSpeed;
+			long barRuntimeOffset = aCurrentTimeMicros - bar.iOffsetTimeMicros;
+			long barSpeed = bar.iSpeed * 1000;
 
 			// FIXME Please help to improve the performance
 			// of computing notePos.iNotePos
@@ -392,14 +422,14 @@ public final class PlayModel {
 				PlayerMessage.NotePos notePos =
 					aNotePos[notePosCount++];
 				notePos.iNoteType = pnote.iNoteType;
-				notePos.iNotePos = (int)(barRuntimeOffset / barSpeed / 1000);
+				notePos.iNotePos = (int)(barRuntimeOffset / barSpeed);
 			}
 		}
 		
 		return notePosCount;
 	}
 	
-	private static int getBranch(TJACommand aStartBranchCommand, SectionStat aSectionStat)
+	private static int selectBranch(TJACommand aStartBranchCommand, SectionStat aSectionStat)
 	{
 		// N < E < M
 		// Normal < Easy < Master !

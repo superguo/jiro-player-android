@@ -3,6 +3,7 @@
  */
 package com.superguo.jiroplayer;
 
+import com.superguo.jiroplayer.PlayerMessage.NotePos;
 import com.superguo.jiroplayer.TJAFormat.*;
 
 public final class PlayModel {
@@ -51,6 +52,7 @@ public final class PlayModel {
 		}
 	};
 	public final static int NOTE_BARLINE		= -1;
+	public final static int NOTE_NONE 			= 0;
 	public final static int NOTE_FACE 			= 1;
 	public final static int NOTE_SIDE 			= 2;
 	public final static int NOTE_BIG_FACE 		= 3;
@@ -82,6 +84,10 @@ public final class PlayModel {
 	public final static int HIT_SIDE = 2;
 	
 	public final static int MAX_PREPROCESSED_BAR = 3;
+	
+	public final static int JUDGE_GOOD = 50;
+	public final static int JUDGE_NORMAL = 150;
+	public final static int JUDGE_MISSED = 217;
 
 	// SECTION statistics
 	private final class SectionStat
@@ -101,11 +107,12 @@ public final class PlayModel {
 	private TJACourse iCourse;
 	private TJACommand[] iNotation;
 
-	private PlayerData iPlayerData = new PlayerData();
+	private PlayerMessage iPlayerMessage = new PlayerMessage();
 	private Bar[] iBars = new Bar[PlayModel.MAX_PREPROCESSED_BAR];
 	private int iPreprocessedCommandIndex;
 	private int iPreprocessedBarIndex;
 	private int iPlayingBarIndex;
+	private int iRollingBaloonIndex;
 	private int iScoreInit;
 	private int iScoreDiff;
 	private SectionStat iSectionStat = new SectionStat();
@@ -117,14 +124,26 @@ public final class PlayModel {
 
 	final static class PreprocessedNote
 	{
-		public int 		iNoteType;		// see PlayDisplayInfo
-		public short 	iTimeOffset;	// time offset in milliseconds since its begin of bar
-		public int 		iPosOffset;
+		/** The note type @see contance begins with NOTE_
+		 * The NOTE_NONE note is deleted after being parsed
+		 * But it will become NOTE_NONE after being hit/missed/passed
+		 */
+		public int 		iNoteType; 
+		
+		/** The time offset of the note
+		 * in milliseconds since beginning of its bar
+		 */
+		public short 	iTimeOffset;
+
+		/** The distance offset of the note
+		 * in pixels since beginning of its bar
+		 */
+		public int 		iPosOffset; 
 	}
 	
 	final static class Bar
 	{
-		/** The beginning time in microseconds.	 */
+		/** The beginning time in microseconds since first playing .	 */
 		public long iRuntimeOffset;
 		
 		/** Indicates whether it is pre-processed
@@ -133,7 +152,10 @@ public final class PlayModel {
 		 */
 		public boolean iPreprocessed;
 		
-		public TJACommand[] iUnprocessedCommand;	// All commands that cannot be preprocessed in compile time will be here
+		/** All commands that cannot be pre-processed 
+		 * fall here
+		 */
+		public TJACommand[] iUnprocessedCommand;
 		
 		/** The duration in microseconds */
 		public long iDuration;	
@@ -148,7 +170,7 @@ public final class PlayModel {
 		public boolean iHasBranchStartNextBar;
 		
 		/** The processed notes */
-		public PreprocessedNote[] iNotes = new PreprocessedNote[PlayerData.MAX_NOTE_POS];
+		public PreprocessedNote[] iNotes = new PreprocessedNote[PlayerMessage.MAX_NOTE_POS];
 		
 		/** The number of compiled notes. The note 0 is omitted if not rolling */
 		public int iNumPreprocessedNotes;
@@ -171,24 +193,25 @@ public final class PlayModel {
 		return index;
 	}
 	
-	public void prepare(TJAFormat aTJA, int aCourseIndex)
+	public PlayerMessage prepare(TJAFormat aTJA, int aCourseIndex)
 	{
 		iTJA = aTJA;
 		iCourse = iTJA.iCourses[aCourseIndex];
-		iPlayerData.reset(iCourse);
+		iPlayerMessage.reset(iCourse);
 		
 		// Reset internal values 
 		iNotation = iCourse.iNotationSingle;
 		iPreprocessedCommandIndex = -1;
 		iPreprocessedBarIndex = -1;
 		iPlayingBarIndex = -1;
+		iRollingBaloonIndex = -1;
 		if (iNotation == null)	// Play as P1 if Single STYLE is not defined
 			iNotation = iCourse.iNotationP1;	
 		resetScores();	// Reset the score info
 		iSectionStat.reset();	// Reset the SECTION statistics
 		iPreprocessor.reset(iCourse.iBPM);	// reset preprocessor values
 		
-		// reset playing para
+		return iPlayerMessage;
 	}
 
 	public void start()
@@ -198,10 +221,10 @@ public final class PlayModel {
 		// TODO
 	}
 
-	public PlayerData onEvent(long timeSinceStarted, int hit)
+	public boolean onEvent(long timeSinceStarted, int hit)
 	{
 		// TODO
-		return iPlayerData;	
+		return false;	
 	}
 
 	private boolean tryPreprocessNextBar()
@@ -257,10 +280,13 @@ public final class PlayModel {
 		}
 	}
 	
-	// Get the total number of notes 1,2,3,4
-	// Choose master if encounters branches
-	// Take 20% more if in GGT, 
-	// Take half if note index < 100
+	/** Get the total number of notes 1,2,3,4
+	 * Choose master if encounters branches
+	 * Score 20% more if in GGT,
+	 * Score half if note index < 100
+	 * Score doubled if the note is "big"
+	 * @return
+	 */
 	private float getScoreCalcNotes()
 	{
 		float scoredNotes = 0;
@@ -301,16 +327,16 @@ public final class PlayModel {
 			if (TJAFormat.COMMAND_TYPE_NOTE == cmd.iCommandType) {
 				for (int note : cmd.iArgs) {
 					switch (note) {
-					case 1:
-					case 2:
+					case NOTE_FACE:
+					case NOTE_SIDE:
 						scoredNotes += numNotes < 100 ? 0.5f : 1.0f;
 						if (inGGT)
 							scoredNotes += numNotes < 100 ? .1f : .2f;
 						++numNotes;
 						break;
 
-					case 3:
-					case 4:
+					case NOTE_BIG_FACE:
+					case NOTE_BIG_SIDE:
 						scoredNotes += numNotes < 100 ? 1.0f : 2.0f;
 						if (inGGT)
 							scoredNotes += numNotes < 100 ? .2f : .4f;
@@ -328,6 +354,51 @@ public final class PlayModel {
 		return scoredNotes;
 	}
 
+	/**
+	 * Translate the playing bars into the display purpose
+	 * NotePos
+	 * @param aNotePos [out]
+	 * @param aPlayingTimeOffset
+	 * @param aBars
+	 * @param aPlayingBarIndex
+	 * @return The number of translated note positions
+	 */
+	private static int translateNotePos(
+			PlayerMessage.NotePos[] aNotePos,
+			long aCurrentTimeOffset,
+			Bar[] aBars,
+			int aPlayingBarIndex)
+	{
+		int notePosCount = 0;
+		for (int barIndex=aPlayingBarIndex;
+			aBars[barIndex].iPreprocessed;
+			barIndex=nextIndexOfBar(barIndex))
+		{
+			Bar bar = aBars[barIndex];
+			// bar.iNotes may be null
+			if (null==bar.iNotes)
+				continue;
+			
+			// Cache some value to speed up
+			long barRuntimeOffset = aCurrentTimeOffset - bar.iRuntimeOffset;
+			int barSpeed = bar.iSpeed;
+
+			// FIXME Please help to improve the performance
+			// of computing notePos.iNotePos
+			for (PreprocessedNote pnote : bar.iNotes)
+			{
+				if (NOTE_NONE == pnote.iNoteType)
+					continue;
+				PlayerMessage.NotePos notePos =
+					aNotePos[notePosCount++];
+				notePos.iNoteType = pnote.iNoteType;
+				notePos.iNotePos = (int)(barRuntimeOffset / barSpeed / 1000);
+			}
+		}
+		
+		return notePosCount;
+	}
+	
 	private static int getBranch(TJACommand aStartBranchCommand, SectionStat aSectionStat)
 	{
 		// N < E < M

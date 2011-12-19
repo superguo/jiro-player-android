@@ -29,6 +29,10 @@ public final class PlayerMessage
 	public final static int NOTE_JUDGED_PASSED = 4;
 
 	public int iScore;
+	
+	/** The added score
+	 * Drawer must set to 0 after the frame is drawn
+	 */
 	public int iAddedScore;
 	public int iNumCombo;
 	public int iNumMaxCombo;
@@ -36,9 +40,21 @@ public final class PlayerMessage
 	public int iNumHitNotes;
 	public int iNumTotalRolling;
 
+	/** The value is one of HIT_NONE, HIT_FACE and HIT_SIDE
+	 * Drawer must set to HIT_NONE after the frame is drawn
+	 */
+	public int iHit;
+	
 	public int iNotePosCount;
 	public NotePos[] iNotePosArray = new NotePos[MAX_NOTE_POS];
+	
+	/** Indicate the current note is played good,
+	 * 	play normal, missed, passed or not judged yet
+	 * Drawer must set to NOTE_JUDGED_NONE after the frame is drawn
+	 */
 	public int iNoteJudged;
+	
+	/** Current branch */
 	public int iBranch;
 	public boolean iIsGGT;
 	public int iRollingState;		
@@ -54,28 +70,30 @@ public final class PlayerMessage
 		// Reset current score
 		iScore = 0;
 		iAddedScore = 0;
+
+		// Reset hit
+		iHit = PlayModel.HIT_NONE;
 		
-		// The number of note position
+		// Reset the number of note position
 		iNotePosCount = 0;
-		
-		// Indicate the current note is played good,
-		// play normal, missed, passed or not judged yet
+
+		// Reset judge
 		iNoteJudged = NOTE_JUDGED_NONE;
 		
-		// Branch state
+		// Reset branch state
 		if (aCourse.iHasBranch)
 			iBranch = PlayModel.BRANCH_NORMAL;
 		else
 			iBranch = PlayModel.BRANCH_NONE;
 		
-		// GO-GO-TIME state
+		// Reset GO-GO-TIME state
 		iIsGGT = false;
 		
-		// Rolling states
+		// Reset rolling states
 		iRollingState = PlayModel.ROLLING_NONE;
 		iRollingCount = 0;
 
-		// reset some counters
+		// Reset some counters
 		iNumMaxCombo = iNumMaxNotes = iNumHitNotes = iNumTotalRolling = 0;
 		
 		iFinalEnd = false;

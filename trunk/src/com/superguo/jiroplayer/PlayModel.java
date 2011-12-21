@@ -7,6 +7,32 @@ import com.superguo.jiroplayer.PlayerMessage.NotePos;
 import com.superguo.jiroplayer.TJAFormat.*;
 
 public final class PlayModel {
+	public final static int NOTE_BARLINE		= -1;
+	public final static int NOTE_NONE 			= 0;
+	public final static int NOTE_FACE 			= 1;
+	public final static int NOTE_SIDE 			= 2;
+	public final static int NOTE_BIG_FACE 		= 3;
+	public final static int NOTE_BIG_SIDE 		= 4;
+	public final static int NOTE_START_ROLLING_LENDA_ 		= 5;
+	public final static int NOTE_START_ROLLING_BIG_LENDA 	= 6;
+	public final static int NOTE_START_ROLLING_BALOON		= 7;
+	public final static int NOTE_START_ROLLING_POTATO		= 9;
+	public final static int NOTE_STOP_ROLLING	= 8;
+
+	public final static int BRANCH_NONE			= 0;
+	public final static int BRANCH_NORMAL		= 1;
+	public final static int BRANCH_EASY			= 2;
+	public final static int BRANCH_MASTER		= 3;
+	
+	public final static int ROLLING_NONE		= 0;
+	public final static int ROLLING_BAR			= 1;
+	public final static int ROLLING_BALLOON		= 2;
+	public final static int ROLLING_POTATO		= 3;
+
+	/** The maximum level of 4 difficulties */
+	public final static int MAX_LEVEL_OF[] = { 5, 7, 8, 10 };
+	public final static int MAX_DIFFICULITES = 4;
+	
 	public final static int FULL_SCORES[][] =	{
 		{	// easy
 			0,
@@ -51,30 +77,61 @@ public final class PlayModel {
 			1200000		// 10
 		}
 	};
-	public final static int NOTE_BARLINE		= -1;
-	public final static int NOTE_NONE 			= 0;
-	public final static int NOTE_FACE 			= 1;
-	public final static int NOTE_SIDE 			= 2;
-	public final static int NOTE_BIG_FACE 		= 3;
-	public final static int NOTE_BIG_SIDE 		= 4;
-	public final static int NOTE_START_ROLLING_LENDA_ 		= 5;
-	public final static int NOTE_START_ROLLING_BIG_LENDA 	= 6;
-	public final static int NOTE_START_ROLLING_BALOON		= 7;
-	public final static int NOTE_START_ROLLING_POTATO		= 9;
-	public final static int NOTE_STOP_ROLLING	= 8;
-
-	public final static int BRANCH_NONE			= 0;
-	public final static int BRANCH_NORMAL		= 1;
-	public final static int BRANCH_EASY			= 2;
-	public final static int BRANCH_MASTER		= 3;
 	
-	public final static int ROLLING_NONE		= 0;
-	public final static int ROLLING_BAR			= 1;
-	public final static int ROLLING_BALLOON		= 2;
-	public final static int ROLLING_POTATO		= 3;
-
-	public final static int MAX_LEVEL_OF[] = { 5, 7, 8, 10 };
-	public final static int MAX_DIFFICULITES = 4;
+	/** The max soul gauge grid */
+	public final static int MAX_GAUGE_GRID = 50;
+	/** The minimum gauge grids for pass of 4 courses */
+	public final static int PASSED_GAUGE_GRID_OF[] = {25, 30, 35, 40};
+	/** The gauge value per grid */
+	public final static int GAUGE_PER_GRID = 100;
+	/** The max soul gauge value */
+	public final static int MAX_GAUGE = MAX_GAUGE_GRID * GAUGE_PER_GRID;
+	/** The minimum GOOD notes played rate to reach max gauge */
+	public final static double MAX_GAUGE_RATES[][] =	{
+		{	// easy
+			0,
+			0.4,		// 1
+			0.4,		// 2
+			0.4,		// 3
+			0.4,		// 4
+			0.4,		// 5
+		},
+		{	// normal
+			0,
+			0.5,		// 1
+			0.5,		// 2
+			0.5,		// 3
+			0.5,		// 4
+			0.5,		// 5
+			0.5,		// 6
+			0.5,		// 7
+		},
+		{	// hard
+			0,
+			0.67,		// 1
+			0.67,		// 2
+			0.67,		// 3
+			0.67,		// 4
+			0.67,		// 5
+			0.67,		// 6
+			0.67,		// 7
+			0.67,		// 8
+		},
+		{	// oni
+			0,
+			0.69,	// 1
+			0.69,	// 2
+			0.69,	// 3
+			0.69,	// 4
+			0.69,	// 5
+			0.69,	// 6
+			0.69,	// 7
+			0.69,	// 8
+			0.77,	// 9
+			0.76		// 10
+		}
+	};
+	
 	public final static int FIXED_START_TIME_OFFSET = 2000;	// start after 2 seconds
 	public final static int FIXED_END_TIME_OFFSET = 2000;		// 2 seconds after notes end 
 	public final static int BEAT_DIST = 64;	// pixel distance between two beats
@@ -115,6 +172,7 @@ public final class PlayModel {
 	private int iRollingBaloonIndex;
 	private int iScoreInit;
 	private int iScoreDiff;
+	private int iGaugePerNote;
 	private SectionStat iSectionStat = new SectionStat();
 
 	/** The adjusted offset time before first bar begins.
@@ -217,7 +275,8 @@ public final class PlayModel {
 		iPlayingBarIndex = -1;
 		iRollingBaloonIndex = -1;
 		if (iNotation == null)	// Play as P1 if Single STYLE is not defined
-			iNotation = iCourse.iNotationP1;	
+			iNotation = iCourse.iNotationP1;
+		resetGauge();	// Reset iGaugePerNote
 		resetScores();	// Reset the score info
 		iSectionStat.reset();	// Reset the SECTION statistics
 		iPreprocessor.reset(iCourse.iBPM);	// reset preprocessor values
@@ -288,6 +347,18 @@ public final class PlayModel {
 		}
 		return false;
 	}
+	
+	private void resetGauge()
+	{
+		int course = iCourse.iCourse;
+		int level = Math.min(iCourse.iLevel, MAX_LEVEL_OF[course]) ;
+
+		iGaugePerNote = (int) (MAX_GAUGE /
+				(MAX_GAUGE_RATES[course][level] * getGaugeNotes()));
+
+		if ((iGaugePerNote & 1) == 1)
+			--iGaugePerNote;
+	}
 
 	private void resetScores() {
 		TJACourse course = iCourse;
@@ -310,7 +381,7 @@ public final class PlayModel {
 		}
 	}
 	
-	/** Get the total number of notes 1,2,3,4
+	/** Get the total number of notes 1,2,3,4 for score calculation
 	 * Choose master if encounters branches
 	 * Score 20% more if in GGT,
 	 * Score half if note index < 100
@@ -337,8 +408,8 @@ public final class PlayModel {
 				i = cmd.iArgs[5];	// Go to the index of COMMAND_TYPE_M
 				continue;
 
-			case TJAFormat.COMMAND_TYPE_N:	// Encounters other difficulty
-			case TJAFormat.COMMAND_TYPE_E:	// Encounters other difficulty
+			case TJAFormat.COMMAND_TYPE_N:	// Encounters other branch
+			case TJAFormat.COMMAND_TYPE_E:	// Encounters other branch
 			case TJAFormat.COMMAND_TYPE_BRANCHEND:
 				i = cmd.iArgs[6];
 				continue;
@@ -382,6 +453,56 @@ public final class PlayModel {
 			i++;
 		}
 		return scoredNotes;
+	}
+
+	/** Get the total number of notes 1,2,3,4 for gauge
+	 * Choose master if encounters branches
+	 * @return
+	 */
+	private int getGaugeNotes()
+	{
+		int gaugeNotes = 0;
+		TJACommand[] notation = iNotation;
+		int len = notation.length;
+		int i;
+		
+		for (i=0; i<len; )
+		{
+			TJACommand cmd = notation[i];
+
+			switch (cmd.iCommandType)
+			{
+			case TJAFormat.COMMAND_TYPE_BRANCHSTART:
+				i = cmd.iArgs[5];	// Go to the index of COMMAND_TYPE_M
+				continue;
+
+			case TJAFormat.COMMAND_TYPE_N:	// Encounters other difficulty
+			case TJAFormat.COMMAND_TYPE_E:	// Encounters other difficulty
+			case TJAFormat.COMMAND_TYPE_BRANCHEND:
+				i = cmd.iArgs[6];
+				continue;
+				
+			// other cases are ignored
+			}
+
+			if (TJAFormat.COMMAND_TYPE_NOTE == cmd.iCommandType) {
+				for (int note : cmd.iArgs) {
+					switch (note) {
+					case NOTE_FACE:
+					case NOTE_SIDE:
+					case NOTE_BIG_FACE:
+					case NOTE_BIG_SIDE:
+						++gaugeNotes;
+						break;
+
+					default:;
+					}
+				}
+			}
+
+			i++;
+		}
+		return gaugeNotes;
 	}
 
 	/**

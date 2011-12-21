@@ -28,8 +28,9 @@ public final class PlayerMessage
 	public final static int NOTE_JUDGED_MISSED = 3;
 	public final static int NOTE_JUDGED_PASSED = 4;
 
+	public int iCourse;
 	public int iScore;
-	
+
 	/** The added score
 	 * Drawer must set to 0 after the frame is drawn
 	 */
@@ -67,6 +68,9 @@ public final class PlayerMessage
 	
 	public void reset(TJACourse aCourse)
 	{
+		// Reset current course
+		iCourse = aCourse.iCourse;
+
 		// Reset current score
 		iScore = 0;
 		iAddedScore = 0;

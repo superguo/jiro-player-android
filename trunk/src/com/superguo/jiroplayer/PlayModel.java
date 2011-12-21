@@ -29,9 +29,9 @@ public final class PlayModel {
 	public final static int ROLLING_BALLOON		= 2;
 	public final static int ROLLING_POTATO		= 3;
 
-	/** The maximum level of 4 difficulties */
+	/** The maximum level of 4 course */
 	public final static int MAX_LEVEL_OF[] = { 5, 7, 8, 10 };
-	public final static int MAX_DIFFICULITES = 4;
+	public final static int MAX_COURSE = 4;
 	
 	public final static int FULL_SCORES[][] =	{
 		{	// easy
@@ -142,9 +142,9 @@ public final class PlayModel {
 	
 	public final static int MAX_PREPROCESSED_BAR = 3;
 	
-	public final static int JUDGE_GOOD = 50;
-	public final static int JUDGE_NORMAL = 150;
-	public final static int JUDGE_MISSED = 217;
+	public final static int JUDGE_GOOD 		= 50;
+	public final static int JUDGE_NORMAL 	= 150;
+	public final static int JUDGE_MISSED 	= 217;
 
 	// SECTION statistics
 	private final class SectionStat
@@ -308,8 +308,20 @@ public final class PlayModel {
 		long currentEventTimeMicros = 
 			(aTimeMillisSinceStarted - iStartOffsetTimeMillis) * 1000;
 
-		// TODO
+		long lastEventTimeMicros = iLastEventTimeMicros;
 		
+		if (	aHit == HIT_NONE && 
+				lastEventTimeMicros > currentEventTimeMicros)
+			// Terrible case! The timer rewind! 
+			return true;
+		
+		if (	aHit != HIT_NONE && 
+				lastEventTimeMicros - currentEventTimeMicros > JUDGE_MISSED)
+			// Although hit but too lagged
+			return true;
+
+		// TODO
+ 
 		while(tryPreprocessNextBar());
 		translateNotePos(
 				iPlayerMessage.iNotePosArray, 

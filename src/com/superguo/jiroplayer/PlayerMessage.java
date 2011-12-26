@@ -44,7 +44,7 @@ public final class PlayerMessage
 	/** The value is one of HIT_NONE, HIT_FACE and HIT_SIDE
 	 * Drawer must set to HIT_NONE after the frame is drawn
 	 */
-	public int iHit;
+	//public int iHit;
 	
 	public int iNotePosCount;
 	public NotePos[] iNotePosArray = new NotePos[MAX_NOTE_POS];
@@ -59,7 +59,7 @@ public final class PlayerMessage
 	public int iBranch;
 	public boolean iIsGGT;
 	public int iRollingState;		
-	public int iRollingCount;	// balloon/potato down counter / bar up counter
+	public int iRollingCount;	// down-counter for balloon/potato, up counter for bar
 								// balloon/potato:
 								// 0 means just finished
 								// -1 means failed
@@ -76,7 +76,7 @@ public final class PlayerMessage
 		iAddedScore = 0;
 
 		// Reset hit
-		iHit = PlayModel.HIT_NONE;
+		//iHit = PlayModel.HIT_NONE;
 		
 		// Reset the number of note position
 		iNotePosCount = 0;

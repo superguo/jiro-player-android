@@ -284,7 +284,7 @@ final class PlayPreprocessor
 				
 			case TJAFormat.COMMAND_TYPE_LEVELHOLD:
 				//TODO
-				// Not suppored
+				// Not supported
 				break;
 				
 			case TJAFormat.COMMAND_TYPE_BARLINEOFF:

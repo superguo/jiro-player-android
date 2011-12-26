@@ -168,7 +168,7 @@ public final class PlayModel {
 	private Bar[] iBars = new Bar[PlayModel.MAX_PREPROCESSED_BAR];
 	private IntegerRef iPreprocessedCommandIndexRef = new IntegerRef();
 	private IntegerRef iPreprocessedBarIndexRef = new IntegerRef();
-	private int iPlayingBarIndex;
+	
 	private int iRollingBaloonIndex;
 	private int iScoreInit;
 	private int iScoreDiff;
@@ -186,6 +186,7 @@ public final class PlayModel {
 	 * It is always 0 after start() is called	 
 	 */
 	private long iLastEventTimeMicros;
+	private int iLastPlayingBarIndex;
 
 	private PlayPreprocessor iPreprocessor = new PlayPreprocessor();
 	
@@ -272,7 +273,7 @@ public final class PlayModel {
 		iNotation = iCourse.iNotationSingle;
 		iPreprocessedCommandIndexRef.set(-1);
 		iPreprocessedBarIndexRef.set(-1);
-		iPlayingBarIndex = -1;
+		iLastPlayingBarIndex = -1;
 		iRollingBaloonIndex = -1;
 		if (iNotation == null)	// Play as P1 if Single STYLE is not defined
 			iNotation = iCourse.iNotationP1;
@@ -293,7 +294,7 @@ public final class PlayModel {
 				iPlayerMessage.iNotePosArray, 
 				-iStartOffsetTimeMillis * 1000,
 				iBars,
-				iPlayingBarIndex);
+				iLastPlayingBarIndex);
 	}
 
 	/**
@@ -305,10 +306,23 @@ public final class PlayModel {
 	 */
 	public boolean onEvent(long aTimeMillisSinceStarted, int aHit)
 	{
+		// The first not reached yet
+		if (aTimeMillisSinceStarted + JUDGE_MISSED < iStartOffsetTimeMillis)
+			return true;
+		
 		long currentEventTimeMicros = 
 			(aTimeMillisSinceStarted - iStartOffsetTimeMillis) * 1000;
 
 		long lastEventTimeMicros = iLastEventTimeMicros;
+		int lastPlayingBarIndex = iLastPlayingBarIndex;
+		
+		int currentPlayingBarIndex;
+		
+		if (lastEventTimeMicros < currentEventTimeMicros)
+		{
+			currentPlayingBarIndex = lastPlayingBarIndex;
+			if (currentPlayingBarIndex==-1) currentPlayingBarIndex = 0;
+		}
 		
 		if (	aHit == HIT_NONE && 
 				lastEventTimeMicros > currentEventTimeMicros)
@@ -323,32 +337,32 @@ public final class PlayModel {
 		// TODO
  
 		while(tryPreprocessNextBar());
+		
+		if (iLastEventTimeMicros < currentEventTimeMicros)
+			iLastEventTimeMicros = currentEventTimeMicros;
+
 		translateNotePos(
 				iPlayerMessage.iNotePosArray, 
-				currentEventTimeMicros,
+				iLastEventTimeMicros,
 				iBars,
-				iPlayingBarIndex);
+				iLastPlayingBarIndex);
 
-		iLastEventTimeMicros = currentEventTimeMicros;
-		return false;	
+		return true;	
 	}
 
 	private boolean tryPreprocessNextBar()
 	{
-		if (-1 == iPreprocessedBarIndexRef.get()
-			|| !iBars[iPreprocessedBarIndexRef.get()].iHasBranchStartNextBar)
+		int preprocessedBarIndex = iPreprocessedBarIndexRef.get();
+		if (-1 == preprocessedBarIndex
+			|| !iBars[preprocessedBarIndex].iHasBranchStartNextBar)
 		{	
 			// No #BRANCHSTART in next bar
 
-			if (iPreprocessor.processNextBar(iBars, iNotation,
-					iPreprocessedCommandIndexRef, iPreprocessedBarIndexRef))
-			{
-				return true;
-			}
-			else
-			{
-				return false;
-			}
+			return iPreprocessor.processNextBar(
+					iBars,
+					iNotation,
+					iPreprocessedCommandIndexRef,
+					iPreprocessedBarIndexRef);
 		}
 		else
 		{

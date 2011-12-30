@@ -181,6 +181,10 @@ public final class PlayModel {
 	 */
 	private long iStartOffsetTimeMillis;
 	
+	/** The end time (when last bar is just passed) in milliseconds
+	 */
+	private long iEndTimeMillis;
+	
 	/** The last adjusted event time in microseconds
 	 * The event time is relative to start() is called
 	 * It is always 0 after start() is called	 
@@ -273,7 +277,7 @@ public final class PlayModel {
 		iNotation = iCourse.iNotationSingle;
 		iPreprocessedCommandIndexRef.set(-1);
 		iPreprocessedBarIndexRef.set(-1);
-		iLastPlayingBarIndex = -1;
+		iLastPlayingBarIndex = 0;
 		iRollingBaloonIndex = -1;
 		if (iNotation == null)	// Play as P1 if Single STYLE is not defined
 			iNotation = iCourse.iNotationP1;
@@ -288,6 +292,7 @@ public final class PlayModel {
 	public void start()
 	{
 		iStartOffsetTimeMillis = FIXED_START_TIME_OFFSET + (int)(iTJA.iOffset * 1000);
+		iEndTimeMillis = 0;
 		iLastEventTimeMicros = 0;
 		while(tryPreprocessNextBar());
 		translateNotePos(
@@ -306,23 +311,53 @@ public final class PlayModel {
 	 */
 	public boolean onEvent(long aTimeMillisSinceStarted, int aHit)
 	{
-		// The first not reached yet
-		if (aTimeMillisSinceStarted + JUDGE_MISSED < iStartOffsetTimeMillis)
-			return true;
+		// There is no more bar to play!
+		if (!iBars[iLastPlayingBarIndex].iPreprocessed)
+		{
+			if (0==iEndTimeMillis)	// time to mark end time
+				iEndTimeMillis = aTimeMillisSinceStarted;
+			else if (iEndTimeMillis - aTimeMillisSinceStarted > FIXED_END_TIME_OFFSET)
+				return false;
+		}
 		
-		long currentEventTimeMicros = 
-			(aTimeMillisSinceStarted - iStartOffsetTimeMillis) * 1000;
+		PlayerMessage playerMessage = iPlayerMessage;
+		
+		// The first not reached yet
+		//if (aTimeMillisSinceStarted + JUDGE_MISSED < iStartOffsetTimeMillis)
+			//return true;
+		
+		long currentEventTimeMillis = aTimeMillisSinceStarted - iStartOffsetTimeMillis;
+		long currentEventTimeMicros = currentEventTimeMillis * 1000;
 
 		long lastEventTimeMicros = iLastEventTimeMicros;
-		int lastPlayingBarIndex = iLastPlayingBarIndex;
 		
-		int currentPlayingBarIndex;
-		
-		if (lastEventTimeMicros < currentEventTimeMicros)
+		int barIndex;
+		for (barIndex = iLastPlayingBarIndex;
+			 iBars[barIndex].iPreprocessed;
+			 barIndex = nextIndexOfBar(barIndex))
 		{
-			currentPlayingBarIndex = lastPlayingBarIndex;
-			if (currentPlayingBarIndex==-1) currentPlayingBarIndex = 0;
+			Bar playingBar = iBars[barIndex];
+			long playingBarOffsetTimeMillis = playingBar.iOffsetTimeMicros / 1000;
+			for (PreprocessedNote note:playingBar.iNotes)
+			{
+				switch(note.iNoteType)
+				{
+				case NOTE_NONE:
+					continue;
+
+				case NOTE_STOP_ROLLING:
+					if (currentEventTimeMillis >
+						playingBarOffsetTimeMillis + note.iOffsetTimeMillis)
+					{
+						playerMessage.iRollingState = ROLLING_NONE;
+					}
+					// TODO
+					break;
+				}
+				
+			}
 		}
+		
 		
 		if (	aHit == HIT_NONE && 
 				lastEventTimeMicros > currentEventTimeMicros)

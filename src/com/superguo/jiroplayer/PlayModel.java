@@ -13,7 +13,7 @@ public final class PlayModel {
 	public final static int NOTE_SIDE 			= 2;
 	public final static int NOTE_BIG_FACE 		= 3;
 	public final static int NOTE_BIG_SIDE 		= 4;
-	public final static int NOTE_START_ROLLING_LENDA_ 		= 5;
+	public final static int NOTE_START_ROLLING_LENDA 		= 5;
 	public final static int NOTE_START_ROLLING_BIG_LENDA 	= 6;
 	public final static int NOTE_START_ROLLING_BALOON		= 7;
 	public final static int NOTE_START_ROLLING_POTATO		= 9;
@@ -24,8 +24,9 @@ public final class PlayModel {
 	public final static int BRANCH_EASY			= 2;
 	public final static int BRANCH_MASTER		= 3;
 	
+	public final static int ROLLING_NONE_LENDA_BAR	= -1;	// Just in convenience to display 
 	public final static int ROLLING_NONE		= 0;
-	public final static int ROLLING_BAR			= 1;
+	public final static int ROLLING_LENDA_BAR	= 1;
 	public final static int ROLLING_BALLOON		= 2;
 	public final static int ROLLING_POTATO		= 3;
 
@@ -194,6 +195,8 @@ public final class PlayModel {
 
 	private PlayPreprocessor iPreprocessor = new PlayPreprocessor();
 	
+	private String iPlayTimeError = "";
+	
 	// private SectionStat iSectionStat = new SectionStat();
 
 	final static class PreprocessedNote
@@ -314,8 +317,10 @@ public final class PlayModel {
 		// There is no more bar to play!
 		if (!iBars[iLastPlayingBarIndex].iPreprocessed)
 		{
-			if (0==iEndTimeMillis)	// time to mark end time
+			// It's time to mark end time
+			if (0==iEndTimeMillis)	
 				iEndTimeMillis = aTimeMillisSinceStarted;
+			// The time has passed FIXED_END_TIME_OFFSET since the mark of end time
 			else if (iEndTimeMillis - aTimeMillisSinceStarted > FIXED_END_TIME_OFFSET)
 				return false;
 		}
@@ -340,19 +345,55 @@ public final class PlayModel {
 			long playingBarOffsetTimeMillis = playingBar.iOffsetTimeMicros / 1000;
 			for (PreprocessedNote note:playingBar.iNotes)
 			{
-				switch(note.iNoteType)
+				int noteType = note.iNoteType;
+				
+				// Ignore all notes if the rolling is not going to be stopped
+				if (ROLLING_NONE != playerMessage.iRollingState &&
+						noteType != NOTE_STOP_ROLLING)
+				{
+					noteType = NOTE_NONE;
+				}
+
+				switch(noteType)
 				{
 				case NOTE_NONE:
-					continue;
+					break;
 
 				case NOTE_STOP_ROLLING:
-					if (currentEventTimeMillis >
-						playingBarOffsetTimeMillis + note.iOffsetTimeMillis)
+					if (ROLLING_NONE == playerMessage.iRollingState)	// Already no in rolling state
+					{	
+						// This case happens when
+						// The balloon/potato finished rolling before NOTE_STOP_ROLLING
+						note.iNoteType = NOTE_NONE;
+					}
+					else if (ROLLING_NONE_LENDA_BAR == playerMessage.iRollingState)
 					{
-						playerMessage.iRollingState = ROLLING_NONE;
+						// This case happens when the len-da bar has passed
+						// Cannot set note to NOTE_NONE until it exit the screen
+						if (note.iOffsetPos < -BEAT_DIST)
+						{
+							playerMessage.iRollingState = ROLLING_NONE;
+							note.iNoteType = NOTE_NONE;
+						}
+					}
+					else 
+					{	
+						if (currentEventTimeMillis > playingBarOffsetTimeMillis + note.iOffsetTimeMillis	)
+							// This case means the rolling time passed
+						{
+							playerMessage.iRollingState = ROLLING_NONE;
+							note.iNoteType = NOTE_NONE;
+						}
 					}
 					// TODO
 					break;
+					
+				case NOTE_START_ROLLING_LENDA:
+					break;
+					
+				case NOTE_START_ROLLING_BIG_LENDA:
+				case NOTE_START_ROLLING_BALOON:
+				case NOTE_START_ROLLING_POTATO:
 				}
 				
 			}
@@ -383,6 +424,11 @@ public final class PlayModel {
 				iLastPlayingBarIndex);
 
 		return true;	
+	}
+	
+	public final String playTimeError()
+	{
+		return iPlayTimeError;
 	}
 
 	private boolean tryPreprocessNextBar()

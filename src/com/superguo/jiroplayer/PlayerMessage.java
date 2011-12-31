@@ -27,6 +27,10 @@ public final class PlayerMessage
 	public final static int NOTE_JUDGED_NORMAL = 2;
 	public final static int NOTE_JUDGED_MISSED = 3;
 	public final static int NOTE_JUDGED_PASSED = 4;
+	public final static int SPECIAL_ROLLING_COUNT_BALLOON_FINISHED = -1;
+	public final static int SPECIAL_ROLLING_COUNT_BALLOON_FAILED = -2;
+	public final static int SPECIAL_ROLLING_COUNT_POTATO_FINISHED = -3;
+	public final static int SPECIAL_ROLLING_COUNT_POTATO_FAILED = -4;
 
 	public int iCourse;
 	public int iScore;
@@ -58,13 +62,25 @@ public final class PlayerMessage
 	/** Current branch */
 	public int iBranch;
 	public boolean iIsGGT;
+	
+	/**
+	 * 
+	 */
 	public int iRollingState;		
-	public int iRollingCount;	// down-counter for balloon/potato, up counter for bar
-								// balloon/potato:
-								// 0 means just finished
-								// -1 means failed
-								// -2 means no lenda
-	public boolean iFinalEnd;
+	
+	/** Can be positive or negative or zero 
+	 * Non-negative value means the rolling counter:
+	 * down-counter for balloon/potato
+	 * up counter for len-da bar
+	 * 
+	 * Negative value means the rolling ended:
+	 * see SPECIAL_ROLLING_COUNT_
+	 * 
+	 * In the case of negative value, the drawer must set to 0 
+	 * after the "rolling end" animation just starts to draw
+	 * 
+	 */
+	public int iRollingCount;	
 	
 	public void reset(TJACourse aCourse)
 	{
@@ -99,7 +115,5 @@ public final class PlayerMessage
 
 		// Reset some counters
 		iNumMaxCombo = iNumMaxNotes = iNumHitNotes = iNumTotalRolling = 0;
-		
-		iFinalEnd = false;
 	}
 }

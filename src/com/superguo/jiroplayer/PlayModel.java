@@ -194,6 +194,7 @@ public final class PlayModel {
 	 */
 	private long iLastEventTimeMicros;
 	private int iLastPlayingBarIndex;
+	private int iLastPlayingNoteIndex;
 
 	private PlayPreprocessor iPreprocessor = new PlayPreprocessor();
 	
@@ -283,6 +284,7 @@ public final class PlayModel {
 		iPreprocessedCommandIndexRef.set(-1);
 		iPreprocessedBarIndexRef.set(-1);
 		iLastPlayingBarIndex = 0;
+		iLastPlayingNoteIndex = 0;
 		iRollingBaloonIndex = -1;
 		if (iNotation == null)	// Play as P1 if Single STYLE is not defined
 			iNotation = iCourse.iNotationP1;
@@ -338,15 +340,17 @@ public final class PlayModel {
 
 		long lastEventTimeMicros = iLastEventTimeMicros;
 		
-		int barIndex;
-		for (barIndex = iLastPlayingBarIndex;
+		int barIndex = iLastPlayingBarIndex;
+		int noteIndex = iLastPlayingNoteIndex;
+		for (;
 			 iBars[barIndex].iPreprocessed;
 			 barIndex = nextIndexOfBar(barIndex))
 		{
 			Bar playingBar = iBars[barIndex];
 			long playingBarOffsetTimeMillis = playingBar.iOffsetTimeMicros / 1000;
-			for (PreprocessedNote note:playingBar.iNotes)
+			for (;noteIndex<playingBar.iNotes.length; ++noteIndex)
 			{
+				PreprocessedNote note = playingBar.iNotes[noteIndex];
 				int noteType = note.iNoteType;
 				
 				// Ignore all notes if the rolling is not going to be stopped
@@ -356,12 +360,15 @@ public final class PlayModel {
 					noteType = NOTE_NONE;
 				}
 
-				// If the current note has passed
-				boolean noteHasPassed = currentEventTimeMillis >= 
-					playingBarOffsetTimeMillis + note.iOffsetTimeMillis + 
-					(NOTE_FACE<=noteType && noteType<=NOTE_BIG_SIDE ? JUDGE_MISSED : 0);
+				long dist = currentEventTimeMillis - (playingBarOffsetTimeMillis + note.iOffsetTimeMillis);
+
+				// Indicates if the current note has passed
+				// Used only for rolling notes/states
+				boolean noteHasPassed = dist >= 0; /*+ 
+					(NOTE_FACE<=noteType && noteType<=NOTE_BIG_SIDE ? JUDGE_MISSED : 0);*/
 				
-				// In most case handled will be true if noteHasPassed is true
+				// In all cases 'handled' will be true if 'noteHasPassed' is true
+				// In most cases 'handled' will be false if 'noteHasPassed' is false
 				// The following code will handle the exceptions
 				boolean handled = noteHasPassed;
 
@@ -371,14 +378,16 @@ public final class PlayModel {
 					break;
 
 				case NOTE_STOP_ROLLING:
-					handled = handleNoteTypeStopRolling(playerMessage, note, noteHasPassed);
+					handled = noteHasPassed ||
+							handleNoteTypeStopRolling(playerMessage, note, noteHasPassed);
 					break;
-					
+
 				case NOTE_START_ROLLING_LENDA:
 					if (noteHasPassed)
 					{
 						playerMessage.iRollingCount = 0;
 						playerMessage.iRollingState = ROLLING_LENDA_BAR;
+						note.iNoteType = NOTE_NONE;
 					}
 					break;
 					
@@ -387,6 +396,7 @@ public final class PlayModel {
 					{
 						playerMessage.iRollingCount = 0;
 						playerMessage.iRollingState = ROLLING_BIG_LENDA_BAR;
+						note.iNoteType = NOTE_NONE;
 					}
 					break;
 					
@@ -395,41 +405,75 @@ public final class PlayModel {
 					{
 						playerMessage.iRollingCount = iCourse.iBalloon[++iRollingBaloonIndex];
 						playerMessage.iRollingState = ROLLING_BALLOON;
+						note.iNoteType = NOTE_NONE;
 					}
 					break;
 					
 				case NOTE_START_ROLLING_POTATO:
 					if (noteHasPassed)
 					{
-						playerMessage.iRollingCount = 0;
+						playerMessage.iRollingCount = iCourse.iBalloon[++iRollingBaloonIndex];
 						playerMessage.iRollingState = ROLLING_POTATO;
+						note.iNoteType = NOTE_NONE;
 					}
 					break;
 					
 				case NOTE_FACE:
+					if (noteHasPassed)
+					{
+						playerMessage.iNoteJudged = PlayerMessage.JUDGED_PASSED;
+						iSectionStat.iPrecisionTotal += 2;
+						note.iNoteType = NOTE_NONE;
+					}
+					else
+					{
+						if (dist <= JUDGE_GOOD)
+						if (HIT_FACE)
+						if (dist <= JUDGE_GOOD)
+						{
+							aHit
+							playerMessage.iNoteJudged = PlayerMessage.JUDGED_PASSED;
+						}
+					}
 					// TODO
 				}
 				
 				// exit for note if no note handled
 				if (!handled) break;
 			}
+			
+			if (noteIndex >= playingBar.iNotes.length)
+			{
+				// Set the bar unused
+				playingBar.iPreprocessed = false;
+				noteIndex = 0;
+			}
+			else
+			{
+				break;
+			}
 		}
 		
+		if (iLastPlayingBarIndex != barIndex)
+		{
+			iLastPlayingBarIndex = barIndex;
+			while(tryPreprocessNextBar());
+		}
 		
-		if (	aHit == HIT_NONE && 
-				lastEventTimeMicros > currentEventTimeMicros)
-			// Terrible case! The timer rewind! 
-			return true;
+		iLastPlayingNoteIndex = noteIndex;
 		
-		if (	aHit != HIT_NONE && 
-				lastEventTimeMicros - currentEventTimeMicros > JUDGE_MISSED)
-			// Although hit but too lagged
-			return true;
+//		if (	aHit == HIT_NONE && 
+//				lastEventTimeMicros > currentEventTimeMicros)
+//			// Terrible case! The timer rewind! 
+//			return true;
+//		
+//		if (	aHit != HIT_NONE && 
+//				lastEventTimeMicros - currentEventTimeMicros > JUDGE_MISSED)
+//			// Although hit but too lagged
+//			return true;
 
 		// TODO
- 
-		while(tryPreprocessNextBar());
-		
+
 		if (iLastEventTimeMicros < currentEventTimeMicros)
 			iLastEventTimeMicros = currentEventTimeMicros;
 
@@ -455,14 +499,14 @@ public final class PlayModel {
 	{
 		switch (playerMessage.iRollingState)
 		{
-		case ROLLING_NONE: // Already no in rolling state
+		case ROLLING_NONE: // Finished rolling (balloon/potato) 
 			// This case happens when
 			// The balloon/potato finished rolling before NOTE_STOP_ROLLING
 			note.iNoteType = NOTE_NONE;
 			return true;
 			
-		case ROLLING_NONE_LENDA:
-		case ROLLING_NONE_BIG_LENDA:
+		case ROLLING_NONE_LENDA:		// Finished rolling (len-da)
+		case ROLLING_NONE_BIG_LENDA:	// Finished rolling (big len-da)
 			// This case happens when the len-da bar has passed
 			// Cannot set note to NOTE_NONE until it exit the screen
 			if (note.iOffsetPos < -BEAT_DIST)
@@ -473,7 +517,7 @@ public final class PlayModel {
 			}
 			break;
 
-		default:// rolling state
+		default:	// Still rolling
 			if (noteHasPassed)
 				// This case means the rolling time passed
 			{

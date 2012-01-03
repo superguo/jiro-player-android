@@ -24,11 +24,13 @@ public final class PlayModel {
 	public final static int BRANCH_EASY			= 2;
 	public final static int BRANCH_MASTER		= 3;
 	
-	public final static int ROLLING_NONE_LENDA_BAR	= -1;	// Just in convenience to display 
-	public final static int ROLLING_NONE		= 0;
-	public final static int ROLLING_LENDA_BAR	= 1;
-	public final static int ROLLING_BALLOON		= 2;
-	public final static int ROLLING_POTATO		= 3;
+	public final static int ROLLING_NONE_LENDA		= -1;	// Just in convenience to display 
+	public final static int ROLLING_NONE_BIG_LENDA	= -2;	// Just in convenience to display
+	public final static int ROLLING_NONE			= 0;
+	public final static int ROLLING_LENDA_BAR		= 1;
+	public final static int ROLLING_BIG_LENDA_BAR	= 2;
+	public final static int ROLLING_BALLOON			= 3;
+	public final static int ROLLING_POTATO			= 4;
 
 	/** The maximum level of 4 course */
 	public final static int MAX_LEVEL_OF[] = { 5, 7, 8, 10 };
@@ -348,11 +350,20 @@ public final class PlayModel {
 				int noteType = note.iNoteType;
 				
 				// Ignore all notes if the rolling is not going to be stopped
-				if (ROLLING_NONE != playerMessage.iRollingState &&
+				if (playerMessage.iRollingState > ROLLING_NONE &&
 						noteType != NOTE_STOP_ROLLING)
 				{
 					noteType = NOTE_NONE;
 				}
+
+				// If the current note has passed
+				boolean noteHasPassed = currentEventTimeMillis >= 
+					playingBarOffsetTimeMillis + note.iOffsetTimeMillis + 
+					(NOTE_FACE<=noteType && noteType<=NOTE_BIG_SIDE ? JUDGE_MISSED : 0);
+				
+				// In most case handled will be true if noteHasPassed is true
+				// The following code will handle the exceptions
+				boolean handled = noteHasPassed;
 
 				switch(noteType)
 				{
@@ -360,42 +371,47 @@ public final class PlayModel {
 					break;
 
 				case NOTE_STOP_ROLLING:
-					if (ROLLING_NONE == playerMessage.iRollingState)	// Already no in rolling state
-					{	
-						// This case happens when
-						// The balloon/potato finished rolling before NOTE_STOP_ROLLING
-						note.iNoteType = NOTE_NONE;
-					}
-					else if (ROLLING_NONE_LENDA_BAR == playerMessage.iRollingState)
-					{
-						// This case happens when the len-da bar has passed
-						// Cannot set note to NOTE_NONE until it exit the screen
-						if (note.iOffsetPos < -BEAT_DIST)
-						{
-							playerMessage.iRollingState = ROLLING_NONE;
-							note.iNoteType = NOTE_NONE;
-						}
-					}
-					else 
-					{	
-						if (currentEventTimeMillis > playingBarOffsetTimeMillis + note.iOffsetTimeMillis	)
-							// This case means the rolling time passed
-						{
-							playerMessage.iRollingState = ROLLING_NONE;
-							note.iNoteType = NOTE_NONE;
-						}
-					}
-					// TODO
+					handled = handleNoteTypeStopRolling(playerMessage, note, noteHasPassed);
 					break;
 					
 				case NOTE_START_ROLLING_LENDA:
+					if (noteHasPassed)
+					{
+						playerMessage.iRollingCount = 0;
+						playerMessage.iRollingState = ROLLING_LENDA_BAR;
+					}
 					break;
 					
 				case NOTE_START_ROLLING_BIG_LENDA:
+					if (noteHasPassed)
+					{
+						playerMessage.iRollingCount = 0;
+						playerMessage.iRollingState = ROLLING_BIG_LENDA_BAR;
+					}
+					break;
+					
 				case NOTE_START_ROLLING_BALOON:
+					if (noteHasPassed)
+					{
+						playerMessage.iRollingCount = iCourse.iBalloon[++iRollingBaloonIndex];
+						playerMessage.iRollingState = ROLLING_BALLOON;
+					}
+					break;
+					
 				case NOTE_START_ROLLING_POTATO:
+					if (noteHasPassed)
+					{
+						playerMessage.iRollingCount = 0;
+						playerMessage.iRollingState = ROLLING_POTATO;
+					}
+					break;
+					
+				case NOTE_FACE:
+					// TODO
 				}
 				
+				// exit for note if no note handled
+				if (!handled) break;
 			}
 		}
 		
@@ -424,6 +440,73 @@ public final class PlayModel {
 				iLastPlayingBarIndex);
 
 		return true;	
+	}
+	
+	/**
+	 * Handles case when note.iNoteType == NOTE_STOP_ROLLING
+	 * @param playerMessage
+	 * @param note
+	 * @param noteHasPassed
+	 * @return true if handled, false otherwise.
+	 */
+	private static boolean handleNoteTypeStopRolling(PlayerMessage playerMessage,
+			PreprocessedNote note,
+			boolean noteHasPassed)
+	{
+		switch (playerMessage.iRollingState)
+		{
+		case ROLLING_NONE: // Already no in rolling state
+			// This case happens when
+			// The balloon/potato finished rolling before NOTE_STOP_ROLLING
+			note.iNoteType = NOTE_NONE;
+			return true;
+			
+		case ROLLING_NONE_LENDA:
+		case ROLLING_NONE_BIG_LENDA:
+			// This case happens when the len-da bar has passed
+			// Cannot set note to NOTE_NONE until it exit the screen
+			if (note.iOffsetPos < -BEAT_DIST)
+			{
+				playerMessage.iRollingState = ROLLING_NONE;
+				note.iNoteType = NOTE_NONE;
+				return true;
+			}
+			break;
+
+		default:// rolling state
+			if (noteHasPassed)
+				// This case means the rolling time passed
+			{
+				switch(playerMessage.iRollingState)
+				{
+				case ROLLING_LENDA_BAR:
+					playerMessage.iRollingState = ROLLING_NONE_LENDA;
+					break;
+					
+				case ROLLING_BIG_LENDA_BAR:
+					playerMessage.iRollingState = ROLLING_NONE_BIG_LENDA;
+					break;
+					
+				case ROLLING_BALLOON:
+					playerMessage.iRollingState = ROLLING_NONE;
+					if (playerMessage.iRollingCount>0)
+						playerMessage.iRollingCount = 
+							PlayerMessage.SPECIAL_ROLLING_COUNT_BALLOON_FAILED;
+					break;
+					
+				case ROLLING_POTATO:
+					playerMessage.iRollingState = ROLLING_NONE;
+					if (playerMessage.iRollingCount>0)
+						playerMessage.iRollingCount = 
+							PlayerMessage.SPECIAL_ROLLING_COUNT_POTATO_FAILED;
+					break;
+				}
+				
+				note.iNoteType = NOTE_NONE;
+				return true;
+			}
+		}
+		return false;
 	}
 	
 	public final String playTimeError()

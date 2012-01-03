@@ -22,15 +22,15 @@ public final class PlayerMessage
 	}
 	
 	public final static int MAX_NOTE_POS = 64;
-	public final static int NOTE_JUDGED_NONE = 0;
-	public final static int NOTE_JUDGED_GOOD = 1;
-	public final static int NOTE_JUDGED_NORMAL = 2;
-	public final static int NOTE_JUDGED_MISSED = 3;
-	public final static int NOTE_JUDGED_PASSED = 4;
-	public final static int SPECIAL_ROLLING_COUNT_BALLOON_FINISHED = -1;
-	public final static int SPECIAL_ROLLING_COUNT_BALLOON_FAILED = -2;
-	public final static int SPECIAL_ROLLING_COUNT_POTATO_FINISHED = -3;
-	public final static int SPECIAL_ROLLING_COUNT_POTATO_FAILED = -4;
+	public final static int JUDGED_NONE = 0;
+	public final static int JUDGED_GOOD = 1;
+	public final static int JUDGED_NORMAL = 2;
+	public final static int JUDGED_MISSED = 3;
+	public final static int JUDGED_PASSED = 4;
+	public final static int SPECIAL_ROLLING_COUNT_BALLOON_FINISHED 	= -1;
+	public final static int SPECIAL_ROLLING_COUNT_BALLOON_FAILED 	= -2;
+	public final static int SPECIAL_ROLLING_COUNT_POTATO_FINISHED 	= -3;
+	public final static int SPECIAL_ROLLING_COUNT_POTATO_FAILED 	= -4;
 
 	public int iCourse;
 	public int iScore;
@@ -98,7 +98,7 @@ public final class PlayerMessage
 		iNotePosCount = 0;
 
 		// Reset judge
-		iNoteJudged = NOTE_JUDGED_NONE;
+		iNoteJudged = JUDGED_NONE;
 		
 		// Reset branch state
 		if (aCourse.iHasBranch)

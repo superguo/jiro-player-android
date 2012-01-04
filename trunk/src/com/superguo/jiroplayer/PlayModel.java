@@ -360,10 +360,11 @@ public final class PlayModel {
 					noteType = NOTE_NONE;
 				}
 
+				/** time distance from note time to current time */
 				long dist = currentEventTimeMillis - (playingBarOffsetTimeMillis + note.iOffsetTimeMillis);
 
-				// Indicates if the current note has passed
-				// Used only for rolling notes/states
+				/** Indicates if the current note has passed
+				 * 	Used only for rolling notes/states	 */
 				boolean noteHasPassed = dist >= 0; /*+ 
 					(NOTE_FACE<=noteType && noteType<=NOTE_BIG_SIDE ? JUDGE_MISSED : 0);*/
 				
@@ -419,21 +420,33 @@ public final class PlayModel {
 					break;
 					
 				case NOTE_FACE:
-					if (noteHasPassed)
+					if (dist > JUDGE_MISSED)
 					{
-						playerMessage.iNoteJudged = PlayerMessage.JUDGED_PASSED;
+						playerMessage.iNoteJudged = PlayerMessage.JUDGED_BREAK;
 						iSectionStat.iPrecisionTotal += 2;
 						note.iNoteType = NOTE_NONE;
 					}
-					else
+					else if (dist > JUDGE_NORMAL)
 					{
-						if (dist <= JUDGE_GOOD)
-						if (HIT_FACE)
-						if (dist <= JUDGE_GOOD)
+						playerMessage.iNoteJudged = PlayerMessage.JUDGED_MISSED;
+						iSectionStat.iPrecisionTotal += 2;
+						note.iNoteType = NOTE_NONE;
+					}
+					else if (dist > JUDGE_GOOD)
+					{
+						if (HIT_FACE == aHit)
 						{
-							aHit
-							playerMessage.iNoteJudged = PlayerMessage.JUDGED_PASSED;
+							playerMessage.iNoteJudged = PlayerMessage.JUDGED_NORMAL;
+							iSectionStat.iPrecisionTotal += 2;
+							iSectionStat.iPrecisionPlayed++;
+							note.iNoteType = NOTE_NONE;
 						}
+						else if (HIT_SIDE == aHit)
+						{
+							
+						}
+							//aHit
+							//playerMessage.iNoteJudged = PlayerMessage.JUDGED_PASSED;
 					}
 					// TODO
 				}

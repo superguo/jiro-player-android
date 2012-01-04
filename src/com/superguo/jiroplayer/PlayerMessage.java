@@ -26,7 +26,7 @@ public final class PlayerMessage
 	public final static int JUDGED_GOOD = 1;
 	public final static int JUDGED_NORMAL = 2;
 	public final static int JUDGED_MISSED = 3;
-	public final static int JUDGED_PASSED = 4;
+	public final static int JUDGED_BREAK = 4;
 	public final static int SPECIAL_ROLLING_COUNT_BALLOON_FINISHED 	= -1;
 	public final static int SPECIAL_ROLLING_COUNT_BALLOON_FAILED 	= -2;
 	public final static int SPECIAL_ROLLING_COUNT_POTATO_FINISHED 	= -3;

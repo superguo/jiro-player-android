@@ -145,9 +145,9 @@ public final class PlayModel {
 	
 	public final static int MAX_PREPROCESSED_BAR = 3;
 	
-	public final static int JUDGE_GOOD 		= 50;
-	public final static int JUDGE_NORMAL 	= 150;
-	public final static int JUDGE_MISSED 	= 217;
+	public final static int TIME_JUDGE_GOOD 		= 50;
+	public final static int TIME_JUDGE_NORMAL 	= 150;
+	public final static int TIME_JUDGE_MISSED 	= 217;
 
 	// SECTION statistics
 	private final class SectionStat
@@ -348,6 +348,9 @@ public final class PlayModel {
 		{
 			Bar playingBar = iBars[barIndex];
 			long playingBarOffsetTimeMillis = playingBar.iOffsetTimeMicros / 1000;
+			
+			// Traverse all note
+			// Cannot use the statement 'for(note:playingBar)' since we need the index
 			for (;noteIndex<playingBar.iNotes.length; ++noteIndex)
 			{
 				PreprocessedNote note = playingBar.iNotes[noteIndex];
@@ -360,22 +363,23 @@ public final class PlayModel {
 					noteType = NOTE_NONE;
 				}
 
-				/** time distance from note time to current time */
-				long dist = currentEventTimeMillis - (playingBarOffsetTimeMillis + note.iOffsetTimeMillis);
+				/** The event time offset of current event time since current note time */
+				long eventOffset = currentEventTimeMillis - (playingBarOffsetTimeMillis + note.iOffsetTimeMillis);
 
 				/** Indicates if the current note has passed
 				 * 	Used only for rolling notes/states	 */
-				boolean noteHasPassed = dist >= 0; /*+ 
+				boolean noteHasPassed = eventOffset >= 0; /*+ 
 					(NOTE_FACE<=noteType && noteType<=NOTE_BIG_SIDE ? JUDGE_MISSED : 0);*/
 				
 				// In all cases 'handled' will be true if 'noteHasPassed' is true
 				// In most cases 'handled' will be false if 'noteHasPassed' is false
 				// The following code will handle the exceptions
-				boolean handled = noteHasPassed;
+				boolean handled = false;
 
 				switch(noteType)
 				{
 				case NOTE_NONE:
+					handled = true;
 					break;
 
 				case NOTE_STOP_ROLLING:
@@ -389,6 +393,7 @@ public final class PlayModel {
 						playerMessage.iRollingCount = 0;
 						playerMessage.iRollingState = ROLLING_LENDA_BAR;
 						note.iNoteType = NOTE_NONE;
+						handled = true;
 					}
 					break;
 					
@@ -398,6 +403,7 @@ public final class PlayModel {
 						playerMessage.iRollingCount = 0;
 						playerMessage.iRollingState = ROLLING_BIG_LENDA_BAR;
 						note.iNoteType = NOTE_NONE;
+						handled = true;
 					}
 					break;
 					
@@ -407,6 +413,7 @@ public final class PlayModel {
 						playerMessage.iRollingCount = iCourse.iBalloon[++iRollingBaloonIndex];
 						playerMessage.iRollingState = ROLLING_BALLOON;
 						note.iNoteType = NOTE_NONE;
+						handled = true;
 					}
 					break;
 					
@@ -416,37 +423,84 @@ public final class PlayModel {
 						playerMessage.iRollingCount = iCourse.iBalloon[++iRollingBaloonIndex];
 						playerMessage.iRollingState = ROLLING_POTATO;
 						note.iNoteType = NOTE_NONE;
+						handled = true;
 					}
 					break;
 					
 				case NOTE_FACE:
-					if (dist > JUDGE_MISSED)
-					{
+				case NOTE_SIDE:
+				case NOTE_BIG_FACE:
+				case NOTE_BIG_SIDE:
+					if (eventOffset > TIME_JUDGE_MISSED)
+					{	// no hit in TIME_JUDGE_MISSED
+						// and the judge result is JUDGED_BREAK
 						playerMessage.iNoteJudged = PlayerMessage.JUDGED_BREAK;
 						iSectionStat.iPrecisionTotal += 2;
+						
+						playerMessage.iGauge -= iGaugePerNote<<2; // Gauge reduce 4 times
+						if (playerMessage.iGauge<0)
+							playerMessage.iGauge=0;
+						
 						note.iNoteType = NOTE_NONE;
+						handled = true;
 					}
-					else if (dist > JUDGE_NORMAL)
-					{
-						playerMessage.iNoteJudged = PlayerMessage.JUDGED_MISSED;
-						iSectionStat.iPrecisionTotal += 2;
-						note.iNoteType = NOTE_NONE;
-					}
-					else if (dist > JUDGE_GOOD)
-					{
-						if (HIT_FACE == aHit)
+					else if (eventOffset > TIME_JUDGE_NORMAL)
+					{	// no hit in TIME_JUDGE_NORMAL
+						// similar to TIME_JUDGE_MISSED except that the
+						// judge result is JUDGED_MISSED
+						if (HIT_NONE != aHit)	// compatible with lag case
 						{
+							playerMessage.iNoteJudged = PlayerMessage.JUDGED_MISSED;
+							iSectionStat.iPrecisionTotal += 2;
+							
+							playerMessage.iGauge -= iGaugePerNote<<2; // Gauge reduce 4 times
+							if (playerMessage.iGauge<0)
+								playerMessage.iGauge=0;
+							
+							note.iNoteType = NOTE_NONE;
+							
+							handled = true;
+						}
+					}
+					else if (eventOffset > TIME_JUDGE_GOOD)
+					{
+						if (HIT_FACE == aHit && (NOTE_FACE==noteType || NOTE_BIG_FACE==noteType)
+								||
+							HIT_SIDE == aHit && (NOTE_SIDE==noteType || NOTE_BIG_SIDE==noteType))
+						{
+							// Judge
 							playerMessage.iNoteJudged = PlayerMessage.JUDGED_NORMAL;
+							
+							// SECTION statistics
 							iSectionStat.iPrecisionTotal += 2;
 							iSectionStat.iPrecisionPlayed++;
-							note.iNoteType = NOTE_NONE;
-						}
-						else if (HIT_SIDE == aHit)
-						{
 							
+							// Gauge
+							int gauge = playerMessage.iGauge;
+							if (gauge<MAX_GAUGE)
+							{
+								gauge += iGaugePerNote;
+								if (NOTE_BIG_FACE==noteType || NOTE_BIG_SIDE==noteType)
+								gauge += iGaugePerNote;	
+								
+								if (gauge > MAX_GAUGE)
+									gauge = MAX_GAUGE;
+							}
+							playerMessage.iGauge = gauge;
+							
+							// Scores
+							// FIXME improve the performance here
+							if (iPlayerMessage.iNumCombo<100)
+								playerMessage.iAddedScore = iScoreInit + iScoreDiff * (iPlayerMessage.iNumCombo/10);
+							else
+								playerMessage.iAddedScore = iScoreInit + iScoreDiff * 10;
+							playerMessage.iScore += playerMessage.iAddedScore;
+							
+							
+							note.iNoteType = NOTE_NONE;
+							
+							handled = true;
 						}
-							//aHit
-							//playerMessage.iNoteJudged = PlayerMessage.JUDGED_PASSED;
 					}
 					// TODO
 				}

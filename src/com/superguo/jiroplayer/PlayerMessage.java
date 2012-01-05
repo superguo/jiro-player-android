@@ -21,12 +21,27 @@ public final class PlayerMessage
 		public int iNotePos;
 	}
 	
-	public final static int MAX_NOTE_POS = 64;
-	public final static int JUDGED_NONE = 0;
-	public final static int JUDGED_GOOD = 1;
-	public final static int JUDGED_NORMAL = 2;
-	public final static int JUDGED_MISSED = 3;
-	public final static int JUDGED_BREAK = 4;
+	public final static int MAX_NOTE_POS 	= 64;
+	
+	/** The note is not judged yet	 */
+	public final static int JUDGED_NONE 	= 0;
+	
+	/** The note is hit correctly within TIME_JUDGE_GOOD */
+	public final static int JUDGED_GOOD 	= 1;
+	
+	/** The note is hit correctly between TIME_JUDGE_GOOD and TIME_JUDGE_NORMAL */
+	public final static int JUDGED_NORMAL 	= 2;
+	
+	/** The note is hit correctly between TIME_JUDGE_NORMAL and TIME_JUDGE_MISSED 
+	 * or the note is hit incorrectly within TIME_JUDGE_NORMAL */
+	public final static int JUDGED_MISSED 	= 3;
+	
+	/** The note is not hit within TIME_JUDGE_MISSED */
+	public final static int JUDGED_BREAK 	= 4;
+	
+	/**  */
+	public final static int JUDGED_MASK_SPECIAL = 0x10;
+	
 	public final static int SPECIAL_ROLLING_COUNT_BALLOON_FINISHED 	= -1;
 	public final static int SPECIAL_ROLLING_COUNT_BALLOON_FAILED 	= -2;
 	public final static int SPECIAL_ROLLING_COUNT_POTATO_FINISHED 	= -3;
@@ -34,6 +49,7 @@ public final class PlayerMessage
 
 	public int iCourse;
 	public int iScore;
+	public int iGauge;
 
 	/** The added score
 	 * Drawer must set to 0 after the frame is drawn
@@ -90,6 +106,8 @@ public final class PlayerMessage
 		// Reset current score
 		iScore = 0;
 		iAddedScore = 0;
+		
+		iGauge = 0;
 
 		// Reset hit
 		//iHit = PlayModel.HIT_NONE;

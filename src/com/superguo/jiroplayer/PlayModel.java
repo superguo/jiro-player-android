@@ -302,7 +302,8 @@ public final class PlayModel {
 		iEndTimeMillis = 0;
 		iLastEventTimeMicros = 0;
 		while(tryPreprocessNextBar());
-		translateNotePos(
+		
+		iPlayerMessage.iNotePosCount = translateNotePos(
 				iPlayerMessage.iNotePosArray, 
 				-iStartOffsetTimeMillis * 1000,
 				iBars,
@@ -373,13 +374,14 @@ public final class PlayModel {
 				
 				// In all cases 'handled' will be true if 'noteHasPassed' is true
 				// In most cases 'handled' will be false if 'noteHasPassed' is false
+				// NOTE_BARLINE or NOTE_NONE is not taken into account
 				// The following code will handle the exceptions
 				boolean handled = false;
 
 				switch(noteType)
 				{
+				case NOTE_BARLINE:
 				case NOTE_NONE:
-					handled = true;
 					break;
 
 				case NOTE_STOP_ROLLING:
@@ -431,82 +433,120 @@ public final class PlayModel {
 				case NOTE_SIDE:
 				case NOTE_BIG_FACE:
 				case NOTE_BIG_SIDE:
-					if (eventOffset > TIME_JUDGE_MISSED)
-					{	// no hit in TIME_JUDGE_MISSED
-						// and the judge result is JUDGED_BREAK
-						playerMessage.iNoteJudged = PlayerMessage.JUDGED_BREAK;
-						iSectionStat.iPrecisionTotal += 2;
+					if (eventOffset > TIME_JUDGE_NORMAL)
+					{	
+						// Handling cases MISSED and BREAK
 						
-						playerMessage.iGauge -= iGaugePerNote<<2; // Gauge reduce 4 times
-						if (playerMessage.iGauge<0)
-							playerMessage.iGauge=0;
+						// Is it a BREAK?
+						boolean isBreak = eventOffset > TIME_JUDGE_MISSED;
 						
-						note.iNoteType = NOTE_NONE;
-						handled = true;
-					}
-					else if (eventOffset > TIME_JUDGE_NORMAL)
-					{	// no hit in TIME_JUDGE_NORMAL
-						// similar to TIME_JUDGE_MISSED except that the
-						// judge result is JUDGED_MISSED
-						if (HIT_NONE != aHit)	// compatible with lag case
+						// I try to make it work compatible with lag case
+						// So we don't think it is a MISSED even 
+						// if there is no hit within TIME_JUDGE_NORMAL.
+						// However if time has passed TIME_JUDGE_MISSED
+						// or there is a hit within TIME_JUDGE_NORMAL,
+						// we can conclude that it is a MISSED or BREAK
+						if (isBreak || HIT_NONE != aHit)	
 						{
-							playerMessage.iNoteJudged = PlayerMessage.JUDGED_MISSED;
+							playerMessage.iNoteJudged = isBreak ?
+									PlayerMessage.JUDGED_BREAK :
+									PlayerMessage.JUDGED_MISSED;
 							iSectionStat.iPrecisionTotal += 2;
 							
 							playerMessage.iGauge -= iGaugePerNote<<2; // Gauge reduce 4 times
 							if (playerMessage.iGauge<0)
 								playerMessage.iGauge=0;
 							
+							playerMessage.iNumCombo = 0;
+							playerMessage.iNumTotalNotes++;
+							
 							note.iNoteType = NOTE_NONE;
 							
 							handled = true;
 						}
 					}
-					else if (eventOffset > TIME_JUDGE_GOOD)
+					else
 					{
 						if (HIT_FACE == aHit && (NOTE_FACE==noteType || NOTE_BIG_FACE==noteType)
 								||
 							HIT_SIDE == aHit && (NOTE_SIDE==noteType || NOTE_BIG_SIDE==noteType))
 						{
+							// Handling cases GOOD and NORMAL
+							
+							// It is good only hit correctly within TIME_JUDGE_GOOD
+							boolean isGood = eventOffset <= TIME_JUDGE_GOOD;
+							
 							// Judge
 							playerMessage.iNoteJudged = PlayerMessage.JUDGED_NORMAL;
 							
 							// SECTION statistics
 							iSectionStat.iPrecisionTotal += 2;
-							iSectionStat.iPrecisionPlayed++;
+							iSectionStat.iPrecisionPlayed += isGood ? 2 : 1;
+
+							// For both gauge and score
+							int addedShifts = 0;
+							if (isGood)
+								addedShifts++;
 							
+							if (NOTE_BIG_FACE==noteType || NOTE_BIG_SIDE==noteType)
+								addedShifts++;
+
 							// Gauge
 							int gauge = playerMessage.iGauge;
 							if (gauge<MAX_GAUGE)
 							{
-								gauge += iGaugePerNote;
-								if (NOTE_BIG_FACE==noteType || NOTE_BIG_SIDE==noteType)
-								gauge += iGaugePerNote;	
-								
+								gauge += iGaugePerNote << addedShifts;	
 								if (gauge > MAX_GAUGE)
 									gauge = MAX_GAUGE;
 							}
 							playerMessage.iGauge = gauge;
 							
 							// Scores
+							int addedScore = playerMessage.iAddedScore;
 							// FIXME improve the performance here
 							if (iPlayerMessage.iNumCombo<100)
-								playerMessage.iAddedScore = iScoreInit + iScoreDiff * (iPlayerMessage.iNumCombo/10);
+								addedScore = iScoreInit + iScoreDiff * (iPlayerMessage.iNumCombo/10);
 							else
-								playerMessage.iAddedScore = iScoreInit + iScoreDiff * 10;
-							playerMessage.iScore += playerMessage.iAddedScore;
+								addedScore = iScoreInit + iScoreDiff * 10;
+							addedScore <<= addedShifts;
+							playerMessage.iAddedScore = addedScore;
+							playerMessage.iScore += addedScore;
 							
+							// Combo counter
+							if (playerMessage.iNumCombo == playerMessage.iNumMaxCombo)
+							{
+								playerMessage.iNumCombo++;
+								playerMessage.iNumMaxCombo++;
+							}
+							else
+								playerMessage.iNumCombo++;
+							
+							// Note counter
+							playerMessage.iNumTotalNotes++;
+							if (isGood)
+								playerMessage.iNumGoodNotes++;
+							else
+								playerMessage.iNumNormalNotes++;
 							
 							note.iNoteType = NOTE_NONE;
 							
 							handled = true;
 						}
 					}
-					// TODO
+					break;
 				}
 				
-				// exit for note if no note handled
-				if (!handled) break;
+				
+				if (!handled)
+				{
+					if (playerMessage.iRollingState > ROLLING_NONE)
+					{
+						// TODO handle the rolling case 
+					}
+					
+					// Exit here, for note if no actual note handled
+					break;
+				}
 			}
 			
 			if (noteIndex >= playingBar.iNotes.length)
@@ -544,7 +584,7 @@ public final class PlayModel {
 		if (iLastEventTimeMicros < currentEventTimeMicros)
 			iLastEventTimeMicros = currentEventTimeMicros;
 
-		translateNotePos(
+		iPlayerMessage.iNotePosCount = translateNotePos(
 				iPlayerMessage.iNotePosArray, 
 				iLastEventTimeMicros,
 				iBars,

@@ -57,8 +57,16 @@ public final class PlayerMessage
 	public int iAddedScore;
 	public int iNumCombo;
 	public int iNumMaxCombo;
-	public int iNumMaxNotes;
-	public int iNumHitNotes;
+	
+	/** The number of NORMAL notes */
+	public int iNumNormalNotes;
+	
+	/** The number of GOOD notes */
+	public int iNumGoodNotes;
+	
+	/** The number of MISSED+BREAK+NORMAL+GOOD notes */
+	public int iNumTotalNotes;
+	
 	public int iNumTotalRolling;
 
 	/** The value is one of HIT_NONE, HIT_FACE and HIT_SIDE
@@ -132,6 +140,6 @@ public final class PlayerMessage
 		iRollingCount = 0;
 
 		// Reset some counters
-		iNumMaxCombo = iNumMaxNotes = iNumHitNotes = iNumTotalRolling = 0;
+		iNumMaxCombo = iNumNormalNotes = iNumGoodNotes = iNumTotalNotes = iNumTotalRolling = 0;
 	}
 }

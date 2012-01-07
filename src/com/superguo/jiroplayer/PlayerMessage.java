@@ -67,7 +67,8 @@ public final class PlayerMessage
 	/** The number of MISSED+BREAK+NORMAL+GOOD notes */
 	public int iNumTotalNotes;
 	
-	public int iNumTotalRolling;
+	/** The number of all rolled */
+	public int iNumTotalRolled;
 
 	/** The value is one of HIT_NONE, HIT_FACE and HIT_SIDE
 	 * Drawer must set to HIT_NONE after the frame is drawn
@@ -140,6 +141,6 @@ public final class PlayerMessage
 		iRollingCount = 0;
 
 		// Reset some counters
-		iNumMaxCombo = iNumNormalNotes = iNumGoodNotes = iNumTotalNotes = iNumTotalRolling = 0;
+		iNumMaxCombo = iNumNormalNotes = iNumGoodNotes = iNumTotalNotes = iNumTotalRolled = 0;
 	}
 }

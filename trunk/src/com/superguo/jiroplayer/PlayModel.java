@@ -145,9 +145,13 @@ public final class PlayModel {
 	
 	public final static int MAX_PREPROCESSED_BAR = 3;
 	
-	public final static int TIME_JUDGE_GOOD 		= 50;
+	public final static int TIME_JUDGE_GOOD 	= 50;
 	public final static int TIME_JUDGE_NORMAL 	= 150;
 	public final static int TIME_JUDGE_MISSED 	= 217;
+	
+	private final static int GAUGE_OR_SCORE_INDEX_HALF 	= 0;
+	private final static int GAUGE_OR_SCORE_INDEX_FULL 	= 1;
+	private final static int GAUGE_OR_SCORE_INDEX_TWICE 	= 2;
 
 	// SECTION statistics
 	private final class SectionStat
@@ -175,7 +179,8 @@ public final class PlayModel {
 	private int iRollingBaloonIndex;
 	private int iScoreInit;
 	private int iScoreDiff;
-	private int iGaugePerNote;
+	private int[] iGaugePerNote = new int[3];
+	private int[] iScorePerNote = new int[3];
 	private SectionStat iSectionStat = new SectionStat();
 
 	/** The adjusted offset time before first bar begins.
@@ -443,9 +448,9 @@ public final class PlayModel {
 						// I try to make it work compatible with lag case
 						// So we don't think it is a MISSED even 
 						// if there is no hit within TIME_JUDGE_NORMAL.
-						// However if time has passed TIME_JUDGE_MISSED
-						// or there is a hit within TIME_JUDGE_NORMAL,
-						// we can conclude that it is a MISSED or BREAK
+						// However if event(hit or no hit) > TIME_JUDGE_MISSED
+						// or there is a hit within (TIME_JUDGE_NORMAL, TIME_JUDGE_MISSED]
+						// we can conclude that it is a BREAK or MISSED 
 						if (isBreak || HIT_NONE != aHit)	
 						{
 							playerMessage.iNoteJudged = isBreak ?
@@ -453,7 +458,7 @@ public final class PlayModel {
 									PlayerMessage.JUDGED_MISSED;
 							iSectionStat.iPrecisionTotal += 2;
 							
-							playerMessage.iGauge -= iGaugePerNote<<2; // Gauge reduce 4 times
+							playerMessage.iGauge -= iGaugePerNote[GAUGE_OR_SCORE_INDEX_TWICE]; // Gauge reduce twice
 							if (playerMessage.iGauge<0)
 								playerMessage.iGauge=0;
 							
@@ -495,31 +500,28 @@ public final class PlayModel {
 							int gauge = playerMessage.iGauge;
 							if (gauge<MAX_GAUGE)
 							{
-								gauge += iGaugePerNote << addedShifts;	
+								gauge += iGaugePerNote[addedShifts];	
 								if (gauge > MAX_GAUGE)
 									gauge = MAX_GAUGE;
 							}
 							playerMessage.iGauge = gauge;
-							
-							// Scores
-							int addedScore = playerMessage.iAddedScore;
-							// FIXME improve the performance here
-							if (iPlayerMessage.iNumCombo<100)
-								addedScore = iScoreInit + iScoreDiff * (iPlayerMessage.iNumCombo/10);
-							else
-								addedScore = iScoreInit + iScoreDiff * 10;
-							addedScore <<= addedShifts;
-							playerMessage.iAddedScore = addedScore;
-							playerMessage.iScore += addedScore;
-							
+
 							// Combo counter
-							if (playerMessage.iNumCombo == playerMessage.iNumMaxCombo)
-							{
-								playerMessage.iNumCombo++;
+							if (playerMessage.iNumCombo++ == playerMessage.iNumMaxCombo)
 								playerMessage.iNumMaxCombo++;
+
+							// Scores
+							if (	iPlayerMessage.iNumCombo <= 100 &&
+										iPlayerMessage.iNumCombo % 10 == 0)
+							{
+								int scorePerNote = iScoreInit + iScoreDiff * (iPlayerMessage.iNumCombo/10);
+								iScorePerNote[GAUGE_OR_SCORE_INDEX_FULL] = scorePerNote;
+								iScorePerNote[GAUGE_OR_SCORE_INDEX_TWICE] = scorePerNote << 1;
+								iScorePerNote[GAUGE_OR_SCORE_INDEX_HALF] = ((scorePerNote/10) >> 1) * 10;
 							}
-							else
-								playerMessage.iNumCombo++;
+
+							playerMessage.iAddedScore = iScorePerNote[addedShifts];
+							playerMessage.iScore += playerMessage.iAddedScore;
 							
 							// Note counter
 							playerMessage.iNumTotalNotes++;
@@ -541,7 +543,71 @@ public final class PlayModel {
 				{
 					if (playerMessage.iRollingState > ROLLING_NONE)
 					{
-						// TODO handle the rolling case 
+						switch(playerMessage.iRollingState)
+						{
+						case ROLLING_LENDA_BAR:
+							if (HIT_NONE != aHit)
+							{
+								playerMessage.iAddedScore = 300;
+								playerMessage.iScore += 300;
+								playerMessage.iNumTotalRolled++;
+								playerMessage.iRollingCount++;
+							}
+							break;
+
+						case ROLLING_BIG_LENDA_BAR:
+							if (HIT_NONE != aHit)
+							{
+								playerMessage.iAddedScore = 600;
+								playerMessage.iScore += 600;
+								playerMessage.iNumTotalRolled++;
+								playerMessage.iRollingCount++;
+							}
+							break;
+
+						case ROLLING_BALLOON:
+							if (HIT_FACE == aHit)
+							{
+								playerMessage.iRollingCount--;
+								
+								playerMessage.iNumTotalRolled++;
+								if (0==playerMessage.iRollingCount)
+								{
+									playerMessage.iAddedScore = 3300;
+									playerMessage.iScore += 3300;
+									playerMessage.iRollingCount =
+										PlayerMessage.SPECIAL_ROLLING_COUNT_BALLOON_FINISHED;
+								}
+								else
+								{
+									playerMessage.iAddedScore = 300;
+									playerMessage.iScore += 300;
+								}
+							}
+							break;
+
+						case ROLLING_POTATO:
+							if (HIT_FACE == aHit)
+							{
+								playerMessage.iRollingCount--;
+								
+								playerMessage.iNumTotalRolled++;
+								if (0==playerMessage.iRollingCount)
+								{
+									playerMessage.iAddedScore = 3300;
+									playerMessage.iScore += 3300;
+									playerMessage.iRollingCount =
+										PlayerMessage.SPECIAL_ROLLING_COUNT_POTATO_FINISHED;
+								}
+								else
+								{
+									playerMessage.iAddedScore = 300;
+									playerMessage.iScore += 300;
+								}
+							}
+							break;
+
+						}
 					}
 					
 					// Exit here, for note if no actual note handled
@@ -694,11 +760,15 @@ public final class PlayModel {
 		int course = iCourse.iCourse;
 		int level = Math.min(iCourse.iLevel, MAX_LEVEL_OF[course]) ;
 
-		iGaugePerNote = (int) (MAX_GAUGE /
+		int gauge = (int) (MAX_GAUGE /
 				(MAX_GAUGE_RATES[course][level] * getGaugeNotes()));
 
-		if ((iGaugePerNote & 1) == 1)
-			--iGaugePerNote;
+		if ((gauge & 1) == 1)
+			--gauge;
+		
+		iGaugePerNote[GAUGE_OR_SCORE_INDEX_FULL] = gauge;
+		iGaugePerNote[GAUGE_OR_SCORE_INDEX_HALF] = gauge >> 1;
+		iGaugePerNote[GAUGE_OR_SCORE_INDEX_TWICE] = gauge << 1;
 	}
 
 	private void resetScores() {

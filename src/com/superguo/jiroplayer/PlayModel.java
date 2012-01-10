@@ -148,10 +148,12 @@ public final class PlayModel {
 	public final static int TIME_JUDGE_GOOD 	= 50;
 	public final static int TIME_JUDGE_NORMAL 	= 150;
 	public final static int TIME_JUDGE_MISSED 	= 217;
-	
+
+	private final static int SCORE_INDEX_NOT_GGT	= 0;
+	private final static int SCORE_INDEX_GGT	 	= 1;
 	private final static int GAUGE_OR_SCORE_INDEX_HALF 	= 0;
 	private final static int GAUGE_OR_SCORE_INDEX_FULL 	= 1;
-	private final static int GAUGE_OR_SCORE_INDEX_TWICE 	= 2;
+	private final static int GAUGE_OR_SCORE_INDEX_TWICE = 2;
 
 	// SECTION statistics
 	private final class SectionStat
@@ -180,7 +182,7 @@ public final class PlayModel {
 	private int iScoreInit;
 	private int iScoreDiff;
 	private int[] iGaugePerNote = new int[3];
-	private int[] iScorePerNote = new int[3];
+	private int[][] iScorePerNote = new int[2][3];
 	private SectionStat iSectionStat = new SectionStat();
 
 	/** The adjusted offset time before first bar begins.
@@ -354,170 +356,6 @@ public final class PlayModel {
 
 			// TODO Process the iUnprocessedCommand here
 			
-			// Traverse all note
-			// Cannot use the statement 'for(note:playingBar)' since we need the index
-			for (;noteIndex<playingBar.iNotes.length; ++noteIndex)
-			{
-				PreprocessedNote note = playingBar.iNotes[noteIndex];
-				int noteType = note.iNoteType;
-				
-				// Ignore all notes if the rolling is not going to be stopped
-				if (playerMessage.iRollingState > ROLLING_NONE &&
-						noteType != NOTE_STOP_ROLLING)
-				{
-					noteType = NOTE_NONE;
-				}
-
-				/** The event time offset of current event time since current note time */
-				long eventOffset = currentEventTimeMillis - (playingBarOffsetTimeMillis + note.iOffsetTimeMillis);
-
-				/** Indicates if the current note has passed
-				 * 	Used only for rolling notes/states	 */
-				boolean noteHasPassed = eventOffset >= 0; /*+ 
-					(NOTE_FACE<=noteType && noteType<=NOTE_BIG_SIDE ? JUDGE_MISSED : 0);*/
-				
-				// In all cases 'handled' will be true if 'noteHasPassed' is true
-				// In most cases 'handled' will be false if 'noteHasPassed' is false
-				// NOTE_BARLINE or NOTE_NONE is not taken into account
-				// The following code will handle the exceptions
-				boolean handled = false;
-
-				switch(noteType)
-				{
-				case NOTE_BARLINE:
-				case NOTE_NONE:
-					break;
-
-				case NOTE_STOP_ROLLING:
-					handled = noteHasPassed ||
-							handleNoteTypeStopRolling(playerMessage, note, noteHasPassed);
-					break;
-
-				case NOTE_START_ROLLING_LENDA:
-					if (noteHasPassed)
-					{
-						playerMessage.iRollingCount = 0;
-						playerMessage.iRollingState = ROLLING_LENDA_BAR;
-						note.iNoteType = NOTE_NONE;
-						handled = true;
-					}
-					break;
-					
-				case NOTE_START_ROLLING_BIG_LENDA:
-					if (noteHasPassed)
-					{
-						playerMessage.iRollingCount = 0;
-						playerMessage.iRollingState = ROLLING_BIG_LENDA_BAR;
-						note.iNoteType = NOTE_NONE;
-						handled = true;
-					}
-					break;
-					
-				case NOTE_START_ROLLING_BALOON:
-					if (noteHasPassed)
-					{
-						playerMessage.iRollingCount = iCourse.iBalloon[++iRollingBaloonIndex];
-						playerMessage.iRollingState = ROLLING_BALLOON;
-						note.iNoteType = NOTE_NONE;
-						handled = true;
-					}
-					break;
-					
-				case NOTE_START_ROLLING_POTATO:
-					if (noteHasPassed)
-					{
-						playerMessage.iRollingCount = iCourse.iBalloon[++iRollingBaloonIndex];
-						playerMessage.iRollingState = ROLLING_POTATO;
-						note.iNoteType = NOTE_NONE;
-						handled = true;
-					}
-					break;
-					
-				case NOTE_FACE:
-				case NOTE_SIDE:
-				case NOTE_BIG_FACE:
-				case NOTE_BIG_SIDE:
-					handled = handleNoteTypeFaceOrSide(
-							playerMessage, note, eventOffset, iSectionStat, aHit,
-							iGaugePerNote, iScorePerNote, iScoreInit, iScoreDiff);
-					break;
-				}
-				
-				if (!handled)
-				{
-					if (playerMessage.iRollingState > ROLLING_NONE)
-					{
-						switch(playerMessage.iRollingState)
-						{
-						case ROLLING_LENDA_BAR:
-							if (HIT_NONE != aHit)
-							{
-								playerMessage.iAddedScore = 300;
-								playerMessage.iScore += 300;
-								playerMessage.iNumTotalRolled++;
-								playerMessage.iRollingCount++;
-							}
-							break;
-
-						case ROLLING_BIG_LENDA_BAR:
-							if (HIT_NONE != aHit)
-							{
-								playerMessage.iAddedScore = 600;
-								playerMessage.iScore += 600;
-								playerMessage.iNumTotalRolled++;
-								playerMessage.iRollingCount++;
-							}
-							break;
-
-						case ROLLING_BALLOON:
-							if (HIT_FACE == aHit)
-							{
-								playerMessage.iRollingCount--;
-								
-								playerMessage.iNumTotalRolled++;
-								if (0==playerMessage.iRollingCount)
-								{
-									playerMessage.iAddedScore = 3300;
-									playerMessage.iScore += 3300;
-									playerMessage.iRollingCount =
-										PlayerMessage.SPECIAL_ROLLING_COUNT_BALLOON_FINISHED;
-								}
-								else
-								{
-									playerMessage.iAddedScore = 300;
-									playerMessage.iScore += 300;
-								}
-							}
-							break;
-
-						case ROLLING_POTATO:
-							if (HIT_FACE == aHit)
-							{
-								playerMessage.iRollingCount--;
-								
-								playerMessage.iNumTotalRolled++;
-								if (0==playerMessage.iRollingCount)
-								{
-									playerMessage.iAddedScore = 3300;
-									playerMessage.iScore += 3300;
-									playerMessage.iRollingCount =
-										PlayerMessage.SPECIAL_ROLLING_COUNT_POTATO_FINISHED;
-								}
-								else
-								{
-									playerMessage.iAddedScore = 300;
-									playerMessage.iScore += 300;
-								}
-							}
-							break;
-
-						}
-					}
-					
-					// Exit here, for note if no actual note handled
-					break;
-				}
-			}
 			
 			if (noteIndex >= playingBar.iNotes.length)
 			{
@@ -549,6 +387,178 @@ public final class PlayModel {
 				iLastPlayingBarIndex);
 
 		return true;	
+	}
+
+	private static int handleNotes(PlayerMessage aPlayerMessage,
+			PreprocessedNote[] aNotes, int aNoteIndex,
+			long anEventOffset, SectionStat aSectionStat, int aHit,
+			int[] aGaugePerNote, int[][] aScorePerNote, int aScoreInit, int aScoreDiff)
+	{
+		// Traverse all note
+		// Cannot use the statement 'for(note:playingBar)' since we need the index
+		for (;aNoteIndex<aNotes.length; ++aNoteIndex)
+		{
+			PreprocessedNote note = aNotes[aNoteIndex];
+			int noteType = note.iNoteType;
+			
+			// Ignore all notes if the rolling is not going to be stopped
+			if (aPlayerMessage.iRollingState > ROLLING_NONE &&
+					noteType != NOTE_STOP_ROLLING)
+			{
+				noteType = NOTE_NONE;
+			}
+
+			/** The event time offset of current event time since current note time */
+			long eventOffset = currentEventTimeMillis - (playingBarOffsetTimeMillis + note.iOffsetTimeMillis);
+
+			/** Indicates if the current note has passed
+			 * 	Used only for rolling notes/states	 */
+			boolean noteHasPassed = eventOffset >= 0; /*+ 
+				(NOTE_FACE<=noteType && noteType<=NOTE_BIG_SIDE ? JUDGE_MISSED : 0);*/
+			
+			// In all cases 'handled' will be true if 'noteHasPassed' is true
+			// In most cases 'handled' will be false if 'noteHasPassed' is false
+			// NOTE_BARLINE or NOTE_NONE is not taken into account
+			// The following code will handle the exceptions
+			boolean handled = false;
+
+			switch(noteType)
+			{
+			case NOTE_BARLINE:
+			case NOTE_NONE:
+				break;
+
+			case NOTE_STOP_ROLLING:
+				handled = noteHasPassed ||
+						handleNoteTypeStopRolling(aPlayerMessage, note, noteHasPassed);
+				break;
+
+			case NOTE_START_ROLLING_LENDA:
+				if (noteHasPassed)
+				{
+					aPlayerMessage.iRollingCount = 0;
+					aPlayerMessage.iRollingState = ROLLING_LENDA_BAR;
+					note.iNoteType = NOTE_NONE;
+					handled = true;
+				}
+				break;
+				
+			case NOTE_START_ROLLING_BIG_LENDA:
+				if (noteHasPassed)
+				{
+					aPlayerMessage.iRollingCount = 0;
+					aPlayerMessage.iRollingState = ROLLING_BIG_LENDA_BAR;
+					note.iNoteType = NOTE_NONE;
+					handled = true;
+				}
+				break;
+				
+			case NOTE_START_ROLLING_BALOON:
+				if (noteHasPassed)
+				{
+					aPlayerMessage.iRollingCount = iCourse.iBalloon[++iRollingBaloonIndex];
+					aPlayerMessage.iRollingState = ROLLING_BALLOON;
+					note.iNoteType = NOTE_NONE;
+					handled = true;
+				}
+				break;
+				
+			case NOTE_START_ROLLING_POTATO:
+				if (noteHasPassed)
+				{
+					aPlayerMessage.iRollingCount = iCourse.iBalloon[++iRollingBaloonIndex];
+					aPlayerMessage.iRollingState = ROLLING_POTATO;
+					note.iNoteType = NOTE_NONE;
+					handled = true;
+				}
+				break;
+				
+			case NOTE_FACE:
+			case NOTE_SIDE:
+			case NOTE_BIG_FACE:
+			case NOTE_BIG_SIDE:
+				handled = handleNoteTypeFaceOrSide(
+						aPlayerMessage, note, eventOffset, aSectionStat, aHit,
+						aGaugePerNote, aScorePerNote, aScoreInit, aScoreDiff);
+				break;
+			}
+			
+			if (!handled)
+			{
+				if (aPlayerMessage.iRollingState > ROLLING_NONE)
+				{
+					switch(aPlayerMessage.iRollingState)
+					{
+					case ROLLING_LENDA_BAR:
+						if (HIT_NONE != aHit)
+						{
+							aPlayerMessage.iAddedScore = 300;
+							aPlayerMessage.iScore += 300;
+							aPlayerMessage.iNumTotalRolled++;
+							aPlayerMessage.iRollingCount++;
+						}
+						break;
+
+					case ROLLING_BIG_LENDA_BAR:
+						if (HIT_NONE != aHit)
+						{
+							aPlayerMessage.iAddedScore = 600;
+							aPlayerMessage.iScore += 600;
+							aPlayerMessage.iNumTotalRolled++;
+							aPlayerMessage.iRollingCount++;
+						}
+						break;
+
+					case ROLLING_BALLOON:
+						if (HIT_FACE == aHit)
+						{
+							aPlayerMessage.iRollingCount--;
+							
+							aPlayerMessage.iNumTotalRolled++;
+							if (0==aPlayerMessage.iRollingCount)
+							{
+								aPlayerMessage.iAddedScore = 3300;
+								aPlayerMessage.iScore += 3300;
+								aPlayerMessage.iRollingCount =
+									PlayerMessage.SPECIAL_ROLLING_COUNT_BALLOON_FINISHED;
+							}
+							else
+							{
+								aPlayerMessage.iAddedScore = 300;
+								aPlayerMessage.iScore += 300;
+							}
+						}
+						break;
+
+					case ROLLING_POTATO:
+						if (HIT_FACE == aHit)
+						{
+							aPlayerMessage.iRollingCount--;
+							
+							aPlayerMessage.iNumTotalRolled++;
+							if (0==aPlayerMessage.iRollingCount)
+							{
+								aPlayerMessage.iAddedScore = 3300;
+								aPlayerMessage.iScore += 3300;
+								aPlayerMessage.iRollingCount =
+									PlayerMessage.SPECIAL_ROLLING_COUNT_POTATO_FINISHED;
+							}
+							else
+							{
+								aPlayerMessage.iAddedScore = 300;
+								aPlayerMessage.iScore += 300;
+							}
+						}
+						break;
+
+					}
+				}
+				
+				// Exit here, for note if no actual note handled
+				break;
+			}
+		}
+		
 	}
 	
 	/**
@@ -633,7 +643,7 @@ public final class PlayModel {
 	 */
 	private static boolean handleNoteTypeFaceOrSide(PlayerMessage aPlayerMessage,
 			PreprocessedNote aNote, long anEventOffset, SectionStat aSectionStat, int aHit,
-			int[] aGaugePerNote, int[] aScorePerNote, int aScoreInit, int aScoreDiff)
+			int[] aGaugePerNote, int[][] aScorePerNote, int aScoreInit, int aScoreDiff)
 	{
 		if (anEventOffset > TIME_JUDGE_NORMAL)
 		{	
@@ -711,15 +721,23 @@ public final class PlayModel {
 
 				// Scores
 				if (	aPlayerMessage.iNumCombo <= 100 &&
-							aPlayerMessage.iNumCombo % 10 == 0)
+						aPlayerMessage.iNumCombo % 10 == 0)
 				{
 					int scorePerNote = aScoreInit + aScoreDiff * (aPlayerMessage.iNumCombo/10);
-					aScorePerNote[GAUGE_OR_SCORE_INDEX_FULL] = scorePerNote;
-					aScorePerNote[GAUGE_OR_SCORE_INDEX_TWICE] = scorePerNote << 1;
-					aScorePerNote[GAUGE_OR_SCORE_INDEX_HALF] = ((scorePerNote/10) >> 1) * 10;
+					int scorePerNoteGGT = (int)(scorePerNote * 1.2f) /10 *10;
+					
+					aScorePerNote[SCORE_INDEX_NOT_GGT][GAUGE_OR_SCORE_INDEX_FULL] = scorePerNote;
+					aScorePerNote[SCORE_INDEX_GGT][GAUGE_OR_SCORE_INDEX_FULL] = scorePerNoteGGT;
+					
+					aScorePerNote[SCORE_INDEX_NOT_GGT][GAUGE_OR_SCORE_INDEX_TWICE] = scorePerNote << 1;
+					aScorePerNote[SCORE_INDEX_GGT][GAUGE_OR_SCORE_INDEX_TWICE] = scorePerNoteGGT << 1;
+					
+					aScorePerNote[SCORE_INDEX_NOT_GGT][GAUGE_OR_SCORE_INDEX_HALF] = ((scorePerNote/10) >> 1) * 10;
+					aScorePerNote[SCORE_INDEX_GGT][GAUGE_OR_SCORE_INDEX_HALF] = ((scorePerNoteGGT/10) >> 1) * 10;
 				}
 
-				aPlayerMessage.iAddedScore = aScorePerNote[addedShifts];
+				int ggtIndex = aPlayerMessage.iIsGGT ? SCORE_INDEX_GGT : SCORE_INDEX_NOT_GGT;
+				aPlayerMessage.iAddedScore = aScorePerNote[ggtIndex][addedShifts];
 				aPlayerMessage.iScore += aPlayerMessage.iAddedScore;
 				
 				// Note counter

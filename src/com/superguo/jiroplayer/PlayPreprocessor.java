@@ -158,10 +158,11 @@ final class PlayPreprocessor
 			Bar[] aBars,
 			TJACommand[] notation,
 			IntegerRef aProcessedCommandIndexRef,
-			IntegerRef aProcessedBarIndexRef)
+			IntegerRef aProcessedBarIndexRef,
+			int aBranchExitIndex)
 	{
-		int processedCommandIndex = aProcessedCommandIndexRef.get();
-		if (processedCommandIndex>=notation.length-1) return false;
+		int commandIndex = aProcessedCommandIndexRef.get();
+		if (commandIndex>=notation.length-1) return false;
 		int lastProcessedBarIndex = aProcessedBarIndexRef.get();
 		
 		// Get the next unprocessed bar
@@ -178,15 +179,22 @@ final class PlayPreprocessor
 
 		LinkedList<TJACommand> unprocCmd = null;
 		// Do not allocate memory until next command is not COMMAND_TYPE_NOTE
-		if (notation[processedCommandIndex+1].iCommandType != TJAFormat.COMMAND_TYPE_NOTE)
+		if (notation[commandIndex+1].iCommandType != TJAFormat.COMMAND_TYPE_NOTE)
 		{	unprocCmd = new LinkedList<TJACommand>();	}
 		
 		float delay = 0.0f;
 		
-		for(;	!bar.iPreprocessed &&
-				++processedCommandIndex < notation.length;)
+		for(commandIndex = nextCommandIndex(notation, commandIndex, aBranchExitIndex);
+			!bar.iPreprocessed && commandIndex < notation.length;
+			commandIndex = nextCommandIndex(notation, commandIndex, aBranchExitIndex))
 		{
-			TJACommand cmd = notation[processedCommandIndex];
+			// Return true in case aBranchExitIndex is 0
+			// and the branch exit
+			// This happens if this branch is not yet played
+			// so the aBranchExitIndex is not yet determined
+			// and the caller set it to be 0
+			if (-1==commandIndex) return true;
+			TJACommand cmd = notation[commandIndex];
 			switch (cmd.iCommandType)
 			{
 			case TJAFormat.COMMAND_TYPE_NOTE:
@@ -201,7 +209,7 @@ final class PlayPreprocessor
 						aBars[lastProcessedBarIndex].iOffsetTimeMicros + 
 						aBars[lastProcessedBarIndex].iDurationMicros;
 				// Check #BRACHSTART
-				for (int i=processedCommandIndex+1; i<notation.length; ++i)
+				for (int i=commandIndex+1; i<notation.length; ++i)
 				{
 					TJACommand cmd2 = notation[i];
 					if (cmd2.iCommandType == TJAFormat.COMMAND_TYPE_NOTE)
@@ -298,8 +306,26 @@ final class PlayPreprocessor
 			default:;
 			}
 		}
-		aProcessedCommandIndexRef.set(processedCommandIndex);
+		aProcessedCommandIndexRef.set(commandIndex);
 		aProcessedBarIndexRef.set(barIndex);
 		return true;
+	}
+	
+	private static int nextCommandIndex(
+			TJACommand[] aNotation, int aCommandIndex, int aBranchExitIndex)
+	{
+		if (-1==aCommandIndex) return 0;
+		if (aCommandIndex>=aNotation.length) return aNotation.length;
+		switch(aNotation[aCommandIndex].iCommandType)
+		{
+		case TJAFormat.COMMAND_TYPE_BRANCHEND:
+		case TJAFormat.COMMAND_TYPE_N:
+		case TJAFormat.COMMAND_TYPE_E:
+		case TJAFormat.COMMAND_TYPE_M:
+			return aBranchExitIndex>0?aBranchExitIndex:-1;
+			
+		default:
+			return aCommandIndex+1;
+		}
 	}
 }

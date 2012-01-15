@@ -230,7 +230,7 @@ public final class PlayModel {
 	
 	final static class Bar
 	{
-		/** The beginning time in microseconds since first playing .	 */
+		/** The beginning time in microseconds since first bar.	 */
 		public long iOffsetTimeMicros;
 		
 		/** Indicates whether it is pre-processed
@@ -341,9 +341,11 @@ public final class PlayModel {
 		
 		// The first not reached yet
 		//if (aTimeMillisSinceStarted + JUDGE_MISSED < iStartOffsetTimeMillis)
-			//return true;
+		//return true;
 		
-		long currentEventTimeMillis = aTimeMillisSinceStarted - iStartOffsetTimeMillis;
+		/** The time in milliseconds since first bar
+		 */
+		long currentTimeMillisSinceFirstBar = aTimeMillisSinceStarted - iStartOffsetTimeMillis;
 		
 		int barIndex = iLastPlayingBarIndex;
 		int noteIndex = iLastPlayingNoteIndex;
@@ -352,10 +354,12 @@ public final class PlayModel {
 			 barIndex = nextIndexOfBar(barIndex))
 		{
 			Bar playingBar = iBars[barIndex];
-			long playingBarOffsetTimeMillis = playingBar.iOffsetTimeMicros / 1000;
+			
 
 			// TODO Process the iUnprocessedCommand here
 			
+
+			noteIndex = handleNotes(playingBar, noteIndex, currentTimeMillisSinceFirstBar, aHit);
 			
 			if (noteIndex >= playingBar.iNotes.length)
 			{
@@ -377,8 +381,8 @@ public final class PlayModel {
 		
 		iLastPlayingNoteIndex = noteIndex;
 		
-		if (iLastEventTimeMillis < currentEventTimeMillis)
-			iLastEventTimeMillis = currentEventTimeMillis;
+		if (iLastEventTimeMillis < currentTimeMillisSinceFirstBar)
+			iLastEventTimeMillis = currentTimeMillisSinceFirstBar;
 
 		iPlayerMessage.iNotePosCount = translateNotePos(
 				iPlayerMessage.iNotePosArray, 
@@ -389,27 +393,29 @@ public final class PlayModel {
 		return true;	
 	}
 
-	private static int handleNotes(PlayerMessage aPlayerMessage,
-			PreprocessedNote[] aNotes, int aNoteIndex,
-			long anEventOffset, SectionStat aSectionStat, int aHit,
-			int[] aGaugePerNote, int[][] aScorePerNote, int aScoreInit, int aScoreDiff)
+	private int handleNotes(Bar aPlayingBar, int aNoteIndex, long aCurrentTimeMillisSinceFirstBar, int aHit)
 	{
+		PlayerMessage playerMessage = iPlayerMessage;
+		PreprocessedNote[] notes = aPlayingBar.iNotes;
+		long playingBarStartTimeMillis = aPlayingBar.iOffsetTimeMicros / 1000;
+		long currentTimeMillisSincePlayBar = aCurrentTimeMillisSinceFirstBar - playingBarStartTimeMillis;
+		
 		// Traverse all note
 		// Cannot use the statement 'for(note:playingBar)' since we need the index
-		for (;aNoteIndex<aNotes.length; ++aNoteIndex)
+		for (;aNoteIndex<notes.length; ++aNoteIndex)
 		{
-			PreprocessedNote note = aNotes[aNoteIndex];
+			PreprocessedNote note = notes[aNoteIndex];
 			int noteType = note.iNoteType;
 			
 			// Ignore all notes if the rolling is not going to be stopped
-			if (aPlayerMessage.iRollingState > ROLLING_NONE &&
+			if (playerMessage.iRollingState > ROLLING_NONE &&
 					noteType != NOTE_STOP_ROLLING)
 			{
 				noteType = NOTE_NONE;
 			}
 
 			/** The event time offset of current event time since current note time */
-			long eventOffset = currentEventTimeMillis - (playingBarOffsetTimeMillis + note.iOffsetTimeMillis);
+			long eventOffset = currentTimeMillisSincePlayBar - note.iOffsetTimeMillis;
 
 			/** Indicates if the current note has passed
 			 * 	Used only for rolling notes/states	 */
@@ -430,14 +436,14 @@ public final class PlayModel {
 
 			case NOTE_STOP_ROLLING:
 				handled = noteHasPassed ||
-						handleNoteTypeStopRolling(aPlayerMessage, note, noteHasPassed);
+						handleNoteTypeStopRolling(playerMessage, note, noteHasPassed);
 				break;
 
 			case NOTE_START_ROLLING_LENDA:
 				if (noteHasPassed)
 				{
-					aPlayerMessage.iRollingCount = 0;
-					aPlayerMessage.iRollingState = ROLLING_LENDA_BAR;
+					playerMessage.iRollingCount = 0;
+					playerMessage.iRollingState = ROLLING_LENDA_BAR;
 					note.iNoteType = NOTE_NONE;
 					handled = true;
 				}
@@ -446,8 +452,8 @@ public final class PlayModel {
 			case NOTE_START_ROLLING_BIG_LENDA:
 				if (noteHasPassed)
 				{
-					aPlayerMessage.iRollingCount = 0;
-					aPlayerMessage.iRollingState = ROLLING_BIG_LENDA_BAR;
+					playerMessage.iRollingCount = 0;
+					playerMessage.iRollingState = ROLLING_BIG_LENDA_BAR;
 					note.iNoteType = NOTE_NONE;
 					handled = true;
 				}
@@ -456,8 +462,8 @@ public final class PlayModel {
 			case NOTE_START_ROLLING_BALOON:
 				if (noteHasPassed)
 				{
-					aPlayerMessage.iRollingCount = iCourse.iBalloon[++iRollingBaloonIndex];
-					aPlayerMessage.iRollingState = ROLLING_BALLOON;
+					playerMessage.iRollingCount = iCourse.iBalloon[++iRollingBaloonIndex];
+					playerMessage.iRollingState = ROLLING_BALLOON;
 					note.iNoteType = NOTE_NONE;
 					handled = true;
 				}
@@ -466,8 +472,8 @@ public final class PlayModel {
 			case NOTE_START_ROLLING_POTATO:
 				if (noteHasPassed)
 				{
-					aPlayerMessage.iRollingCount = iCourse.iBalloon[++iRollingBaloonIndex];
-					aPlayerMessage.iRollingState = ROLLING_POTATO;
+					playerMessage.iRollingCount = iCourse.iBalloon[++iRollingBaloonIndex];
+					playerMessage.iRollingState = ROLLING_POTATO;
 					note.iNoteType = NOTE_NONE;
 					handled = true;
 				}
@@ -478,54 +484,54 @@ public final class PlayModel {
 			case NOTE_BIG_FACE:
 			case NOTE_BIG_SIDE:
 				handled = handleNoteTypeFaceOrSide(
-						aPlayerMessage, note, eventOffset, aSectionStat, aHit,
-						aGaugePerNote, aScorePerNote, aScoreInit, aScoreDiff);
+						playerMessage, note, eventOffset, iSectionStat, aHit,
+						iGaugePerNote, iScorePerNote, iScoreInit, iScoreDiff);
 				break;
 			}
 			
 			if (!handled)
 			{
-				if (aPlayerMessage.iRollingState > ROLLING_NONE)
+				if (playerMessage.iRollingState > ROLLING_NONE)
 				{
-					switch(aPlayerMessage.iRollingState)
+					switch(playerMessage.iRollingState)
 					{
 					case ROLLING_LENDA_BAR:
 						if (HIT_NONE != aHit)
 						{
-							aPlayerMessage.iAddedScore = 300;
-							aPlayerMessage.iScore += 300;
-							aPlayerMessage.iNumTotalRolled++;
-							aPlayerMessage.iRollingCount++;
+							playerMessage.iAddedScore = 300;
+							playerMessage.iScore += 300;
+							playerMessage.iNumTotalRolled++;
+							playerMessage.iRollingCount++;
 						}
 						break;
 
 					case ROLLING_BIG_LENDA_BAR:
 						if (HIT_NONE != aHit)
 						{
-							aPlayerMessage.iAddedScore = 600;
-							aPlayerMessage.iScore += 600;
-							aPlayerMessage.iNumTotalRolled++;
-							aPlayerMessage.iRollingCount++;
+							playerMessage.iAddedScore = 600;
+							playerMessage.iScore += 600;
+							playerMessage.iNumTotalRolled++;
+							playerMessage.iRollingCount++;
 						}
 						break;
 
 					case ROLLING_BALLOON:
 						if (HIT_FACE == aHit)
 						{
-							aPlayerMessage.iRollingCount--;
+							playerMessage.iRollingCount--;
 							
-							aPlayerMessage.iNumTotalRolled++;
-							if (0==aPlayerMessage.iRollingCount)
+							playerMessage.iNumTotalRolled++;
+							if (0==playerMessage.iRollingCount)
 							{
-								aPlayerMessage.iAddedScore = 3300;
-								aPlayerMessage.iScore += 3300;
-								aPlayerMessage.iRollingCount =
+								playerMessage.iAddedScore = 3300;
+								playerMessage.iScore += 3300;
+								playerMessage.iRollingCount =
 									PlayerMessage.SPECIAL_ROLLING_COUNT_BALLOON_FINISHED;
 							}
 							else
 							{
-								aPlayerMessage.iAddedScore = 300;
-								aPlayerMessage.iScore += 300;
+								playerMessage.iAddedScore = 300;
+								playerMessage.iScore += 300;
 							}
 						}
 						break;
@@ -533,20 +539,20 @@ public final class PlayModel {
 					case ROLLING_POTATO:
 						if (HIT_FACE == aHit)
 						{
-							aPlayerMessage.iRollingCount--;
+							playerMessage.iRollingCount--;
 							
-							aPlayerMessage.iNumTotalRolled++;
-							if (0==aPlayerMessage.iRollingCount)
+							playerMessage.iNumTotalRolled++;
+							if (0==playerMessage.iRollingCount)
 							{
-								aPlayerMessage.iAddedScore = 3300;
-								aPlayerMessage.iScore += 3300;
-								aPlayerMessage.iRollingCount =
+								playerMessage.iAddedScore = 3300;
+								playerMessage.iScore += 3300;
+								playerMessage.iRollingCount =
 									PlayerMessage.SPECIAL_ROLLING_COUNT_POTATO_FINISHED;
 							}
 							else
 							{
-								aPlayerMessage.iAddedScore = 300;
-								aPlayerMessage.iScore += 300;
+								playerMessage.iAddedScore = 300;
+								playerMessage.iScore += 300;
 							}
 						}
 						break;
@@ -558,7 +564,7 @@ public final class PlayModel {
 				break;
 			}
 		}
-		
+		return aNoteIndex;
 	}
 	
 	/**

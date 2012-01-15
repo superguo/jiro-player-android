@@ -184,6 +184,7 @@ public final class PlayModel {
 	private int[] iGaugePerNote = new int[3];
 	private int[][] iScorePerNote = new int[2][3];
 	private SectionStat iSectionStat = new SectionStat();
+	private int iBranchExitIndex;
 
 	/** The adjusted offset time before first bar begins.
 	 * In milliseconds.
@@ -272,7 +273,7 @@ public final class PlayModel {
 	}
 
 	// package private
-	static int nextIndexOfBar(int index)
+	final static int nextIndexOfBar(int index)
 	{
 		++index;
 		if (index==MAX_PREPROCESSED_BAR)
@@ -280,7 +281,7 @@ public final class PlayModel {
 		return index;
 	}
 	
-	public PlayerMessage prepare(TJAFormat aTJA, int aCourseIndex)
+	public final PlayerMessage prepare(TJAFormat aTJA, int aCourseIndex)
 	{
 		iTJA = aTJA;
 		iCourse = iTJA.iCourses[aCourseIndex];
@@ -292,6 +293,7 @@ public final class PlayModel {
 		iPreprocessedBarIndexRef.set(-1);
 		iLastPlayingBarIndex = 0;
 		iLastPlayingNoteIndex = 0;
+		iBranchExitIndex = 0;
 		iRollingBaloonIndex = -1;
 		if (iNotation == null)	// Play as P1 if Single STYLE is not defined
 			iNotation = iCourse.iNotationP1;
@@ -303,7 +305,7 @@ public final class PlayModel {
 		return iPlayerMessage;
 	}
 
-	public void start()
+	public final void start()
 	{
 		iStartOffsetTimeMillis = FIXED_START_TIME_OFFSET + (int)(iTJA.iOffset * 1000);
 		iEndTimeMillis = 0;
@@ -324,7 +326,7 @@ public final class PlayModel {
 	 * @param aHit one of HIT_NONE, HIT_FACE and HIT_SIDE
 	 * @return true if and only if the playing is not finished.
 	 */
-	public boolean onEvent(long aTimeMillisSinceStarted, int aHit)
+	public final boolean onEvent(long aTimeMillisSinceStarted, int aHit)
 	{
 		// There is no more bar to play!
 		if (!iBars[iLastPlayingBarIndex].iPreprocessed)
@@ -356,9 +358,10 @@ public final class PlayModel {
 			Bar playingBar = iBars[barIndex];
 			
 
-			// TODO Process the iUnprocessedCommand here
-			
+			// Process the iUnprocessedCommand here
+			processUnprocessedCommands(playingBar, playerMessage, iSectionStat);
 
+			// Process the notes
 			noteIndex = handleNotes(playingBar, noteIndex, currentTimeMillisSinceFirstBar, aHit);
 			
 			if (noteIndex >= playingBar.iNotes.length)
@@ -393,7 +396,7 @@ public final class PlayModel {
 		return true;	
 	}
 
-	private int handleNotes(Bar aPlayingBar, int aNoteIndex, long aCurrentTimeMillisSinceFirstBar, int aHit)
+	private final int handleNotes(Bar aPlayingBar, int aNoteIndex, long aCurrentTimeMillisSinceFirstBar, int aHit)
 	{
 		PlayerMessage playerMessage = iPlayerMessage;
 		PreprocessedNote[] notes = aPlayingBar.iNotes;
@@ -574,7 +577,7 @@ public final class PlayModel {
 	 * @param noteHasPassed
 	 * @return true if handled, false otherwise.
 	 */
-	private static boolean handleNoteTypeStopRolling(PlayerMessage playerMessage,
+	private final static boolean handleNoteTypeStopRolling(PlayerMessage playerMessage,
 			PreprocessedNote note,
 			boolean noteHasPassed)
 	{
@@ -647,7 +650,7 @@ public final class PlayModel {
 	 * @param aScoreDiff
 	 * @return
 	 */
-	private static boolean handleNoteTypeFaceOrSide(PlayerMessage aPlayerMessage,
+	private final static boolean handleNoteTypeFaceOrSide(PlayerMessage aPlayerMessage,
 			PreprocessedNote aNote, long anEventOffset, SectionStat aSectionStat, int aHit,
 			int[] aGaugePerNote, int[][] aScorePerNote, int aScoreInit, int aScoreDiff)
 	{
@@ -767,11 +770,11 @@ public final class PlayModel {
 		return iPlayTimeError;
 	}
 
-	private boolean tryPreprocessNextBar()
+	private final boolean tryPreprocessNextBar()
 	{
 		int preprocessedBarIndex = iPreprocessedBarIndexRef.get();
-		if (-1 == preprocessedBarIndex
-			|| !iBars[preprocessedBarIndex].iHasBranchStartNextBar)
+		if (-1 == preprocessedBarIndex ||
+			!iBars[preprocessedBarIndex].iHasBranchStartNextBar)
 		{	
 			// No #BRANCHSTART in next bar
 
@@ -779,19 +782,58 @@ public final class PlayModel {
 					iBars,
 					iNotation,
 					iPreprocessedCommandIndexRef,
-					iPreprocessedBarIndexRef);
+					iPreprocessedBarIndexRef,
+					iBranchExitIndex);
 		}
 		else
 		{
+			Bar playingBar = iBars[preprocessedBarIndex];
+			PlayerMessage playerMessage = iPlayerMessage;
+			// The last unprocessed branch is always
+			// #BRANCHSTART
+			TJACommand cmdBranchStart = playingBar.iUnprocessedCommand
+				[playingBar.iUnprocessedCommand.length-1];
 			// TODO Handle case: #BRANCHSTART in next bar
 			// TODO May change iPreprocessedCommandIndex
 			// TODO May change iPreprocessedBarIndex
 			// TODO May add a virtual pre-processed bar
+
+			
+			processUnprocessedCommands(playingBar, playerMessage, iSectionStat);
+
+			
 		}
 		return false;
 	}
+
+	private final static void processUnprocessedCommands(
+			Bar aPlayingBar, PlayerMessage aPlayerMessage,
+			SectionStat aSectionStat)
+	{
+		for (TJACommand cmd:aPlayingBar.iUnprocessedCommand)
+		{
+			switch(cmd.iCommandType)
+			{
+			case TJAFormat.COMMAND_TYPE_GOGOSTART:
+				aPlayerMessage.iIsGGT = true;
+				break;
+				
+			case TJAFormat.COMMAND_TYPE_GOGOEND:
+				aPlayerMessage.iIsGGT = false;
+				break;
+				
+			case TJAFormat.COMMAND_TYPE_SECTION:
+				aSectionStat.reset();
+				break;
+				
+			case TJAFormat.COMMAND_TYPE_BRANCHSTART:
+				// Ignored
+			}
+		}
+		
+	}
 	
-	private void resetGauge()
+	private final void resetGauge()
 	{
 		int course = iCourse.iCourse;
 		int level = Math.min(iCourse.iLevel, MAX_LEVEL_OF[course]) ;
@@ -807,7 +849,7 @@ public final class PlayModel {
 		iGaugePerNote[GAUGE_OR_SCORE_INDEX_TWICE] = gauge << 1;
 	}
 
-	private void resetScores() {
+	private final void resetScores() {
 		TJACourse course = iCourse;
 		if (course.iScoreInit > 0 && course.iScoreDiff > 0)
 		{
@@ -835,7 +877,7 @@ public final class PlayModel {
 	 * Score doubled if the note is "big"
 	 * @return
 	 */
-	private float getScoreCalcNotes()
+	private final float getScoreCalcNotes()
 	{
 		float scoredNotes = 0;
 		int numNotes = 0;
@@ -906,7 +948,7 @@ public final class PlayModel {
 	 * Choose master if encounters branches
 	 * @return
 	 */
-	private int getGaugeNotes()
+	private final int getGaugeNotes()
 	{
 		int gaugeNotes = 0;
 		TJACommand[] notation = iNotation;
@@ -961,7 +1003,7 @@ public final class PlayModel {
 	 * @param aPlayingBarIndex
 	 * @return The number of translated note positions
 	 */
-	private static int translateNotePos(
+	private final static int translateNotePos(
 			PlayerMessage.NotePos[] aNotePos,
 			long aCurrentTimeMicros,
 			Bar[] aBars,
@@ -997,7 +1039,7 @@ public final class PlayModel {
 		return notePosCount;
 	}
 	
-	private static int selectBranch(TJACommand aStartBranchCommand, SectionStat aSectionStat)
+	private final static int selectBranch(TJACommand aStartBranchCommand, SectionStat aSectionStat)
 	{
 		// N < E < M
 		// Normal < Easy < Master !

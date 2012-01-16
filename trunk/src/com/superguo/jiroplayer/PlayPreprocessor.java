@@ -145,6 +145,20 @@ final class PlayPreprocessor
 		iLastNoteRolling = isLastNoteRolling;
 	}
 
+	/** At least one command is processed */
+	public final static int PROCESS_RESULT_OK = 0;
+	
+	/** All command are processed */
+	public final static int PROCESS_RESULT_EOF = 1;
+	
+	/** No more unprocessed bar. Try later again */
+	public final static int PROCESS_RESULT_BARS_FULL = 2;
+	
+	/** The branch is to exit but specified to be 0.
+	 *  Zero or more commands are processed.
+	 *  Try later again */
+	public final static int PROCESS_RESULT_BRANCH_PENDING = 3;
+	
 	/**
 	 * 
 	 * @param aPlayingBarIndex
@@ -152,28 +166,32 @@ final class PlayPreprocessor
 	 * @param notation
 	 * @param [in/out] aProcessedCommandIndexRef
 	 * @param [out] aProcessedBarIndexRef
+	 * @param [in/out] aBranchExitIndexRef The command index of the exit branch.
+	 * 	Use 0 to specify the case that processing branch is not
+	 * 	the playing branch. It is set to 0 once the branch exits
+	 * 
 	 * @return
 	 */
-	public boolean processNextBar(
+	public int processNextBar(
 			Bar[] aBars,
 			TJACommand[] notation,
 			IntegerRef aProcessedCommandIndexRef,
 			IntegerRef aProcessedBarIndexRef,
-			int aBranchExitIndex)
+			IntegerRef aBranchExitIndexRef)
 	{
 		int commandIndex = aProcessedCommandIndexRef.get();
-		if (commandIndex>=notation.length-1) return false;
+		if (commandIndex>=notation.length-1) return PROCESS_RESULT_EOF;
 		int lastProcessedBarIndex = aProcessedBarIndexRef.get();
 		
 		// Get the next unprocessed bar
 		int barIndex = PlayModel.nextIndexOfBar(lastProcessedBarIndex);
 		
-		if (barIndex==lastProcessedBarIndex) return false;
-		if ( ! aBars[barIndex].iPreprocessed ) return false;
+		if (barIndex==lastProcessedBarIndex) return PROCESS_RESULT_BARS_FULL;
+		if (aBars[barIndex].iPreprocessed ) return PROCESS_RESULT_BARS_FULL;
 		
 		// Initialize the bar value
 		Bar bar = aBars[barIndex];
-		bar.iPreprocessed = false;
+		//bar.iPreprocessed = false;
 		bar.iHasBranchStartNextBar = false;
 		bar.iNumPreprocessedNotes = 0;
 
@@ -184,16 +202,15 @@ final class PlayPreprocessor
 		
 		float delay = 0.0f;
 		
-		for(commandIndex = nextCommandIndex(notation, commandIndex, aBranchExitIndex);
+		for(commandIndex = nextCommandIndex(notation, commandIndex, aBranchExitIndexRef);
 			!bar.iPreprocessed && commandIndex < notation.length;
-			commandIndex = nextCommandIndex(notation, commandIndex, aBranchExitIndex))
+			commandIndex = nextCommandIndex(notation, commandIndex, aBranchExitIndexRef))
 		{
 			// Return true in case aBranchExitIndex is 0
 			// and the branch exit
 			// This happens if this branch is not yet played
 			// so the aBranchExitIndex is not yet determined
-			// and the caller set it to be 0
-			if (-1==commandIndex) return true;
+			if (-1==commandIndex) return PROCESS_RESULT_BRANCH_PENDING;
 			TJACommand cmd = notation[commandIndex];
 			switch (cmd.iCommandType)
 			{
@@ -308,11 +325,11 @@ final class PlayPreprocessor
 		}
 		aProcessedCommandIndexRef.set(commandIndex);
 		aProcessedBarIndexRef.set(barIndex);
-		return true;
+		return PROCESS_RESULT_OK;
 	}
 	
 	private static int nextCommandIndex(
-			TJACommand[] aNotation, int aCommandIndex, int aBranchExitIndex)
+			TJACommand[] aNotation, int aCommandIndex, IntegerRef aBranchExitIndexRef)
 	{
 		if (-1==aCommandIndex) return 0;
 		if (aCommandIndex>=aNotation.length) return aNotation.length;
@@ -322,7 +339,15 @@ final class PlayPreprocessor
 		case TJAFormat.COMMAND_TYPE_N:
 		case TJAFormat.COMMAND_TYPE_E:
 		case TJAFormat.COMMAND_TYPE_M:
-			return aBranchExitIndex>0?aBranchExitIndex:-1;
+		{
+			int branchExitIndex = aBranchExitIndexRef.get();
+			if (branchExitIndex>0)	{
+				aBranchExitIndexRef.set(0);
+				return branchExitIndex;
+			}
+			else
+				return -1;
+		}
 			
 		default:
 			return aCommandIndex+1;

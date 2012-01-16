@@ -178,13 +178,16 @@ public final class PlayModel {
 	private IntegerRef iPreprocessedCommandIndexRef = new IntegerRef();
 	private IntegerRef iPreprocessedBarIndexRef = new IntegerRef();
 	
+	/** The command index of the exit of the playing branch */
+	private IntegerRef iBranchExitIndexRef = new IntegerRef();
+	
 	private int iRollingBaloonIndex;
 	private int iScoreInit;
 	private int iScoreDiff;
 	private int[] iGaugePerNote = new int[3];
 	private int[][] iScorePerNote = new int[2][3];
 	private SectionStat iSectionStat = new SectionStat();
-	private int iBranchExitIndex;
+	
 
 	/** The adjusted offset time before first bar begins.
 	 * In milliseconds.
@@ -291,14 +294,21 @@ public final class PlayModel {
 		iNotation = iCourse.iNotationSingle;
 		iPreprocessedCommandIndexRef.set(-1);
 		iPreprocessedBarIndexRef.set(-1);
+		iBranchExitIndexRef.set(0);
 		iLastPlayingBarIndex = 0;
 		iLastPlayingNoteIndex = 0;
-		iBranchExitIndex = 0;
 		iRollingBaloonIndex = -1;
 		if (iNotation == null)	// Play as P1 if Single STYLE is not defined
 			iNotation = iCourse.iNotationP1;
 		resetGauge();	// Reset iGaugePerNote
 		resetScores();	// Reset the score info
+		iScorePerNote[SCORE_INDEX_NOT_GGT][GAUGE_OR_SCORE_INDEX_FULL] = iScoreInit;
+		iScorePerNote[SCORE_INDEX_GGT][GAUGE_OR_SCORE_INDEX_FULL] = (int)(iScoreInit * 1.2f) /10 *10;;
+		iScorePerNote[SCORE_INDEX_NOT_GGT][GAUGE_OR_SCORE_INDEX_TWICE] = iScoreInit << 1;
+		iScorePerNote[SCORE_INDEX_GGT][GAUGE_OR_SCORE_INDEX_TWICE] = (int)(iScoreInit * 2.4f) /10 *10;
+		iScorePerNote[SCORE_INDEX_NOT_GGT][GAUGE_OR_SCORE_INDEX_HALF] = ((iScoreInit/10) >> 1) * 10;
+		iScorePerNote[SCORE_INDEX_GGT][GAUGE_OR_SCORE_INDEX_HALF] = ((iScoreInit/10) >> 1) * 10;
+
 		iSectionStat.reset();	// Reset the SECTION statistics
 		iPreprocessor.reset(iCourse.iBPM);	// reset preprocessor values
 		
@@ -310,7 +320,7 @@ public final class PlayModel {
 		iStartOffsetTimeMillis = FIXED_START_TIME_OFFSET + (int)(iTJA.iOffset * 1000);
 		iEndTimeMillis = 0;
 		iLastEventTimeMillis = 0;
-		while(tryPreprocessNextBar());
+		while(PlayPreprocessor.PROCESS_RESULT_OK == tryPreprocessNextBar());
 		
 		iPlayerMessage.iNotePosCount = translateNotePos(
 				iPlayerMessage.iNotePosArray, 
@@ -379,7 +389,7 @@ public final class PlayModel {
 		if (iLastPlayingBarIndex != barIndex)
 		{
 			iLastPlayingBarIndex = barIndex;
-			while(tryPreprocessNextBar());
+			while(PlayPreprocessor.PROCESS_RESULT_OK == tryPreprocessNextBar());
 		}
 		
 		iLastPlayingNoteIndex = noteIndex;
@@ -770,7 +780,7 @@ public final class PlayModel {
 		return iPlayTimeError;
 	}
 
-	private final boolean tryPreprocessNextBar()
+	private final int tryPreprocessNextBar()
 	{
 		int preprocessedBarIndex = iPreprocessedBarIndexRef.get();
 		if (-1 == preprocessedBarIndex ||
@@ -783,7 +793,7 @@ public final class PlayModel {
 					iNotation,
 					iPreprocessedCommandIndexRef,
 					iPreprocessedBarIndexRef,
-					iBranchExitIndex);
+					iBranchExitIndexRef);
 		}
 		else
 		{
@@ -800,10 +810,9 @@ public final class PlayModel {
 
 			
 			processUnprocessedCommands(playingBar, playerMessage, iSectionStat);
-
 			
+			return PlayPreprocessor.PROCESS_RESULT_OK;
 		}
-		return false;
 	}
 
 	private final static void processUnprocessedCommands(

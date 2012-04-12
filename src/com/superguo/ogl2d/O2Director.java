@@ -353,7 +353,6 @@ public class O2Director extends SurfaceView implements SurfaceHolder.Callback, R
 			}
 			
 			// set the clipping rect
-			GLES10.glEnable(GLES10.GL_SCISSOR_TEST);
 			GLES10.glScissor(
 					(int)toXDevice(0),
 					(int)toYDevice(0),
@@ -365,7 +364,9 @@ public class O2Director extends SurfaceView implements SurfaceHolder.Callback, R
 
 	private final void drawFrame()
 	{
+		GLES10.glDisable(GLES10.GL_SCISSOR_TEST);
 		GLES10.glClear(GLES10.GL_COLOR_BUFFER_BIT);
+		GLES10.glEnable(GLES10.GL_SCISSOR_TEST);
 		O2Scene s = iCurrentScene;
 		if (s!=null)	s.preDraw(iGl);
 		iSpriteManager.drawAllSprites(iGl);

@@ -15,16 +15,15 @@ public class GameActivity extends Activity
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        getWindow().setFlags(
+        		WindowManager.LayoutParams.FLAG_FULLSCREEN,
+        		WindowManager.LayoutParams.FLAG_FULLSCREEN);
     }
     
     @Override
     public void onStart()
     {
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
-        getWindow().setFlags(
-        		WindowManager.LayoutParams.FLAG_FULLSCREEN,
-        		WindowManager.LayoutParams.FLAG_FULLSCREEN);
         director = O2Director.createInstance(
         		getApplicationContext(),
         		new O2Director.Config(512, 384));
@@ -55,11 +54,15 @@ public class GameActivity extends Activity
     @Override
     public void onStop ()
     {
-    	director.dispose();
-    	director = null;
-    	FPSHolder.getInstance().dispose();
-    	playScene = null;
-    	gameModel = null;
+    	if (director!=null)
+    	{
+    		director.dispose();
+    		director = null;
+
+    		FPSHolder.getInstance().dispose();
+    		playScene = null;
+    		gameModel = null;
+    	}
     	super.onStop();
     }
     

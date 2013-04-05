@@ -286,7 +286,7 @@ public final class PlayModel {
 		mPlayerMessage.reset(mCourse);
 
 		// Reset internal values
-		mNotation = mCourse.iNotationSingle;
+		mNotation = mCourse.notationSingle;
 		mPreprocessedCommandIndexRef.set(-1);
 		mPreprocessedBarIndexRef.set(-1);
 		mBranchExitIndexRef.set(0);
@@ -294,7 +294,7 @@ public final class PlayModel {
 		mLastPlayingNoteIndex = 0;
 		mRollingBaloonIndex = -1;
 		if (mNotation == null) // Play as P1 if Single STYLE is not defined
-			mNotation = mCourse.iNotationP1;
+			mNotation = mCourse.notationP1;
 		resetGauge(); // Reset iGaugePerNote
 		resetScores(); // Reset the score info
 		mScorePerNote[SCORE_INDEX_NOT_GGT][GAUGE_OR_SCORE_INDEX_FULL] = mScoreInit;
@@ -306,7 +306,7 @@ public final class PlayModel {
 		mScorePerNote[SCORE_INDEX_GGT][GAUGE_OR_SCORE_INDEX_HALF] = ((mScoreInit / 10) >> 1) * 10;
 
 		mSectionStat.reset(); // Reset the SECTION statistics
-		mPreprocessor.reset(mCourse.iBPM); // reset preprocessor values
+		mPreprocessor.reset(mCourse.BPM); // reset preprocessor values
 
 		return mPlayerMessage;
 	}
@@ -470,7 +470,7 @@ public final class PlayModel {
 
 			case NOTE_START_ROLLING_BALOON:
 				if (noteHasPassed) {
-					playerMessage.rollingCount = mCourse.iBalloon[++mRollingBaloonIndex];
+					playerMessage.rollingCount = mCourse.balloons[++mRollingBaloonIndex];
 					playerMessage.rollingState = ROLLING_BALLOON;
 					note.noteType = NOTE_NONE;
 					handled = true;
@@ -479,7 +479,7 @@ public final class PlayModel {
 
 			case NOTE_START_ROLLING_POTATO:
 				if (noteHasPassed) {
-					playerMessage.rollingCount = mCourse.iBalloon[++mRollingBaloonIndex];
+					playerMessage.rollingCount = mCourse.balloons[++mRollingBaloonIndex];
 					playerMessage.rollingState = ROLLING_POTATO;
 					note.noteType = NOTE_NONE;
 					handled = true;
@@ -783,7 +783,7 @@ public final class PlayModel {
 	private static final void processUnprocessedCommands(Bar aPlayingBar,
 			PlayerMessage aPlayerMessage, SectionStat aSectionStat) {
 		for (TJACommand cmd : aPlayingBar.unprocessedCommand) {
-			switch (cmd.iCommandType) {
+			switch (cmd.commandType) {
 			case TJAFormat.COMMAND_TYPE_GOGOSTART:
 				aPlayerMessage.isGGT = true;
 				break;
@@ -804,8 +804,8 @@ public final class PlayModel {
 	}
 
 	private final void resetGauge() {
-		int course = mCourse.iCourse;
-		int level = Math.min(mCourse.iLevel, MAX_LEVEL_OF[course]);
+		int course = mCourse.course;
+		int level = Math.min(mCourse.level, MAX_LEVEL_OF[course]);
 
 		int gauge = (int) (MAX_GAUGE / (MAX_GAUGE_RATES[course][level] * getGaugeNotes()));
 
@@ -819,17 +819,17 @@ public final class PlayModel {
 
 	private final void resetScores() {
 		TJACourse course = mCourse;
-		if (course.iScoreInit > 0 && course.iScoreDiff > 0) {
-			mScoreInit = course.iScoreInit;
-			mScoreDiff = course.iScoreDiff;
+		if (course.scoreInit > 0 && course.scoreDiff > 0) {
+			mScoreInit = course.scoreInit;
+			mScoreDiff = course.scoreDiff;
 		} else {
 			int fullScore; // approximate value of full score
-			if (course.iLevel <= MAX_LEVEL_OF[course.iCourse])
-				fullScore = FULL_SCORES[course.iCourse][course.iLevel];
+			if (course.level <= MAX_LEVEL_OF[course.course])
+				fullScore = FULL_SCORES[course.course][course.level];
 			else
-				fullScore = FULL_SCORES[course.iCourse][MAX_LEVEL_OF[course.iCourse]]
+				fullScore = FULL_SCORES[course.course][MAX_LEVEL_OF[course.course]]
 						+ 100000
-						* (MAX_LEVEL_OF[course.iCourse] - course.iLevel);
+						* (MAX_LEVEL_OF[course.course] - course.level);
 			float fullNormalNote = (float) fullScore / getScoreCalcNotes();
 			mScoreInit = (int) Math.floor(fullNormalNote * 0.08f) * 10;
 			mScoreDiff = (int) Math.floor(fullNormalNote * 0.02f) * 10;
@@ -855,15 +855,15 @@ public final class PlayModel {
 		for (i = 0; i < len;) {
 			TJACommand cmd = notation[i];
 
-			switch (cmd.iCommandType) {
+			switch (cmd.commandType) {
 			case TJAFormat.COMMAND_TYPE_BRANCHSTART:
-				i = cmd.iArgs[5]; // Go to the index of COMMAND_TYPE_M
+				i = cmd.args[5]; // Go to the index of COMMAND_TYPE_M
 				continue;
 
 			case TJAFormat.COMMAND_TYPE_N: // Encounters other branch
 			case TJAFormat.COMMAND_TYPE_E: // Encounters other branch
 			case TJAFormat.COMMAND_TYPE_BRANCHEND:
-				i = cmd.iArgs[6];
+				i = cmd.args[6];
 				continue;
 
 			case TJAFormat.COMMAND_TYPE_GOGOSTART:
@@ -877,8 +877,8 @@ public final class PlayModel {
 			// other cases are ignored
 			}
 
-			if (TJAFormat.COMMAND_TYPE_NOTE == cmd.iCommandType) {
-				for (int note : cmd.iArgs) {
+			if (TJAFormat.COMMAND_TYPE_NOTE == cmd.commandType) {
+				for (int note : cmd.args) {
 					switch (note) {
 					case NOTE_FACE:
 					case NOTE_SIDE:
@@ -922,22 +922,22 @@ public final class PlayModel {
 		for (i = 0; i < len;) {
 			TJACommand cmd = notation[i];
 
-			switch (cmd.iCommandType) {
+			switch (cmd.commandType) {
 			case TJAFormat.COMMAND_TYPE_BRANCHSTART:
-				i = cmd.iArgs[5]; // Go to the index of COMMAND_TYPE_M
+				i = cmd.args[5]; // Go to the index of COMMAND_TYPE_M
 				continue;
 
 			case TJAFormat.COMMAND_TYPE_N: // Encounters other difficulty
 			case TJAFormat.COMMAND_TYPE_E: // Encounters other difficulty
 			case TJAFormat.COMMAND_TYPE_BRANCHEND:
-				i = cmd.iArgs[6];
+				i = cmd.args[6];
 				continue;
 
 				// other cases are ignored
 			}
 
-			if (TJAFormat.COMMAND_TYPE_NOTE == cmd.iCommandType) {
-				for (int note : cmd.iArgs) {
+			if (TJAFormat.COMMAND_TYPE_NOTE == cmd.commandType) {
+				for (int note : cmd.args) {
 					switch (note) {
 					case NOTE_FACE:
 					case NOTE_SIDE:
@@ -1000,7 +1000,7 @@ public final class PlayModel {
 		// N < E < M
 		// Normal < Easy < Master !
 
-		int args[] = startBranchCommand.iArgs;
+		int args[] = startBranchCommand.args;
 		int limitE, limitM, played;
 		switch (args[0]) {
 		case TJAFormat.BRANCH_JUDGE_ROLL:

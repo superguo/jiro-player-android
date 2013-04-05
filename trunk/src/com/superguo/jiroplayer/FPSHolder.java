@@ -4,87 +4,77 @@ import com.superguo.ogl2d.O2Texture;
 import com.superguo.ogl2d.O2TextureManager;
 
 public class FPSHolder {
-	private static FPSHolder 	gInstance;
-	private int 	 			iFPSCount;
-	private int 	 			iFPSDisplay;
-	private long	 			iLastFPSRecTime;
-	private O2Texture 			iFPSTex;
-	private O2Texture 			iNumerTex[];
-	
-	private FPSHolder()
-	{
+	private static FPSHolder sInstance;
+	private int 	 		mFPSCount;
+	private int 	 		mFPSDisplay;
+	private long	 		mLastFPSRecTime;
+	private O2Texture 		mFPSTex;
+	private O2Texture 		mNumerTex[];
+
+	private FPSHolder() {
 		O2TextureManager mgr = O2TextureManager.getInstance();
-		iFPSTex = mgr.createFromString("FPS: ", true);
-		iNumerTex = new O2Texture[10];
-		for (int i=0; i<10; ++i)
-		{
-			iNumerTex[i] = mgr.createFromString(Integer.toString(i), true);
+		mFPSTex = mgr.createFromString("FPS: ", true);
+		mNumerTex = new O2Texture[10];
+		for (int i = 0; i < 10; ++i) {
+			mNumerTex[i] = mgr.createFromString(Integer.toString(i), true);
 		}
 	}
 
-	public final static FPSHolder getInstance()
-	{
-		if (gInstance==null)
-			gInstance = new FPSHolder();
-		return gInstance;
+	public static final FPSHolder getInstance() {
+		if (sInstance == null)
+			sInstance = new FPSHolder();
+		return sInstance;
 	}
-	
-	public void dispose()
-	{
-		if (iFPSTex!=null)
-		{
-			iFPSTex.dispose();
-			iFPSTex = null;
+
+	public void dispose() {
+		if (mFPSTex != null) {
+			mFPSTex.dispose();
+			mFPSTex = null;
 		}
-		
-		if (iNumerTex!=null)
-		{
-			for (O2Texture tex : iNumerTex)
+
+		if (mNumerTex != null) {
+			for (O2Texture tex : mNumerTex)
 				tex.dispose();
-			iNumerTex = null;
+			mNumerTex = null;
 		}
-		
-		gInstance = null;
+
+		sInstance = null;
 	}
-	
-	public void showFPS()
-	{
-		iFPSCount++;
+
+	public void showFPS() {
+		mFPSCount++;
 
 		long FPSRecTime = android.os.SystemClock.uptimeMillis();
-		if (FPSRecTime - iLastFPSRecTime > 1000)
-		{
-			iFPSDisplay = iFPSCount;
-			iFPSCount = 0;
-			iLastFPSRecTime = FPSRecTime;
+		if (FPSRecTime - mLastFPSRecTime > 1000) {
+			mFPSDisplay = mFPSCount;
+			mFPSCount = 0;
+			mLastFPSRecTime = FPSRecTime;
 		}
-		
-		if (iFPSDisplay>0)
-		{
+
+		if (mFPSDisplay > 0) {
 			int x = 10;
 			int y = 350;
 			boolean drawn100 = false;
-			iFPSTex.draw(x, y);
-			x += iFPSTex.getWidth();
-			
-			int index = iFPSDisplay / 100;
-			if (index>9) index = 9;
-			if (index>0)
-			{
-				iNumerTex[index].draw(x, y);
+			mFPSTex.draw(x, y);
+			x += mFPSTex.getWidth();
+
+			int index = mFPSDisplay / 100;
+			if (index > 9)
+				index = 9;
+			if (index > 0) {
+				mNumerTex[index].draw(x, y);
 				drawn100 = true;
-				x += iNumerTex[index].getWidth();
+				x += mNumerTex[index].getWidth();
 			}
-			
-			index = (iFPSDisplay % 100)/10;
-			if (drawn100 || index>0)
-			{
-				iNumerTex[index].draw(x, y);
-				x += iNumerTex[index].getWidth();
+
+			index = (mFPSDisplay % 100) / 10;
+			if (drawn100 || index > 0) {
+				mNumerTex[index].draw(x, y);
+				x += mNumerTex[index].getWidth();
 			}
-			
-			index = iFPSDisplay % 10;
-			iNumerTex[index].draw(x, y);
+
+			index = mFPSDisplay % 10;
+			mNumerTex[index].draw(x, y);
 		}
 	}
 }

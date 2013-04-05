@@ -1,52 +1,55 @@
 package com.superguo.jiroplayer;
 
+import android.util.Log;
+
 public class PlayLayout implements Cloneable
 {	
-	public final static int SCREEN_WIDTH = 512;
-	public final static int MTAIKO_WIDTH = 94;
-	public final static int NOTE_SIZE = 48;
-	public final static int SCROLL_WIDTH =
+	private static final String TAG = "PlayLayout";
+	public static final int SCREEN_WIDTH = 512;
+	public static final int MTAIKO_WIDTH = 94;
+	public static final int NOTE_SIZE = 48;
+	public static final int SCROLL_WIDTH =
 		PlayLayout.SCREEN_WIDTH - PlayLayout.MTAIKO_WIDTH - PlayLayout.NOTE_SIZE;
-	public int iMTaikoY = 90;
-	public int iScrollFieldHeight=56;
-	public int iScrollFieldY=125;
-	public int iSENotesY=165;
-	public int iNormaGaugeWidth=256;
-	public int iNormaGaugeX=348;
-	public int iNormaGaugeY=33;
-	public int iScoreX=450;
-	public int iScoreY=76;
-	public int iAddScoreX=450;
-	public int iAddScoreY=55;
-	public int iRollBalloonX=197;
-	public int iRollBalloonY=35;
-	public int iRollNumberX=183;
-	public int iRollNumberY=27;
-	public int iBurstBalloonX=200;
-	public int iBurstBalloonY=77;
-	public int iBurstNumberX=200;
-	public int iBurstNumberY=77;
-	public int iComboBalloonX=220;
-	public int iComboBalloonY=77;
-	public int iComboNumberX=220;
-	public int iComboNumberY=77;
-	public int iCourseSymbolX=185;
-	public int iCourseSymbolY=45;
-	public int iPlayerCharacterX=100;
-	public int iPlayerCharacterY=45;
-	public int iPlayerCharacterBalloonX=133;
-	public int iPlayerCharacterBalloonY=130;
-	public int iDancerY=275;
-	public int iSongTitleY=190;
-	public int iBranchBalloonX=175;
-	public int iBranchBalloonY=37;
-	public PlayLayout clone()
-	{
-		try	{
-			return (PlayLayout)super.clone();
-		}
-		catch(CloneNotSupportedException e) {
-			throw new Error("Unknown Error", e);
+	public int MTaikoY = 90;
+	public int scrollFieldHeight=56;
+	public int scrollFieldY=125;
+	public int seNotesY=165;
+	public int normaGaugeWidth=256;
+	public int normaGaugeX=348;
+	public int normaGaugeY=33;
+	public int scoreX=450;
+	public int scoreY=76;
+	public int addScoreX=450;
+	public int addScoreY=55;
+	public int rollBalloonX=197;
+	public int rollBalloonY=35;
+	public int rollNumberX=183;
+	public int rollNumberY=27;
+	public int burstBalloonX=200;
+	public int burstBalloonY=77;
+	public int burstNumberX=200;
+	public int burstNumberY=77;
+	public int comboBalloonX=220;
+	public int comboBalloonY=77;
+	public int comboNumberX=220;
+	public int comboNumberY=77;
+	public int courseSymbolX=185;
+	public int courseSymbolY=45;
+	public int playerCharacterX=100;
+	public int playerCharacterY=45;
+	public int playerCharacterBalloonX=133;
+	public int playerCharacterBalloonY=130;
+	public int dancerY=275;
+	public int songTitleY=190;
+	public int branchBalloonX=175;
+	public int branchBalloonY=37;
+	
+	public PlayLayout clone() {
+		try {
+			return (PlayLayout) super.clone();
+		} catch (CloneNotSupportedException e) {
+			Log.wtf(TAG, e);
+			return null;
 		}
 	}
 }

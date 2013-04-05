@@ -1,18 +1,21 @@
 package com.superguo.jiroplayer;
 
 public class IntegerRef {
-	
-	public IntegerRef()
-	{	}
-	
-	public IntegerRef(int i)
-	{	v=i;	}
-	
-	public void set(int i)
-	{	v=i;	}
-	
-	public int get()
-	{	return v;	}
-	
-	private int v;
+
+	public IntegerRef() {
+	}
+
+	public IntegerRef(int i) {
+		mValue = i;
+	}
+
+	public void set(int i) {
+		mValue = i;
+	}
+
+	public int get() {
+		return mValue;
+	}
+
+	private int mValue;
 }

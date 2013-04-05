@@ -14,85 +14,85 @@ import com.superguo.jiroplayer.TJAFormat.TJACommand;
 final class PlayPreprocessor
 {
 	/** The pre-processing BPM */
-	public float iBPM;
+	private float mBPM;
 	
 	/** The pre-processing X in MEASURE X/Y, available until changed */
-	public int iMeasureX;
+	private int mMeasureX;
 	
 	/** The pre-processing Y in MEASURE X/Y, available until changed */
-	public int iMeasureY;
+	private int mMeasureY;
 	
 	/** The pre-processing  microseconds per beat = 60 000 000 / BPM, available until changed */
-	public long iMicSecPerBeat;
+	private long mMicSecPerBeat;
 	
 	/** The pre-processing speed of one note in pixels per 1000 seconds, available until changed */
-	public int iSpeed;
+	private int mSpeed;
 	
 	/** The pre-processing beat distance = BEAT_DIST * scroll, available until changed */
-	public double iBeatDist;
+	private double mBeatDist;
 	
 	/** The pre-processing iBarLine, with value of on/off, available until changed */
-	public boolean iBarLine;
+	private boolean mBarLine;
 	
 	/** The pre-processing flag indicating if the last pre-processed note is rolling */
-	public boolean iLastNoteRolling;
+	private boolean mLastNoteRolling;
 
 	/** Reset all pre-processing state variables */
 	public final void reset(float aBMP)
 	{
 		setBPM(aBMP);
 		setScroll(1.0f);
-		iMeasureX = 4;
-		iMeasureY = 4;
-		iLastNoteRolling = false;
-		iBarLine = true;
+		mMeasureX = 4;
+		mMeasureY = 4;
+		mLastNoteRolling = false;
+		mBarLine = true;
 	}
 	
 	public final void calcSpeed()
 	{
-		iSpeed = (int) (iBeatDist * 2 * iBPM / 60 * 1000 );
+		mSpeed = (int) (mBeatDist * 2 * mBPM / 60 * 1000 );
 	}
 	
 	public final void setBPM(float aBPM)
 	{
-		iBPM = aBPM;
-		iMicSecPerBeat = (long) (60000000 / aBPM);
+		mBPM = aBPM;
+		mMicSecPerBeat = (long) (60000000 / aBPM);
 		calcSpeed();
 	}
 	
 	public final void setScroll(float scroll)
 	{
-		iBeatDist = PlayModel.BEAT_DIST * scroll;
+		mBeatDist = PlayModel.BEAT_DIST * scroll;
 		calcSpeed();
 	}
 
 	private final void processCmdNote(Bar bar, int[] barNotes, float delay)
 	{
 		// The number of beats in a bar is measureX / measureY
-		double numBeats = (double)iMeasureX / iMeasureY;
+		double numBeats = (double)mMeasureX / mMeasureY;
 		
 		// The duration in minutes is numBeats / BPM
 		// To convert the minutes to microseconds, just make it times 60 000 000
-		bar.iDurationMicros = (long) (iMicSecPerBeat * numBeats);
+		bar.durationMicros = (long) (mMicSecPerBeat * numBeats);
 	
 		// When scroll is 1.0, one beat is two notes' length in pixels
-		bar.iLength = (int) (iBeatDist * 2 * numBeats);
+		bar.length = (int) (mBeatDist * 2 * numBeats);
 	
-		bar.iSpeed = iSpeed; // = bar.iLength / bar.iDuration * 1e9
+		bar.speed = mSpeed; // = bar.iLength / bar.iDuration * 1e9
 	
-		bar.iNumPreprocessedNotes = 0;
+		bar.numPreprocessedNotes = 0;
 		
 		int numNotes = barNotes.length;
-		if (iBarLine)
+		if (mBarLine)
 		{
-			PreprocessedNote noteOffset = bar.iNotes[bar.iNumPreprocessedNotes++];
-			noteOffset.iNoteType = PlayModel.NOTE_BARLINE;
-			noteOffset.iOffsetTimeMillis = 0;
-			noteOffset.iOffsetPos = 0;
+			PreprocessedNote noteOffset = bar.notes[bar.numPreprocessedNotes++];
+			noteOffset.noteType = PlayModel.NOTE_BARLINE;
+			noteOffset.offsetTimeMillis = 0;
+			noteOffset.offsetPos = 0;
 		}
 		
 		// transfer field variable to local variable
-		boolean isLastNoteRolling = iLastNoteRolling;
+		boolean isLastNoteRolling = mLastNoteRolling;
 		
 		for (int i=0; i<numNotes; ++i)
 		{
@@ -135,29 +135,29 @@ final class PlayPreprocessor
 		// iDuration & iLength
 		if (delay>0.001f)
 		{
-			bar.iDurationMicros += delay * 1000000;
-			bar.iLength += delay * bar.iSpeed / 1000;
+			bar.durationMicros += delay * 1000000;
+			bar.length += delay * bar.speed / 1000;
 			
 			// Reset after being pre-processed
 			delay = 0.0f;
 		}
 		// transfer local variable back to field variable
-		iLastNoteRolling = isLastNoteRolling;
+		mLastNoteRolling = isLastNoteRolling;
 	}
 
 	/** At least one command is processed */
-	public final static int PROCESS_RESULT_OK = 0;
+	public static final int PROCESS_RESULT_OK = 0;
 	
 	/** All command are processed */
-	public final static int PROCESS_RESULT_EOF = 1;
+	public static final int PROCESS_RESULT_EOF = 1;
 	
 	/** No more unprocessed bar. Try later again */
-	public final static int PROCESS_RESULT_BARS_FULL = 2;
+	public static final int PROCESS_RESULT_BARS_FULL = 2;
 	
 	/** The branch is to exit but specified to be 0.
 	 *  Zero or more commands are processed.
 	 *  Try later again */
-	public final static int PROCESS_RESULT_BRANCH_PENDING = 3;
+	public static final int PROCESS_RESULT_BRANCH_PENDING = 3;
 	
 	/**
 	 * 
@@ -187,13 +187,13 @@ final class PlayPreprocessor
 		int barIndex = PlayModel.nextIndexOfBar(lastProcessedBarIndex);
 		
 		if (barIndex==lastProcessedBarIndex) return PROCESS_RESULT_BARS_FULL;
-		if (aBars[barIndex].iPreprocessed ) return PROCESS_RESULT_BARS_FULL;
+		if (aBars[barIndex].preprocessed ) return PROCESS_RESULT_BARS_FULL;
 		
 		// Initialize the bar value
 		Bar bar = aBars[barIndex];
 		//bar.iPreprocessed = false;
-		bar.iHasBranchStartNextBar = false;
-		bar.iNumPreprocessedNotes = 0;
+		bar.hasBranchStartNextBar = false;
+		bar.numPreprocessedNotes = 0;
 
 		LinkedList<TJACommand> unprocCmd = null;
 		// Do not allocate memory until next command is not COMMAND_TYPE_NOTE
@@ -203,7 +203,7 @@ final class PlayPreprocessor
 		float delay = 0.0f;
 		
 		for(commandIndex = nextCommandIndex(notation, commandIndex, aBranchExitIndexRef);
-			!bar.iPreprocessed && commandIndex < notation.length;
+			!bar.preprocessed && commandIndex < notation.length;
 			commandIndex = nextCommandIndex(notation, commandIndex, aBranchExitIndexRef))
 		{
 			// Return true in case aBranchExitIndex is 0
@@ -220,11 +220,11 @@ final class PlayPreprocessor
 
 				// Set runtime offset
 				if (lastProcessedBarIndex==-1)
-					bar.iOffsetTimeMicros = 0;
+					bar.offsetTimeMicros = 0;
 				else
-					bar.iOffsetTimeMicros = 
-						aBars[lastProcessedBarIndex].iOffsetTimeMicros + 
-						aBars[lastProcessedBarIndex].iDurationMicros;
+					bar.offsetTimeMicros = 
+						aBars[lastProcessedBarIndex].offsetTimeMicros + 
+						aBars[lastProcessedBarIndex].durationMicros;
 				// Check #BRACHSTART
 				for (int i=commandIndex+1; i<notation.length; ++i)
 				{
@@ -233,20 +233,20 @@ final class PlayPreprocessor
 						break;
 					else if (cmd2.iCommandType == TJAFormat.COMMAND_TYPE_BRANCHSTART)
 					{
-						bar.iHasBranchStartNextBar = true;
+						bar.hasBranchStartNextBar = true;
 						break;
 					}
 				}
 
 				// Emit unprocessed commands
 				if (unprocCmd != null && unprocCmd.size()>0)
-					bar.iUnprocessedCommand = 
+					bar.unprocessedCommand = 
 						unprocCmd.toArray(new TJACommand[unprocCmd.size()]);
 				else
-					bar.iUnprocessedCommand = null;
+					bar.unprocessedCommand = null;
 				
 				// Set processed
-				bar.iPreprocessed = true;
+				bar.preprocessed = true;
 				
 				break;
 				
@@ -258,8 +258,8 @@ final class PlayPreprocessor
 			}
 	
 			case TJAFormat.COMMAND_TYPE_MEASURE:
-				iMeasureX = cmd.iArgs[0];
-				iMeasureY = cmd.iArgs[1];
+				mMeasureX = cmd.iArgs[0];
+				mMeasureY = cmd.iArgs[1];
 				break;
 			
 			case TJAFormat.COMMAND_TYPE_SCROLL:
@@ -284,19 +284,19 @@ final class PlayPreprocessor
 				// Emit a special bar containing no notes
 
 				// No length at all
-				bar.iDurationMicros = 0;
-				bar.iLength = 0;
+				bar.durationMicros = 0;
+				bar.length = 0;
 				
 				// Will be executed in running bar before this!
 				unprocCmd.addLast(cmd.clone());
 				
 				// Emit unprocessed commands.
 				// The last command is always #BRANCHSTART
-				bar.iUnprocessedCommand = 
+				bar.unprocessedCommand = 
 					unprocCmd.toArray(new TJACommand[unprocCmd.size()]);
 				
 				// Set processed
-				bar.iPreprocessed = true;
+				bar.preprocessed = true;
 
 				break;
 
@@ -313,11 +313,11 @@ final class PlayPreprocessor
 				break;
 				
 			case TJAFormat.COMMAND_TYPE_BARLINEOFF:
-				iBarLine = false;
+				mBarLine = false;
 				break;
 				
 			case TJAFormat.COMMAND_TYPE_BARLINEON:
-				iBarLine = true;
+				mBarLine = true;
 				break;
 				
 			default:;

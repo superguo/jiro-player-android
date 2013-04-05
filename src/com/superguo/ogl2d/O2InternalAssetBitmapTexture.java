@@ -7,13 +7,15 @@ import android.graphics.*;
 
 class O2InternalAssetBitmapTexture extends O2Texture {
 	
-	String assetPath;
+	String mAssetPath;
 	
-	O2InternalAssetBitmapTexture(boolean managed, String assetPath, AssetManager assetMan)
-	{
+	O2InternalAssetBitmapTexture(boolean managed, String assetPath,
+			AssetManager assetMan) {
 		super(managed);
-		this.assetPath = managed ? new String(assetPath) : assetPath;
-		if (O2Director.instance.iGl != null) recreate();
+		mAssetPath = managed ? new String(assetPath) : assetPath;
+		if (O2Director.sInstance.mGl != null) {
+			recreate();
+		}
 	}
 
 	void create(AssetManager assetMan) throws IOException
@@ -22,23 +24,19 @@ class O2InternalAssetBitmapTexture extends O2Texture {
 	
 	@Override
 	public void dispose() {
-		assetPath = null;
+		mAssetPath = null;
 		super.dispose();
 	}
 
 	@Override
-	public void recreate()
-	{
-		try
-		{
-			Bitmap bitmap = BitmapFactory.decodeStream(
-				O2Director.instance.getContext().getAssets().open(assetPath));
+	public void recreate() {
+		try {
+			Bitmap bitmap = BitmapFactory.decodeStream(O2Director.sInstance
+					.getContext().getAssets().open(mAssetPath));
 			createTexFromBitmap(bitmap);
-			available = true;
-		}
-		catch(IOException e)
-		{
-			available = false;
+			mAvailable = true;
+		} catch (IOException e) {
+			mAvailable = false;
 		}
 	}
 }

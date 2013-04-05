@@ -21,7 +21,7 @@ public final class O2BufferTexture extends O2Texture {
 		GLES10.glGenTextures(1, intArr, 0);
 		GLES11Ext.glGenFramebuffersOES(1, intArr, 1);
 		GLES11Ext.glGenRenderbuffersOES(1, intArr, 2);
-		tex = intArr[0];
+		mTex = intArr[0];
 		fbo = intArr[1];
 		depthBuf = intArr[2];
 	}
@@ -33,9 +33,9 @@ public final class O2BufferTexture extends O2Texture {
 		GLES11Ext.glBindFramebufferOES(GLES11Ext.GL_FRAMEBUFFER_OES, fbo);
 
 		// attach a texture
-		GLES10.glBindTexture(tex, GLES10.GL_TEXTURE_2D);
+		GLES10.glBindTexture(mTex, GLES10.GL_TEXTURE_2D);
 		GLES10.glTexImage2D(GLES10.GL_TEXTURE_2D, 0, GLES10.GL_RGBA,  width, height, 0, GLES10.GL_RGBA, GLES10.GL_UNSIGNED_SHORT_4_4_4_4, null);
-		GLES11Ext.glFramebufferTexture2DOES(GLES11Ext.GL_FRAMEBUFFER_OES, GLES11Ext.GL_COLOR_ATTACHMENT0_OES, GLES10.GL_TEXTURE_2D, tex, 0);
+		GLES11Ext.glFramebufferTexture2DOES(GLES11Ext.GL_FRAMEBUFFER_OES, GLES11Ext.GL_COLOR_ATTACHMENT0_OES, GLES10.GL_TEXTURE_2D, mTex, 0);
 
 		// attach a depth buffer
 		GLES11Ext.glBindRenderbufferOES(GLES11Ext.GL_RENDERBUFFER_OES, depthBuf);

@@ -7,91 +7,89 @@ import com.superguo.jiroplayer.TJAFormat.TJACourse;
  * @author superguo
  *
  */
-public final class PlayerMessage
-{
+public final class PlayerMessage {
 	/** Contain moving notes only 
 	 * So notes with type of
 	 * NOTE_START_ROLLING_BALOON or
 	 * NOTE_START_ROLLING_POTATO
 	 * are contained only when it is not in playing(rolling)
 	 */
-	public final static class NotePos
-	{
-		public int iNoteType;
-		public int iNotePos;
+	public static final class NotePos {
+		public int noteType;
+		public int notePos;
 	}
 	
-	public final static int MAX_NOTE_POS 	= 64;
+	public static final int MAX_NOTE_POS 	= 64;
 	
 	/** The note is not judged yet	 */
-	public final static int JUDGED_NONE 	= 0;
+	public static final int JUDGED_NONE 	= 0;
 	
 	/** The note is hit correctly within TIME_JUDGE_GOOD */
-	public final static int JUDGED_GOOD 	= 1;
+	public static final int JUDGED_GOOD 	= 1;
 	
 	/** The note is hit correctly between TIME_JUDGE_GOOD and TIME_JUDGE_NORMAL */
-	public final static int JUDGED_NORMAL 	= 2;
+	public static final int JUDGED_NORMAL 	= 2;
 	
 	/** The note is hit correctly between TIME_JUDGE_NORMAL and TIME_JUDGE_MISSED 
 	 * or the note is hit incorrectly within TIME_JUDGE_NORMAL */
-	public final static int JUDGED_MISSED 	= 3;
+	public static final int JUDGED_MISSED 	= 3;
 	
 	/** The note is not hit within TIME_JUDGE_MISSED */
-	public final static int JUDGED_BREAK 	= 4;
+	public static final int JUDGED_BREAK 	= 4;
 	
 	/**  */
-	public final static int JUDGED_MASK_SPECIAL = 0x10;
+	public static final int JUDGED_MASK_SPECIAL = 0x10;
 	
-	public final static int SPECIAL_ROLLING_COUNT_BALLOON_FINISHED 	= -1;
-	public final static int SPECIAL_ROLLING_COUNT_BALLOON_FAILED 	= -2;
-	public final static int SPECIAL_ROLLING_COUNT_POTATO_FINISHED 	= -3;
-	public final static int SPECIAL_ROLLING_COUNT_POTATO_FAILED 	= -4;
+	public static final int SPECIAL_ROLLING_COUNT_BALLOON_FINISHED 	= -1;
+	public static final int SPECIAL_ROLLING_COUNT_BALLOON_FAILED 	= -2;
+	public static final int SPECIAL_ROLLING_COUNT_POTATO_FINISHED 	= -3;
+	public static final int SPECIAL_ROLLING_COUNT_POTATO_FAILED 	= -4;
 
-	public int iCourse;
-	public int iScore;
-	public int iGauge;
+	public int course;
+	public int score;
+	public int gauge;
 
 	/** The added score
 	 * Drawer must set to 0 after the frame is drawn
 	 */
-	public int iAddedScore;
-	public int iNumCombo;
-	public int iNumMaxCombo;
+	public int addedScore;
+	public int numCombos;
+	public int numMaxCombos;
 	
 	/** The number of NORMAL notes */
-	public int iNumNormalNotes;
+	public int numNormalNotes;
 	
 	/** The number of GOOD notes */
-	public int iNumGoodNotes;
+	public int numGoodNotes;
 	
 	/** The number of MISSED+BREAK+NORMAL+GOOD notes */
-	public int iNumTotalNotes;
+	public int numTotalNotes;
 	
 	/** The number of all rolled */
-	public int iNumTotalRolled;
+	public int numTotalRolled;
 
 	/** The value is one of HIT_NONE, HIT_FACE and HIT_SIDE
 	 * Drawer must set to HIT_NONE after the frame is drawn
 	 */
 	//public int iHit;
 	
-	public int iNotePosCount;
-	public NotePos[] iNotePosArray = new NotePos[MAX_NOTE_POS];
+	public int notePosCount;
+	public NotePos[] notePosArray = new NotePos[MAX_NOTE_POS];
 	
 	/** Indicate the current note is played good,
 	 * 	play normal, missed, passed or not judged yet
 	 * Drawer must set to NOTE_JUDGED_NONE after the frame is drawn
 	 */
-	public int iNoteJudged;
+	public int noteJudged;
 	
 	/** Current branch */
-	public int iBranch;
-	public boolean iIsGGT;
+	public int branch;
+	public boolean isGGT;
 	
 	/**
 	 * 
 	 */
-	public int iRollingState;		
+	public int rollingState;		
 	
 	/** Can be positive or negative or zero 
 	 * Non-negative value means the rolling counter:
@@ -105,42 +103,41 @@ public final class PlayerMessage
 	 * after the "rolling end" animation just starts to draw
 	 * 
 	 */
-	public int iRollingCount;	
+	public int rollingCount;	
 	
-	public void reset(TJACourse aCourse)
-	{
+	public void reset(TJACourse aCourse) {
 		// Reset current course
-		iCourse = aCourse.iCourse;
+		course = aCourse.iCourse;
 
 		// Reset current score
-		iScore = 0;
-		iAddedScore = 0;
+		score = 0;
+		addedScore = 0;
 		
-		iGauge = 0;
+		gauge = 0;
 
 		// Reset hit
 		//iHit = PlayModel.HIT_NONE;
 		
 		// Reset the number of note position
-		iNotePosCount = 0;
+		notePosCount = 0;
 
 		// Reset judge
-		iNoteJudged = JUDGED_NONE;
+		noteJudged = JUDGED_NONE;
 		
 		// Reset branch state
 		if (aCourse.iHasBranch)
-			iBranch = PlayModel.BRANCH_NORMAL;
+			branch = PlayModel.BRANCH_NORMAL;
 		else
-			iBranch = PlayModel.BRANCH_NONE;
+			branch = PlayModel.BRANCH_NONE;
 		
 		// Reset GO-GO-TIME state
-		iIsGGT = false;
+		isGGT = false;
 		
 		// Reset rolling states
-		iRollingState = PlayModel.ROLLING_NONE;
-		iRollingCount = 0;
+		rollingState = PlayModel.ROLLING_NONE;
+		rollingCount = 0;
 
 		// Reset some counters
-		iNumMaxCombo = iNumNormalNotes = iNumGoodNotes = iNumTotalNotes = iNumTotalRolled = 0;
+		numMaxCombos = numNormalNotes = numGoodNotes = numTotalNotes = numTotalRolled = 0;
 	}
 }

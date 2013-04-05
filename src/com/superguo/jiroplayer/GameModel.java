@@ -1,12 +1,11 @@
 package com.superguo.jiroplayer;
 
 public final class GameModel {
-	private PlayLayout iDefaultLayout = new PlayLayout();
-	public PlayLayout iLayout;
-	public PlayModel iPlayingModel = new PlayModel(); 
-	
-	public GameModel()
-	{
-		iLayout = (PlayLayout) iDefaultLayout.clone();
+	private PlayLayout mDefaultLayout = new PlayLayout();
+	public PlayLayout layout;
+	public PlayModel playingModel = new PlayModel();
+
+	public GameModel() {
+		layout = (PlayLayout) mDefaultLayout.clone();
 	}
 }

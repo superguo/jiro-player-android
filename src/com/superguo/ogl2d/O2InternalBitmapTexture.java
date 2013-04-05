@@ -2,28 +2,27 @@ package com.superguo.ogl2d;
 
 import android.graphics.*;
 
-class O2InternalBitmapTexture extends O2Texture{
-	
-	private Bitmap bitmap;
-	
-	O2InternalBitmapTexture(boolean managed, Bitmap bitmap)
-	{
+class O2InternalBitmapTexture extends O2Texture {
+
+	private Bitmap mBitmap;
+
+	O2InternalBitmapTexture(boolean managed, Bitmap bitmap) {
 		super(managed);
-		this.bitmap = managed ? bitmap.copy(bitmap.getConfig(), false) : bitmap;
-		if (O2Director.instance.iGl!=null) recreate();
+		mBitmap = managed ? bitmap.copy(bitmap.getConfig(), false) : bitmap;
+		if (O2Director.sInstance.mGl != null)
+			recreate();
 	}
-	
+
 	@Override
-	public void dispose()
-	{
-		if (bitmap!=null && managed) bitmap.recycle();
+	public void dispose() {
+		if (mBitmap != null && mManaged)
+			mBitmap.recycle();
 		super.dispose();
 	}
 
 	@Override
-	public void recreate()
-	{
-		createTexFromBitmap(bitmap);
-		available = true;		
+	public void recreate() {
+		createTexFromBitmap(mBitmap);
+		mAvailable = true;
 	}
 }

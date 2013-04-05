@@ -8,25 +8,25 @@ import android.opengl.GLES10;
 import android.opengl.GLES11;
 
 public class O2TextureSlices implements Comparable<O2TextureSlices>{
-	protected O2Texture iTexture;
-	protected boolean iCreated;
-	protected final static int CREATE_FROM_ROWS_AND_COLS = 1;
-	protected int iCreateMethod;
-	protected int iCreateArg0;
-	protected int iCreateArg1;
+	protected O2Texture mTexture;
+	protected boolean mCreated;
+	protected static final int CREATE_FROM_ROWS_AND_COLS = 1;
+	protected int mCreateMethod;
+	protected int mCreateArg0;
+	protected int mCreateArg1;
 	
-	protected int vboFullTexCoods[];
-	protected Point[] sizes;
-	private int vertCoods[] = new int[8];
-	private IntBuffer vertBuf = 
+	protected int mVboFullTexCoods[];
+	protected Point[] mSizes;
+	private int mVertCoods[] = new int[8];
+	private IntBuffer mVertBuf = 
 		ByteBuffer.allocateDirect(32).order(null).asIntBuffer();
 
 	protected O2TextureSlices(O2Texture texture, int createMethod, int createArg0, int createArg1, boolean doVerification)
 	{
-		this.iTexture = texture;
-		iCreateMethod = createMethod;
-		iCreateArg0 = createArg0;
-		iCreateArg1 = createArg1;
+		mTexture = texture;
+		mCreateMethod = createMethod;
+		mCreateArg0 = createArg0;
+		mCreateArg1 = createArg1;
 		if (doVerification) verify();
 	}
 
@@ -37,10 +37,10 @@ public class O2TextureSlices implements Comparable<O2TextureSlices>{
 	
 	protected void verify()
 	{
-		switch (iCreateMethod)
+		switch (mCreateMethod)
 		{
 		case CREATE_FROM_ROWS_AND_COLS:
-			if (iCreateArg0<0 || iCreateArg1<0) throw new IllegalArgumentException();
+			if (mCreateArg0<0 || mCreateArg1<0) throw new IllegalArgumentException();
 			return;
 			
 		default:
@@ -50,40 +50,40 @@ public class O2TextureSlices implements Comparable<O2TextureSlices>{
 	
 	public final void draw(int index, int targetX, int targetY)
 	{
-		int vertCoods[] = this.vertCoods;
+		int vertCoods[] = mVertCoods;
 
 		vertCoods[0] = vertCoods[4] = targetX << 16;
 		vertCoods[1] = vertCoods[3] = targetY << 16;
-		vertCoods[2] = vertCoods[6] = (targetX + sizes[index].x) << 16;
-		vertCoods[5] = vertCoods[7] = (targetY + sizes[index].y) << 16;
+		vertCoods[2] = vertCoods[6] = (targetX + mSizes[index].x) << 16;
+		vertCoods[5] = vertCoods[7] = (targetY + mSizes[index].y) << 16;
 		
 		drawFull(index);
 	}
 	
 	public final void draw(int index, int targetX, int targetY, int halign, int valign)
 	{
-		int vertCoods[] = this.vertCoods;
+		int vertCoods[] = mVertCoods;
 
-		vertCoods[0] = vertCoods[4] = (targetX << 16) - (sizes[index].x << 15) * halign;
-		vertCoods[1] = vertCoods[3] = (targetY << 16) - (sizes[index].y << 15) * valign;
-		vertCoods[2] = vertCoods[6] = vertCoods[0] + (sizes[index].x << 16);
-		vertCoods[5] = vertCoods[7] = vertCoods[1] + (sizes[index].y << 16);
+		vertCoods[0] = vertCoods[4] = (targetX << 16) - (mSizes[index].x << 15) * halign;
+		vertCoods[1] = vertCoods[3] = (targetY << 16) - (mSizes[index].y << 15) * valign;
+		vertCoods[2] = vertCoods[6] = vertCoods[0] + (mSizes[index].x << 16);
+		vertCoods[5] = vertCoods[7] = vertCoods[1] + (mSizes[index].y << 16);
 		
 		drawFull(index);
 	}
 	
 	private final void drawFull(int index)
 	{
-		vertBuf.position(0);
-		vertBuf.put(vertCoods);
-		vertBuf.position(0);
+		mVertBuf.position(0);
+		mVertBuf.put(mVertCoods);
+		mVertBuf.position(0);
 
 		// Specify the vertex pointers
-		GLES10.glVertexPointer(2, GLES10.GL_FIXED, 0, vertBuf);
+		GLES10.glVertexPointer(2, GLES10.GL_FIXED, 0, mVertBuf);
 		
 		// Specify the texture coordinations
-		GLES10.glBindTexture(GLES10.GL_TEXTURE_2D, iTexture.tex);
-		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, vboFullTexCoods[index]);
+		GLES10.glBindTexture(GLES10.GL_TEXTURE_2D, mTexture.mTex);
+		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, mVboFullTexCoods[index]);
 		GLES11.glTexCoordPointer(2, GLES10.GL_FIXED, 0, 0);
 		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, 0);
 
@@ -92,10 +92,10 @@ public class O2TextureSlices implements Comparable<O2TextureSlices>{
 	}
 
 	protected void create() {
-		switch (iCreateMethod)
+		switch (mCreateMethod)
 		{
 		case CREATE_FROM_ROWS_AND_COLS:
-			createFromRowsAndCols(iCreateArg0, iCreateArg1);
+			createFromRowsAndCols(mCreateArg0, mCreateArg1);
 			return;
 
 		default:
@@ -106,23 +106,23 @@ public class O2TextureSlices implements Comparable<O2TextureSlices>{
 	private void createFromRowsAndCols(int rows, int cols)
 	{
 		int i, j, w, h;
-		w = iTexture.width/cols;
-		h = iTexture.height/rows;
+		w = mTexture.mWidth/cols;
+		h = mTexture.mHeight/rows;
 		int count = rows*cols;
 		if (count==0) return;
 		
 		// block sizes, using Point as size type
-		sizes = new Point[count];
+		mSizes = new Point[count];
 		Point fixedSize = new Point(w, h);
-		Arrays.fill(sizes, fixedSize);
+		Arrays.fill(mSizes, fixedSize);
 		
 		// VBO
-		vboFullTexCoods = new int[count];
+		mVboFullTexCoods = new int[count];
 		int fullTexCoods[] = new int[8];
 		IntBuffer fullTexBuf = ByteBuffer.allocateDirect(32).order(null).asIntBuffer();
-		GLES11.glGenBuffers(count, vboFullTexCoods, 0);
-		int texPowOf2Width = iTexture.texPowOf2Width;
-		int texPowOf2Height = iTexture.texPowOf2Height;
+		GLES11.glGenBuffers(count, mVboFullTexCoods, 0);
+		int texPowOf2Width = mTexture.mTexPowOf2Width;
+		int texPowOf2Height = mTexture.mTexPowOf2Height;
 		for (i=0; i<rows; ++i)
 			for (j=0; j<cols; ++j)
 			{
@@ -137,10 +137,10 @@ public class O2TextureSlices implements Comparable<O2TextureSlices>{
 				fullTexBuf.position(0);
 				fullTexBuf.put(fullTexCoods);
 				fullTexBuf.position(0);
-				GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, vboFullTexCoods[i*cols+j]);
+				GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, mVboFullTexCoods[i*cols+j]);
 				GLES11.glBufferData(GLES11.GL_ARRAY_BUFFER, 32, fullTexBuf, GLES11.GL_STATIC_DRAW);
 				GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, 0);
 			}
-		iCreated = true;
+		mCreated = true;
 	}
 }

@@ -107,7 +107,7 @@ public final class PlayerMessage {
 	
 	public void reset(TJACourse aCourse) {
 		// Reset current course
-		course = aCourse.iCourse;
+		course = aCourse.course;
 
 		// Reset current score
 		score = 0;
@@ -125,7 +125,7 @@ public final class PlayerMessage {
 		noteJudged = JUDGED_NONE;
 		
 		// Reset branch state
-		if (aCourse.iHasBranch)
+		if (aCourse.hasBranch)
 			branch = PlayModel.BRANCH_NORMAL;
 		else
 			branch = PlayModel.BRANCH_NONE;

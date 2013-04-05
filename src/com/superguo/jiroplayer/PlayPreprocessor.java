@@ -197,7 +197,7 @@ final class PlayPreprocessor
 
 		LinkedList<TJACommand> unprocCmd = null;
 		// Do not allocate memory until next command is not COMMAND_TYPE_NOTE
-		if (notation[commandIndex+1].iCommandType != TJAFormat.COMMAND_TYPE_NOTE)
+		if (notation[commandIndex+1].commandType != TJAFormat.COMMAND_TYPE_NOTE)
 		{	unprocCmd = new LinkedList<TJACommand>();	}
 		
 		float delay = 0.0f;
@@ -212,11 +212,11 @@ final class PlayPreprocessor
 			// so the aBranchExitIndex is not yet determined
 			if (-1==commandIndex) return PROCESS_RESULT_BRANCH_PENDING;
 			TJACommand cmd = notation[commandIndex];
-			switch (cmd.iCommandType)
+			switch (cmd.commandType)
 			{
 			case TJAFormat.COMMAND_TYPE_NOTE:
 				// Emit notes
-				processCmdNote(bar, cmd.iArgs, delay);
+				processCmdNote(bar, cmd.args, delay);
 
 				// Set runtime offset
 				if (lastProcessedBarIndex==-1)
@@ -229,9 +229,9 @@ final class PlayPreprocessor
 				for (int i=commandIndex+1; i<notation.length; ++i)
 				{
 					TJACommand cmd2 = notation[i];
-					if (cmd2.iCommandType == TJAFormat.COMMAND_TYPE_NOTE)
+					if (cmd2.commandType == TJAFormat.COMMAND_TYPE_NOTE)
 						break;
-					else if (cmd2.iCommandType == TJAFormat.COMMAND_TYPE_BRANCHSTART)
+					else if (cmd2.commandType == TJAFormat.COMMAND_TYPE_BRANCHSTART)
 					{
 						bar.hasBranchStartNextBar = true;
 						break;
@@ -252,19 +252,19 @@ final class PlayPreprocessor
 				
 			case TJAFormat.COMMAND_TYPE_BPMCHANGE:
 			{
-				float BPM = Float.intBitsToFloat(cmd.iArgs[0]);
+				float BPM = Float.intBitsToFloat(cmd.args[0]);
 				setBPM(BPM);
 				break;
 			}
 	
 			case TJAFormat.COMMAND_TYPE_MEASURE:
-				mMeasureX = cmd.iArgs[0];
-				mMeasureY = cmd.iArgs[1];
+				mMeasureX = cmd.args[0];
+				mMeasureY = cmd.args[1];
 				break;
 			
 			case TJAFormat.COMMAND_TYPE_SCROLL:
 			{
-				float scroll = Float.intBitsToFloat(cmd.iArgs[0]);
+				float scroll = Float.intBitsToFloat(cmd.args[0]);
 				setScroll(scroll);
 				break;
 			}
@@ -277,7 +277,7 @@ final class PlayPreprocessor
 				break;
 			
 			case TJAFormat.COMMAND_TYPE_DELAY:
-				delay = Float.intBitsToFloat(cmd.iArgs[0]);
+				delay = Float.intBitsToFloat(cmd.args[0]);
 				break;
 			
 			case TJAFormat.COMMAND_TYPE_BRANCHSTART:
@@ -333,7 +333,7 @@ final class PlayPreprocessor
 	{
 		if (-1==aCommandIndex) return 0;
 		if (aCommandIndex>=aNotation.length) return aNotation.length;
-		switch(aNotation[aCommandIndex].iCommandType)
+		switch(aNotation[aCommandIndex].commandType)
 		{
 		case TJAFormat.COMMAND_TYPE_BRANCHEND:
 		case TJAFormat.COMMAND_TYPE_N:

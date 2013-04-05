@@ -47,34 +47,34 @@ public final class TJAFormat {
 	public TJACourse courses[];
 
 	public static final class TJACourse {
-		public int iCourse = COURSE_ONI; //
-		public int iLevel; // 1 ~ 12
-		public boolean iHasBranch;
-		public float iBPM; // 50 ~ 250
-		public int[] iBalloon; // number of balloons
-		public int iScoreInit; // 1 ~ 100000, 0 means auto
-		public int iScoreDiff; // 1 ~ 100000, 0 means auto
-		public TJACommand[] iNotationSingle; // cannot be null if iStyle is
+		public int course = COURSE_ONI; //
+		public int level; // 1 ~ 12
+		public boolean hasBranch;
+		public float BPM; // 50 ~ 250
+		public int[] balloons; // number of balloons
+		public int scoreInit; // 1 ~ 100000, 0 means auto
+		public int scoreDiff; // 1 ~ 100000, 0 means auto
+		public TJACommand[] notationSingle; // cannot be null if iStyle is
 												// STYLE_SIGNLE
-		public TJACommand[] iNotationP1; // cannot be null if iStyle is
+		public TJACommand[] notationP1; // cannot be null if iStyle is
 											// STYLE_DOUBLE
-		public TJACommand[] iNotationP2; // cannot be null if iStyle is
+		public TJACommand[] notationP2; // cannot be null if iStyle is
 											// STYLE_DOUBLE
 	}
 
 	public static final class TJACommand {
-		public TJACommand(int commandType) {
-			iCommandType = commandType;
-		}
+		public int commandType;
+		public int args[];
 
-		public int iCommandType;
-		public int iArgs[];
+		public TJACommand(int commandType) {
+			this.commandType = commandType;
+		}
 
 		@Override
 		public TJACommand clone() {
 			try {
 				TJACommand copy = (TJACommand) super.clone();
-				copy.iArgs = iArgs.clone();
+				copy.args = args.clone();
 				return copy;
 			} catch (CloneNotSupportedException e) {
 				return null;
@@ -88,13 +88,13 @@ public final class TJAFormat {
 		 */
 		private static final long serialVersionUID = -7734235891270702334L;
 
-		public TJAFormatException(int iLineNo, String iLine, String msg) {
-			super("Line " + iLineNo + " " + msg + "\n"
+		public TJAFormatException(int lineNo, String iLine, String msg) {
+			super("Line " + lineNo + " " + msg + "\n"
 					+ (iLine == null ? "" : iLine));
 		}
 
-		public TJAFormatException(int iLineNo, String iLine, Throwable r) {
-			super("Line " + iLineNo + "\n" + (iLine == null ? "" : iLine), r);
+		public TJAFormatException(int lineNo, String line, Throwable r) {
+			super("Line " + lineNo + "\n" + (line == null ? "" : line), r);
 		}
 	}
 

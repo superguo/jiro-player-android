@@ -22,7 +22,6 @@ public abstract class O2Texture {
 	protected int mTexPowOf2Width;
 	protected int mTexPowOf2Height;
 	protected int vboFullTexCood;
-	public boolean iAutoDraw;
 
 	private int mVertCoods[] = new int[8];
 	private int mTexCoods[] = new int[8];
@@ -43,7 +42,6 @@ public abstract class O2Texture {
 
 		mManaged = managed;
 		mAvailable = false;
-		iAutoDraw = true;
 	}
 
 	public abstract void recreate();

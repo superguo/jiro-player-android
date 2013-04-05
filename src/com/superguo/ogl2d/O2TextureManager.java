@@ -13,12 +13,10 @@ public class O2TextureManager {
 	O2TextureManager() {
 		if (O2Director.sIsSingleProcessor) {
 			mTextureMap = new HashMap<O2Texture, O2Texture>(10);
-			mTextureSlicesMap = new HashMap<O2TextureSlices, O2TextureSlices>(
-					10);
+			mTextureSlicesMap = new HashMap<O2TextureSlices, O2TextureSlices>(10);
 		} else {
 			mTextureMap = new ConcurrentHashMap<O2Texture, O2Texture>(10);
-			mTextureSlicesMap = new ConcurrentHashMap<O2TextureSlices, O2TextureSlices>(
-					10);
+			mTextureSlicesMap = new ConcurrentHashMap<O2TextureSlices, O2TextureSlices>(10);
 		}
 	}
 

@@ -15,6 +15,7 @@ import android.view.*;
 import com.superguo.ogl2d.*;
 
 public class PlayScene extends O2Scene {
+	private static final String TAG = "PlayScene";
 	@SuppressWarnings("unused")
 	private GameModel mGameModel;
 	private PlayLayout mLayout;
@@ -141,20 +142,38 @@ public class PlayScene extends O2Scene {
 
 	@Override
 	public boolean onTouchEvent(MotionEvent e) {
-		if (e != null && e.getAction() == MotionEvent.ACTION_DOWN
-				&& O2Director.getInstance() != null) {
-			long delay = android.os.SystemClock.uptimeMillis()
-					- e.getEventTime();
-			Log.i("jiro-player Scene", "touched delay=" + delay);
-			if (e.getY() > mDrumY) {
-				int x = (int) e.getX();
-				if (mDrumX1 < x && x < mDrumX2)
-					mSoundPool.play(mSoundDong, 1.0f, 1.0f, 10, 0, 1.0f);
-				else
-					mSoundPool.play(mSoundKa, 1.0f, 1.0f, 10, 0, 1.0f);
-			}
-			return true;
+		if (e==null || O2Director.getInstance()==null) {
+			return false;
 		}
+		long eventTime;
+		int x, y;
+		switch (e.getActionMasked()) {
+		case MotionEvent.ACTION_DOWN:
+			eventTime = e.getEventTime();
+			x = (int) e.getX();
+			y = (int) e.getY();
+			break;
+		case MotionEvent.ACTION_POINTER_DOWN: {
+			eventTime = e.getEventTime();
+			int ptrIdx = e.getActionIndex();
+			x = (int) e.getX(ptrIdx);
+			y = (int) e.getY(ptrIdx);
+            break;
+		}
+		default:
+			return false;
+		}
+			
+		long delay = android.os.SystemClock.uptimeMillis() - eventTime;
+		Log.i(TAG, "touch time=" + eventTime + " delay=" + delay);
+		if (y <= mDrumY) {
+			return false;
+		}
+		if (mDrumX1 < x && x < mDrumX2)
+			mSoundPool.play(mSoundDong, 1.0f, 1.0f, 10, 0, 1.0f);
+		else
+			mSoundPool.play(mSoundKa, 1.0f, 1.0f, 10, 0, 1.0f);
+
 		return false;
 	}
 

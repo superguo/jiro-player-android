@@ -1,23 +1,14 @@
 package com.superguo.ogl2d;
 
-import java.util.Comparator;
 import java.util.Vector;
 
 import javax.microedition.khronos.opengles.GL10;
 
 public final class O2SpriteManager {
-	static final class SptComp implements Comparator<O2Sprite> {
 
-		public int compare(O2Sprite a, O2Sprite b) {
-			if (a.zorder == b.zorder)
-				return a.mId - b.mId;
-			else
-				return a.zorder - b.zorder;
-		}
-
-	}
-
-	// /< currently not thread safe
+	/**
+	 * Currently not thread safe
+	 */
 	private Vector<O2Sprite> mSpriteVec;
 	
 	/**

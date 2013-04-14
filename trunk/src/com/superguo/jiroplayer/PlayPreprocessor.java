@@ -14,7 +14,7 @@ import com.superguo.jiroplayer.TJAFormat.TJACommand;
 final class PlayPreprocessor
 {
 	/** The pre-processing BPM */
-	private float mBPM;
+	private float mBpm;
 	
 	/** The pre-processing X in MEASURE X/Y, available until changed */
 	private int mMeasureX;
@@ -38,9 +38,8 @@ final class PlayPreprocessor
 	private boolean mLastNoteRolling;
 
 	/** Reset all pre-processing state variables */
-	public final void reset(float aBMP)
-	{
-		setBPM(aBMP);
+	public final void reset(float bpm) {
+		setBpm(bpm);
 		setScroll(1.0f);
 		mMeasureX = 4;
 		mMeasureY = 4;
@@ -48,71 +47,61 @@ final class PlayPreprocessor
 		mBarLine = true;
 	}
 	
-	public final void calcSpeed()
-	{
-		mSpeed = (int) (mBeatDist * 2 * mBPM / 60 * 1000 );
+	private final void calcSpeed() {
+		mSpeed = (int) (mBeatDist * 2 * mBpm / 60 * 1000);
 	}
 	
-	public final void setBPM(float aBPM)
-	{
-		mBPM = aBPM;
-		mMicSecPerBeat = (long) (60000000 / aBPM);
+	public final void setBpm(float aBpm) {
+		mBpm = aBpm;
+		mMicSecPerBeat = (long) (60000000 / aBpm);
 		calcSpeed();
 	}
 	
-	public final void setScroll(float scroll)
-	{
+	public final void setScroll(float scroll) {
 		mBeatDist = PlayModel.BEAT_DIST * scroll;
 		calcSpeed();
 	}
 
-	private final void processCmdNote(Bar bar, int[] barNotes, float delay)
-	{
+	private final void processCmdNote(Bar bar, int[] barNotes, float delay) {
 		// The number of beats in a bar is measureX / measureY
-		double numBeats = (double)mMeasureX / mMeasureY;
-		
+		double numBeats = (double) mMeasureX / mMeasureY;
+
 		// The duration in minutes is numBeats / BPM
 		// To convert the minutes to microseconds, just make it times 60 000 000
 		bar.durationMicros = (long) (mMicSecPerBeat * numBeats);
-	
+
 		// When scroll is 1.0, one beat is two notes' length in pixels
 		bar.length = (int) (mBeatDist * 2 * numBeats);
-	
+
 		bar.speed = mSpeed; // = bar.iLength / bar.iDuration * 1e9
-	
+
 		bar.numPreprocessedNotes = 0;
-		
+
 		int numNotes = barNotes.length;
-		if (mBarLine)
-		{
+		if (mBarLine) {
 			PreprocessedNote noteOffset = bar.notes[bar.numPreprocessedNotes++];
 			noteOffset.noteType = PlayModel.NOTE_BARLINE;
 			noteOffset.offsetTimeMillis = 0;
 			noteOffset.offsetPos = 0;
 		}
-		
+
 		// transfer field variable to local variable
 		boolean isLastNoteRolling = mLastNoteRolling;
-		
-		for (int i=0; i<numNotes; ++i)
-		{
+
+		for (int i = 0; i < numNotes; ++i) {
 			int note = barNotes[i];
-			if (isLastNoteRolling)
-			{	// rolling is not complete last time
-				if (note==8)	// 8 means finished
-				{
+			if (isLastNoteRolling) { // rolling is not complete last time
+				if (note == 8) { // 8 means finished
 					isLastNoteRolling = false;
-					bar.addPreprocessedNote(PlayModel.NOTE_STOP_ROLLING, i, numNotes);
+					bar.addPreprocessedNote(PlayModel.NOTE_STOP_ROLLING, i,
+							numNotes);
 				}
-			}
-			else
-			{
-				switch (note)
-				{
-				case 5:	// len-da (combo)
-				case 6:	// Big len-da
-				case 7:	// Balloon
-				case 9:	// Potato
+			} else {
+				switch (note) {
+				case 5: // len-da (combo)
+				case 6: // Big len-da
+				case 7: // Balloon
+				case 9: // Potato
 					isLastNoteRolling = true;
 					// DO NOT break here
 				case 1:
@@ -121,23 +110,22 @@ final class PlayPreprocessor
 				case 4:
 					bar.addPreprocessedNote(note, i, numNotes);
 					break;
-	
+
 				case 0:
-				case 8:	// Bad note here
+				case 8: // Bad note here
 				default:
 					break;
 				}
 			}
 		}
-		
+
 		// The iDelay will change iDuration & iLength
 		// And cannot be handled before bar.addPreprocessedNote(), which uses
 		// iDuration & iLength
-		if (delay>0.001f)
-		{
+		if (delay > 0.001f) {
 			bar.durationMicros += delay * 1000000;
 			bar.length += delay * bar.speed / 1000;
-			
+
 			// Reset after being pre-processed
 			delay = 0.0f;
 		}
@@ -151,7 +139,7 @@ final class PlayPreprocessor
 	/** All command are processed */
 	public static final int PROCESS_RESULT_EOF = 1;
 	
-	/** No more unprocessed bar. Try later again */
+	/** No free bar to process the command. Try later again */
 	public static final int PROCESS_RESULT_BARS_FULL = 2;
 	
 	/** The branch is to exit but specified to be 0.
@@ -161,140 +149,137 @@ final class PlayPreprocessor
 	
 	/**
 	 * 
-	 * @param aPlayingBarIndex
-	 * @param aBars
+	 * @param bars
 	 * @param notation
-	 * @param [in/out] aProcessedCommandIndexRef
-	 * @param [out] aProcessedBarIndexRef
-	 * @param [in/out] aBranchExitIndexRef The command index of the exit branch.
+	 * @param processedCommandIndexRef [in/out]
+	 * @param processedBarIndexRef [in/out]
+	 * @param branchExitIndexRef [in/out] The command index of the exit branch.
 	 * 	Use 0 to specify the case that processing branch is not
 	 * 	the playing branch. It is set to 0 once the branch exits
 	 * 
 	 * @return
 	 */
-	public int processNextBar(
-			Bar[] aBars,
-			TJACommand[] notation,
-			IntegerRef aProcessedCommandIndexRef,
-			IntegerRef aProcessedBarIndexRef,
-			IntegerRef aBranchExitIndexRef)
-	{
-		int commandIndex = aProcessedCommandIndexRef.get();
-		if (commandIndex>=notation.length-1) return PROCESS_RESULT_EOF;
-		int lastProcessedBarIndex = aProcessedBarIndexRef.get();
-		
+	public int processNextBar(Bar[] bars, TJACommand[] notation,
+			IntegerRef processedCommandIndexRef,
+			IntegerRef processedBarIndexRef, IntegerRef branchExitIndexRef) {
+		int commandIndex = processedCommandIndexRef.value;
+		if (commandIndex >= notation.length - 1) {
+			return PROCESS_RESULT_EOF;
+		}
+		int lastProcessedBarIndex = processedBarIndexRef.value;
+
 		// Get the next unprocessed bar
 		int barIndex = PlayModel.nextIndexOfBar(lastProcessedBarIndex);
-		
-		if (barIndex==lastProcessedBarIndex) return PROCESS_RESULT_BARS_FULL;
-		if (aBars[barIndex].preprocessed ) return PROCESS_RESULT_BARS_FULL;
-		
+
+		if (barIndex == lastProcessedBarIndex) {
+			return PROCESS_RESULT_BARS_FULL;
+		}
+		if (bars[barIndex].preprocessed) {
+			return PROCESS_RESULT_BARS_FULL;
+		}
+
 		// Initialize the bar value
-		Bar bar = aBars[barIndex];
-		//bar.iPreprocessed = false;
+		Bar bar = bars[barIndex];
+		// bar.iPreprocessed = false;
 		bar.hasBranchStartNextBar = false;
 		bar.numPreprocessedNotes = 0;
 
 		LinkedList<TJACommand> unprocCmd = null;
 		// Do not allocate memory until next command is not COMMAND_TYPE_NOTE
-		if (notation[commandIndex+1].commandType != TJAFormat.COMMAND_TYPE_NOTE)
-		{	unprocCmd = new LinkedList<TJACommand>();	}
-		
+		if (notation[commandIndex + 1].commandType != TJAFormat.COMMAND_TYPE_NOTE) {
+			unprocCmd = new LinkedList<TJACommand>();
+		}
+
 		float delay = 0.0f;
-		
-		for(commandIndex = nextCommandIndex(notation, commandIndex, aBranchExitIndexRef);
-			!bar.preprocessed && commandIndex < notation.length;
-			commandIndex = nextCommandIndex(notation, commandIndex, aBranchExitIndexRef))
-		{
+
+		for (commandIndex = nextCommandIndex(notation, commandIndex,
+				branchExitIndexRef); !bar.preprocessed
+				&& commandIndex < notation.length; commandIndex = nextCommandIndex(
+				notation, commandIndex, branchExitIndexRef)) {
 			// Return true in case aBranchExitIndex is 0
 			// and the branch exit
 			// This happens if this branch is not yet played
 			// so the aBranchExitIndex is not yet determined
-			if (-1==commandIndex) return PROCESS_RESULT_BRANCH_PENDING;
+			if (-1 == commandIndex)
+				return PROCESS_RESULT_BRANCH_PENDING;
 			TJACommand cmd = notation[commandIndex];
-			switch (cmd.commandType)
-			{
+			switch (cmd.commandType) {
 			case TJAFormat.COMMAND_TYPE_NOTE:
 				// Emit notes
 				processCmdNote(bar, cmd.args, delay);
 
 				// Set runtime offset
-				if (lastProcessedBarIndex==-1)
+				if (lastProcessedBarIndex == -1) {
 					bar.offsetTimeMicros = 0;
-				else
-					bar.offsetTimeMicros = 
-						aBars[lastProcessedBarIndex].offsetTimeMicros + 
-						aBars[lastProcessedBarIndex].durationMicros;
+				} else {
+					bar.offsetTimeMicros = bars[lastProcessedBarIndex].offsetTimeMicros
+							+ bars[lastProcessedBarIndex].durationMicros;
+				}
 				// Check #BRACHSTART
-				for (int i=commandIndex+1; i<notation.length; ++i)
-				{
+				for (int i = commandIndex + 1; i < notation.length; ++i) {
 					TJACommand cmd2 = notation[i];
-					if (cmd2.commandType == TJAFormat.COMMAND_TYPE_NOTE)
+					if (cmd2.commandType == TJAFormat.COMMAND_TYPE_NOTE) {
 						break;
-					else if (cmd2.commandType == TJAFormat.COMMAND_TYPE_BRANCHSTART)
-					{
+					} else if (cmd2.commandType == TJAFormat.COMMAND_TYPE_BRANCHSTART) {
 						bar.hasBranchStartNextBar = true;
 						break;
 					}
 				}
 
 				// Emit unprocessed commands
-				if (unprocCmd != null && unprocCmd.size()>0)
-					bar.unprocessedCommand = 
-						unprocCmd.toArray(new TJACommand[unprocCmd.size()]);
-				else
+				if (unprocCmd != null && unprocCmd.size() > 0) {
+					bar.unprocessedCommand = unprocCmd
+							.toArray(new TJACommand[unprocCmd.size()]);
+				} else {
 					bar.unprocessedCommand = null;
-				
+				}
+
 				// Set processed
 				bar.preprocessed = true;
-				
+
 				break;
-				
-			case TJAFormat.COMMAND_TYPE_BPMCHANGE:
-			{
-				float BPM = Float.intBitsToFloat(cmd.args[0]);
-				setBPM(BPM);
+
+			case TJAFormat.COMMAND_TYPE_BPMCHANGE: 
+				setBpm(Float.intBitsToFloat(cmd.args[0]));
 				break;
-			}
-	
+
 			case TJAFormat.COMMAND_TYPE_MEASURE:
 				mMeasureX = cmd.args[0];
 				mMeasureY = cmd.args[1];
 				break;
-			
-			case TJAFormat.COMMAND_TYPE_SCROLL:
-			{
+
+			case TJAFormat.COMMAND_TYPE_SCROLL: {
 				float scroll = Float.intBitsToFloat(cmd.args[0]);
 				setScroll(scroll);
 				break;
 			}
-			
+
 			case TJAFormat.COMMAND_TYPE_GOGOSTART:
 			case TJAFormat.COMMAND_TYPE_GOGOEND:
 			case TJAFormat.COMMAND_TYPE_SECTION:
 				// Will be executed in running bar
 				unprocCmd.addLast(cmd.clone());
 				break;
-			
+
 			case TJAFormat.COMMAND_TYPE_DELAY:
 				delay = Float.intBitsToFloat(cmd.args[0]);
 				break;
-			
+
 			case TJAFormat.COMMAND_TYPE_BRANCHSTART:
 				// Emit a special bar containing no notes
 
 				// No length at all
 				bar.durationMicros = 0;
 				bar.length = 0;
-				
+
 				// Will be executed in running bar before this!
 				unprocCmd.addLast(cmd.clone());
-				
+
 				// Emit unprocessed commands.
 				// The last command is always #BRANCHSTART
-				bar.unprocessedCommand = 
-					unprocCmd.toArray(new TJACommand[unprocCmd.size()]);
-				
+				bar.unprocessedCommand = unprocCmd
+						.toArray(new TJACommand[unprocCmd.size()]);
+
 				// Set processed
 				bar.preprocessed = true;
 
@@ -306,51 +291,52 @@ final class PlayPreprocessor
 			case TJAFormat.COMMAND_TYPE_M:
 				// Ignored
 				break;
-				
+
 			case TJAFormat.COMMAND_TYPE_LEVELHOLD:
-				//TODO
+				// TODO
 				// Not supported
 				break;
-				
+
 			case TJAFormat.COMMAND_TYPE_BARLINEOFF:
 				mBarLine = false;
 				break;
-				
+
 			case TJAFormat.COMMAND_TYPE_BARLINEON:
 				mBarLine = true;
 				break;
-				
-			default:;
+
+			default:
+				;
 			}
 		}
-		aProcessedCommandIndexRef.set(commandIndex);
-		aProcessedBarIndexRef.set(barIndex);
+		processedCommandIndexRef.value = commandIndex;
+		processedBarIndexRef.value = barIndex;
 		return PROCESS_RESULT_OK;
 	}
 	
-	private static int nextCommandIndex(
-			TJACommand[] aNotation, int aCommandIndex, IntegerRef aBranchExitIndexRef)
-	{
-		if (-1==aCommandIndex) return 0;
-		if (aCommandIndex>=aNotation.length) return aNotation.length;
-		switch(aNotation[aCommandIndex].commandType)
-		{
+	private static int nextCommandIndex(TJACommand[] notation,
+			int commandIndex, IntegerRef branchExitIndexRef) {
+		if (-1 == commandIndex) {
+			return 0;
+		}
+		if (commandIndex >= notation.length) {
+			return notation.length;
+		}
+		switch (notation[commandIndex].commandType) {
 		case TJAFormat.COMMAND_TYPE_BRANCHEND:
 		case TJAFormat.COMMAND_TYPE_N:
 		case TJAFormat.COMMAND_TYPE_E:
-		case TJAFormat.COMMAND_TYPE_M:
-		{
-			int branchExitIndex = aBranchExitIndexRef.get();
-			if (branchExitIndex>0)	{
-				aBranchExitIndexRef.set(0);
-				return branchExitIndex;
-			}
-			else
+		case TJAFormat.COMMAND_TYPE_M: {
+			int branchExitIndex = branchExitIndexRef.value;
+			if (branchExitIndex <= 0) {
 				return -1;
+			}
+			branchExitIndexRef.value = 0;
+			return branchExitIndex;
 		}
-			
+
 		default:
-			return aCommandIndex+1;
+			return commandIndex + 1;
 		}
 	}
 }

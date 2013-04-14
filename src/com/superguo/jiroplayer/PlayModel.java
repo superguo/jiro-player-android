@@ -287,9 +287,9 @@ public final class PlayModel {
 
 		// Reset internal values
 		mNotation = mCourse.notationSingle;
-		mPreprocessedCommandIndexRef.set(-1);
-		mPreprocessedBarIndexRef.set(-1);
-		mBranchExitIndexRef.set(0);
+		mPreprocessedCommandIndexRef.value = -1;
+		mPreprocessedBarIndexRef.value = -1;
+		mBranchExitIndexRef.value = 0;
 		mLastPlayingBarIndex = 0;
 		mLastPlayingNoteIndex = 0;
 		mRollingBaloonIndex = -1;
@@ -754,7 +754,7 @@ public final class PlayModel {
 	}
 
 	private final int tryPreprocessNextBar() {
-		int preprocessedBarIndex = mPreprocessedBarIndexRef.get();
+		int preprocessedBarIndex = mPreprocessedBarIndexRef.value;
 		if (-1 == preprocessedBarIndex
 				|| !mBars[preprocessedBarIndex].hasBranchStartNextBar) {
 			// No #BRANCHSTART in next bar
@@ -770,8 +770,8 @@ public final class PlayModel {
 			@SuppressWarnings("unused")
 			TJACommand cmdBranchStart = playingBar.unprocessedCommand[playingBar.unprocessedCommand.length - 1];
 			// TODO Handle case: #BRANCHSTART in next bar
-			// TODO May change iPreprocessedCommandIndex
-			// TODO May change iPreprocessedBarIndex
+			// TODO May change mPreprocessedCommandIndex
+			// TODO May change mPreprocessedBarIndex
 			// TODO May add a virtual pre-processed bar
 
 			processUnprocessedCommands(playingBar, playerMessage, mSectionStat);

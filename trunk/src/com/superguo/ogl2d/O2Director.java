@@ -25,7 +25,7 @@ public class O2Director extends SurfaceView implements SurfaceHolder.Callback, R
 	protected Object 	mSceneAccessMutex;
 	
 	Config 				mConfig;
-	InternalConfig		mInternalConfig;
+	LpDpTransformation	mLpDpTransformation;
 	
 	EGL10 				mEGL;
 	EGLDisplay 			mEGLDisplay;
@@ -49,7 +49,7 @@ public class O2Director extends SurfaceView implements SurfaceHolder.Callback, R
 		}
 	}
 
-	static class InternalConfig {
+	static class LpDpTransformation {
 		public float scale;
 		public float xOffset;
 		public float yOffset;
@@ -65,7 +65,7 @@ public class O2Director extends SurfaceView implements SurfaceHolder.Callback, R
 		getHolder().setFormat(PixelFormat.RGB_565);
 		mAppContext = appContext;
 		this.mConfig = config==null ? new Config() : config;
-		mInternalConfig = new InternalConfig();
+		mLpDpTransformation = new LpDpTransformation();
 		
 		if (!sIsSingleProcessor) mSceneAccessMutex = new Object();
 		mTextureManager = new O2TextureManager();
@@ -132,23 +132,23 @@ public class O2Director extends SurfaceView implements SurfaceHolder.Callback, R
 	}
 	
 	public float toXLogical(float xDevice) {
-		return (Math.abs(mInternalConfig.scale) < 1e-5) ? xDevice : 
-			xDevice	/ mInternalConfig.scale - mInternalConfig.xOffset;
+		return (Math.abs(mLpDpTransformation.scale) < 1e-5) ? xDevice : 
+			xDevice	/ mLpDpTransformation.scale - mLpDpTransformation.xOffset;
 	}
 
 	public float toYLogical(float yDevice) {
-		return (Math.abs(mInternalConfig.scale) < 1e-5) ? yDevice 
-				: yDevice / mInternalConfig.scale - mInternalConfig.yOffset;
+		return (Math.abs(mLpDpTransformation.scale) < 1e-5) ? yDevice 
+				: yDevice / mLpDpTransformation.scale - mLpDpTransformation.yOffset;
 	}
 
 	public float toXDevice(float xLogical) {
-		return (Math.abs(mInternalConfig.scale) < 1e-5) ? xLogical
-				: (xLogical + mInternalConfig.xOffset) * mInternalConfig.scale;
+		return (Math.abs(mLpDpTransformation.scale) < 1e-5) ? xLogical
+				: (xLogical + mLpDpTransformation.xOffset) * mLpDpTransformation.scale;
 	}
 	
 	public float toYDevice(float yLogical) {
-		return (Math.abs(mInternalConfig.scale) < 1e-5) ? yLogical
-				: (yLogical + mInternalConfig.yOffset) * mInternalConfig.scale;
+		return (Math.abs(mLpDpTransformation.scale) < 1e-5) ? yLogical
+				: (yLogical + mLpDpTransformation.yOffset) * mLpDpTransformation.scale;
 	}
 	
 	/**
@@ -305,9 +305,9 @@ public class O2Director extends SurfaceView implements SurfaceHolder.Callback, R
 				GLES10.glScalef(scale, scale, 1.0f);				
 				GLES10.glTranslatef(0.0f, yOffset, 0.0f);
 				
-				mInternalConfig.scale = scale;
-				mInternalConfig.xOffset = 0.0f;
-				mInternalConfig.yOffset = yOffset;
+				mLpDpTransformation.scale = scale;
+				mLpDpTransformation.xOffset = 0.0f;
+				mLpDpTransformation.yOffset = yOffset;
 			} else {
 				scale = (float)height/config.height;
 				xOffset = (width/scale - config.width) / 2.0f;
@@ -315,9 +315,9 @@ public class O2Director extends SurfaceView implements SurfaceHolder.Callback, R
 				GLES10.glScalef(scale, scale, 1.0f);
 				GLES10.glTranslatef(xOffset, 0.0f, 0.0f);
 				
-				mInternalConfig.scale = scale;
-				mInternalConfig.xOffset = xOffset;
-				mInternalConfig.yOffset = 0.0f;
+				mLpDpTransformation.scale = scale;
+				mLpDpTransformation.xOffset = xOffset;
+				mLpDpTransformation.yOffset = 0.0f;
 			}
 			
 			// set the clipping rect

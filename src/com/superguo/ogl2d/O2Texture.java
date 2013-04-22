@@ -21,7 +21,7 @@ public abstract class O2Texture {
 	protected int mHeight;
 	protected int mTexPowOf2Width;
 	protected int mTexPowOf2Height;
-	protected int vboFullTexCood;
+	protected int mVboFullTexCood;
 
 	private int mVertCoods[] = new int[8];
 	private int mTexCoods[] = new int[8];
@@ -50,7 +50,7 @@ public abstract class O2Texture {
 		if (O2Director.sInstance != null && O2Director.sInstance.mGl != null) {
 			int texArr[] = { mTex };
 			GLES10.glDeleteTextures(1, texArr, 0);
-			int vboArray[] = { vboFullTexCood };
+			int vboArray[] = { mVboFullTexCood };
 			GLES11.glDeleteBuffers(0, vboArray, 0);
 		}
 		mAvailable = false;
@@ -130,8 +130,8 @@ public abstract class O2Texture {
 		fullTexBuf.position(0);
 
 		GLES11.glGenBuffers(1, vboArr, 0);
-		vboFullTexCood = vboArr[0];
-		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, vboFullTexCood);
+		mVboFullTexCood = vboArr[0];
+		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, mVboFullTexCood);
 		GLES11.glBufferData(GLES11.GL_ARRAY_BUFFER, 32, fullTexBuf,
 				GLES11.GL_STATIC_DRAW);
 		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, 0);
@@ -172,7 +172,7 @@ public abstract class O2Texture {
 
 		// Specify the texture coordinations
 		GLES10.glBindTexture(GLES10.GL_TEXTURE_2D, mTex);
-		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, vboFullTexCood);
+		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, mVboFullTexCood);
 		GLES11.glTexCoordPointer(2, GLES10.GL_FIXED, 0, 0);
 		GLES11.glBindBuffer(GLES11.GL_ARRAY_BUFFER, 0);
 

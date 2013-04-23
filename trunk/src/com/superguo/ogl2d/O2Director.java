@@ -1,22 +1,33 @@
 package com.superguo.ogl2d;
 
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-import javax.microedition.khronos.egl.*;
-import javax.microedition.khronos.opengles.*;
+import javax.microedition.khronos.egl.EGL10;
+import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.egl.EGLContext;
+import javax.microedition.khronos.egl.EGLDisplay;
+import javax.microedition.khronos.egl.EGLSurface;
+import javax.microedition.khronos.opengles.GL10;
 
-import android.graphics.*;
-import android.opengl.*;
+import android.app.Activity;
+import android.content.Context;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.PixelFormat;
+import android.opengl.GLES10;
 import android.os.Handler;
-import android.view.*;
-import android.content.*;
+import android.view.MotionEvent;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
+import android.widget.TableLayout.LayoutParams;
 
 public class O2Director extends SurfaceView implements SurfaceHolder.Callback, Runnable {
 	static O2Director sInstance;
 	public static final boolean sIsSingleProcessor = 
 		Runtime.getRuntime().availableProcessors() == 1;
-	Context				mAppContext;
+	Context				mContext;
 	GL10 				mGl;
 	O2TextureManager 	mTextureManager;
 	O2SpriteManager 	mSpriteManager;
@@ -25,7 +36,7 @@ public class O2Director extends SurfaceView implements SurfaceHolder.Callback, R
 	protected Object 	mSceneAccessMutex;
 	
 	Config 				mConfig;
-	LpDpTransformation	mLpDpTransformation;
+	PixelMapping	mPixelMapping;
 	
 	EGL10 				mEGL;
 	EGLDisplay 			mEGLDisplay;
@@ -49,23 +60,35 @@ public class O2Director extends SurfaceView implements SurfaceHolder.Callback, R
 		}
 	}
 
-	static class LpDpTransformation {
+	static class PixelMapping {
 		public float scale;
 		public float xOffset;
 		public float yOffset;
 	}
 	
-	public static O2Director createInstance(Context appContext, Config config) {
-		sInstance = new O2Director(appContext, config);
+	public static O2Director createInstance(Activity activity, Config config) {
+		sInstance = new O2Director(activity, config);
 		return sInstance;
 	}
-	
-	O2Director(Context appContext, Config config) {
-		super(appContext);
+
+	/**
+	 * Makes the Android Lint tool happy
+	 * @param context
+	 */
+	private O2Director(Context context) {
+		super(context);
+	}
+
+	O2Director(Activity activity, Config config) {
+		super(activity);
+		
+		// force full screen
+		activity.setContentView(this, new LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT));
+		
 		getHolder().setFormat(PixelFormat.RGB_565);
-		mAppContext = appContext;
-		this.mConfig = config==null ? new Config() : config;
-		mLpDpTransformation = new LpDpTransformation();
+		mContext = activity;
+		mConfig = config==null ? new Config() : config;
+		mPixelMapping = new PixelMapping();
 		
 		if (!sIsSingleProcessor) mSceneAccessMutex = new Object();
 		mTextureManager = new O2TextureManager();
@@ -86,7 +109,7 @@ public class O2Director extends SurfaceView implements SurfaceHolder.Callback, R
 		return sInstance;
 	}
 	
-	public final void dispose()	{
+	public final void onDestroy()	{
 		setCurrentScene(null);
 		sInstance = null;
 	}
@@ -132,27 +155,27 @@ public class O2Director extends SurfaceView implements SurfaceHolder.Callback, R
 	}
 	
 	public float toXLogical(float xDevice) {
-		return (Math.abs(mLpDpTransformation.scale) < 1e-5) ? xDevice : 
-			xDevice	/ mLpDpTransformation.scale - mLpDpTransformation.xOffset;
+		return (Math.abs(mPixelMapping.scale) < 1e-5) ? xDevice : 
+			xDevice	/ mPixelMapping.scale - mPixelMapping.xOffset;
 	}
 
 	public float toYLogical(float yDevice) {
-		return (Math.abs(mLpDpTransformation.scale) < 1e-5) ? yDevice 
-				: yDevice / mLpDpTransformation.scale - mLpDpTransformation.yOffset;
+		return (Math.abs(mPixelMapping.scale) < 1e-5) ? yDevice 
+				: yDevice / mPixelMapping.scale - mPixelMapping.yOffset;
 	}
 
 	public float toXDevice(float xLogical) {
-		return (Math.abs(mLpDpTransformation.scale) < 1e-5) ? xLogical
-				: (xLogical + mLpDpTransformation.xOffset) * mLpDpTransformation.scale;
+		return (Math.abs(mPixelMapping.scale) < 1e-5) ? xLogical
+				: (xLogical + mPixelMapping.xOffset) * mPixelMapping.scale;
 	}
 	
 	public float toYDevice(float yLogical) {
-		return (Math.abs(mLpDpTransformation.scale) < 1e-5) ? yLogical
-				: (yLogical + mLpDpTransformation.yOffset) * mLpDpTransformation.scale;
+		return (Math.abs(mPixelMapping.scale) < 1e-5) ? yLogical
+				: (yLogical + mPixelMapping.yOffset) * mPixelMapping.scale;
 	}
 	
 	/**
-	 * Must be called when app is to be sresumed
+	 * Must be called when the application is to be resumed
 	 */
 	public void onResume() {
 		O2Scene scene = getCurrentScene();
@@ -305,9 +328,9 @@ public class O2Director extends SurfaceView implements SurfaceHolder.Callback, R
 				GLES10.glScalef(scale, scale, 1.0f);				
 				GLES10.glTranslatef(0.0f, yOffset, 0.0f);
 				
-				mLpDpTransformation.scale = scale;
-				mLpDpTransformation.xOffset = 0.0f;
-				mLpDpTransformation.yOffset = yOffset;
+				mPixelMapping.scale = scale;
+				mPixelMapping.xOffset = 0.0f;
+				mPixelMapping.yOffset = yOffset;
 			} else {
 				scale = (float)height/config.height;
 				xOffset = (width/scale - config.width) / 2.0f;
@@ -315,12 +338,12 @@ public class O2Director extends SurfaceView implements SurfaceHolder.Callback, R
 				GLES10.glScalef(scale, scale, 1.0f);
 				GLES10.glTranslatef(xOffset, 0.0f, 0.0f);
 				
-				mLpDpTransformation.scale = scale;
-				mLpDpTransformation.xOffset = xOffset;
-				mLpDpTransformation.yOffset = 0.0f;
+				mPixelMapping.scale = scale;
+				mPixelMapping.xOffset = xOffset;
+				mPixelMapping.yOffset = 0.0f;
 			}
 			
-			// set the clipping rect
+			// clip to fit the specified width and height
 			GLES10.glScissor(
 					(int)toXDevice(0),
 					(int)toYDevice(0),

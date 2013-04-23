@@ -69,11 +69,11 @@ public final class O2BufferTexture extends O2Texture {
 	}
 	
 	@Override
-	public void dispose()
+	public void destroy()
 	{
 		int intArr[] = {fbo, depthBuf};
 		GLES11Ext.glDeleteFramebuffersOES(1, intArr, 0);
 		GLES11Ext.glDeleteRenderbuffersOES(1, intArr, 1);
-		super.dispose();
+		super.destroy();
 	}
 }

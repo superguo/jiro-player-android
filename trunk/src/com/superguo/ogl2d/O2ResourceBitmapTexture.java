@@ -15,8 +15,8 @@ class O2ResourceBitmapTexture extends O2Texture {
 	}
 
 	@Override
-	public void dispose() {
-		super.dispose();
+	public void destroy() {
+		super.destroy();
 	}
 
 	@Override

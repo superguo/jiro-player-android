@@ -17,8 +17,8 @@ public class O2StringTexture extends O2Texture {
 	}
 
 	@Override
-	public void dispose() {
-		super.dispose();
+	public void destroy() {
+		super.destroy();
 	}
 
 	@Override

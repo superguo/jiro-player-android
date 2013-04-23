@@ -36,12 +36,12 @@ public class O2TextureManager {
 
 	public final O2Texture createFromResource(int resId, boolean managed) {
 		return conditionalAdd(new O2ResourceBitmapTexture(managed, resId,
-				O2Director.sInstance.mAppContext.getResources()));
+				O2Director.sInstance.mContext.getResources()));
 	}
 
 	public final O2Texture createFromAsset(String assetPath, boolean managed) {
 		return conditionalAdd(new O2InternalAssetBitmapTexture(managed,
-				assetPath, O2Director.sInstance.mAppContext.getAssets()));
+				assetPath, O2Director.sInstance.mContext.getAssets()));
 	}
 
 	public final O2Texture createFromString(String text, long paintId,

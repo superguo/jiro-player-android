@@ -23,9 +23,9 @@ class O2InternalAssetBitmapTexture extends O2Texture {
 	}
 	
 	@Override
-	public void dispose() {
+	public void destroy() {
 		mAssetPath = null;
-		super.dispose();
+		super.destroy();
 	}
 
 	@Override

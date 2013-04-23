@@ -26,15 +26,15 @@ public class FPSHolder {
 		return sInstance;
 	}
 
-	public void dispose() {
+	public void destroy() {
 		if (mFPSTex != null) {
-			mFPSTex.dispose();
+			mFPSTex.destroy();
 			mFPSTex = null;
 		}
 
 		if (mNumerTex != null) {
 			for (O2Texture tex : mNumerTex)
-				tex.dispose();
+				tex.destroy();
 			mNumerTex = null;
 		}
 

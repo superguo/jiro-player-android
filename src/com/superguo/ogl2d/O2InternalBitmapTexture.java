@@ -14,10 +14,10 @@ class O2InternalBitmapTexture extends O2Texture {
 	}
 
 	@Override
-	public void dispose() {
+	public void destroy() {
 		if (mBitmap != null && mManaged)
 			mBitmap.recycle();
-		super.dispose();
+		super.destroy();
 	}
 
 	@Override

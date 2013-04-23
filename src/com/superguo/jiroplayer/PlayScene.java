@@ -94,7 +94,7 @@ public class PlayScene extends O2Scene {
 			mTextSprite2.x = 200;
 			smgr.addSprite(mTextSprite2);
 		} catch (IOException e) {
-
+			Log.e(TAG, "onEnteringScene", e);
 		}
 	}
 
@@ -102,20 +102,11 @@ public class PlayScene extends O2Scene {
 	public void onLeavingScene() {
 		O2SpriteManager smgr = mDirector.getSpriteManager();
 
-		if (mBgSprite != null)
-			smgr.removeSprite(mBgSprite);
-
-		if (mMTaikoSprite != null)
-			smgr.removeSprite(mMTaikoSprite);
-
-		if (mTargetNoteSprite != null)
-			smgr.removeSprite(mTargetNoteSprite);
-
-		if (mTextSprite1 != null)
-			smgr.removeSprite(mTextSprite1);
-
-		if (mTextSprite2 != null)
-			smgr.removeSprite(mTextSprite2);
+		smgr.removeSprite(mBgSprite);
+		smgr.removeSprite(mMTaikoSprite);
+		smgr.removeSprite(mTargetNoteSprite);
+		smgr.removeSprite(mTextSprite1);
+		smgr.removeSprite(mTextSprite2);
 
 		mNotesSlices = null;
 

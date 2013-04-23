@@ -42,6 +42,9 @@ public final class O2SpriteManager {
 	}
 
 	public void removeSprite(O2Sprite sprite) {
+		if (sprite==null) {
+			return;
+		}
 		mSpriteVec.remove(sprite);
 		mSpriteArray = mSpriteVec.toArray(mSpriteArray);
 	}

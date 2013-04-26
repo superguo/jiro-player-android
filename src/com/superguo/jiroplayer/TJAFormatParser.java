@@ -28,9 +28,14 @@ public final class TJAFormatParser
 	private boolean				  mIsBranchStarted;
 	private TJACommand  mCommandOfStartedBranch;
 	
-	public void parse(TJAFormat format, BufferedReader reader)
+	
+	/**
+	 * @param reader [in]
+	 * @return 
+	 */
+	public TJAFormat parse(BufferedReader reader)
 			throws IOException {
-		mFormat = format;
+		mFormat = new TJAFormat();
 		mLineNo = 0;
 		mParsingCourse = new TJACourse();
 		mParsedCommands = new LinkedList<TJACommand>();
@@ -88,11 +93,14 @@ public final class TJAFormatParser
 			throwEx("Missing #START P2");
 		}
 
-		if (mParsedCourses.size() == 0)
+		if (mParsedCourses.size() == 0) {
 			throwEx("Missing #START");
-		else
-			format.courses = mParsedCourses
+		} else {
+			mFormat.courses = mParsedCourses
 					.toArray(new TJACourse[mParsedCourses.size()]);
+		}
+		
+		return mFormat;
 	}
 
 	private static String tidy(String iLine) {

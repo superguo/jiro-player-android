@@ -103,8 +103,6 @@ public final class TJAFormat {
 
 	public static TJAFormat fromReader(TJAFormatParser parser,
 			BufferedReader reader) throws IOException {
-		TJAFormat self = new TJAFormat();
-		parser.parse(self, reader);
-		return self;
+		return parser.parse(reader);
 	}
 }

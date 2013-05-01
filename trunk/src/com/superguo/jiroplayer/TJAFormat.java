@@ -2,6 +2,11 @@ package com.superguo.jiroplayer;
 
 import java.io.*;
 
+/**
+ * The parsed TJA format.
+ * @author superguo
+ *
+ */
 public final class TJAFormat {
 	// unsupported header: GAME, LIFE
 	public static final int COURSE_EASY 	= 0;

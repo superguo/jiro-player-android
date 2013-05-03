@@ -1,5 +1,6 @@
-#Wed Nov 30 20:27:23 CST 2011
 eclipse.preferences.version=1
 encoding//assets/utf8test.txt=UTF-8
 encoding//test/assets/sample.tja=Shift_JIS
 encoding//test/assets/sample2.tja=Shift_JIS
+encoding/<project>=UTF-8
+encoding/src=UTF-8

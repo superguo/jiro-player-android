@@ -64,7 +64,7 @@ public final class TJANotation {
 		public NoteBar noteBar;
 		
 		/** Not null if {@link #isNoteBar} is false; null if {@link #isNoteBar} is true */
-		public Command commandBar;
+		public Command command;
 	}
 	
 	public static final class NoteBar {
@@ -83,17 +83,13 @@ public final class TJANotation {
 		/** The note value */
 		public int noteValue;
 
-		/** The time when the note/command hit the beat right 
+		/** The time when the note hit the beat right 
 		 * since the beginning of the game */
 		public long beatTimeMillis;
 
-		/** The scroll distance in pixels between the note/command
+		/** The scroll distance in pixels between the note
 		 *  and the beat at the beginning of the game */
 		public long beatDistance;
-
-		/** The extra arguments for the command. It is null if no 
-		 * arguments are needed. It is always null for every note */
-		public int commandArgs[];
 	}
 	
 	public static class Command {
@@ -137,7 +133,7 @@ public final class TJANotation {
 			}
 		}
 		
-		public abstract class BranchJudge {
+		public static abstract class BranchJudge {
 			
 			/** Judge type, ranged in one of the following values:
 			 * <ul>
@@ -153,7 +149,7 @@ public final class TJANotation {
 			}
 		}
 		
-		public class BranchJudgeRoll extends BranchJudge {
+		public static class BranchJudgeRoll extends BranchJudge {
 			
 			/** The minimum rolling count to reach EASY(玄人) class */
 			public int easyRollingCount;
@@ -169,7 +165,7 @@ public final class TJANotation {
 			
 		}
 		
-		public class BranchJudgePrecision extends BranchJudge {
+		public static class BranchJudgePrecision extends BranchJudge {
 
 			/** The minimum beat precision in percentage
 			 *  to reach EASY(玄人) class */
@@ -187,13 +183,13 @@ public final class TJANotation {
 			
 		}
 		
-		public class BranchJudgeScore extends BranchJudge {
+		public static class BranchJudgeScore extends BranchJudge {
 
 			/** The minimum score to reach EASY(玄人) class */
-			public float easyScore;
+			public int easyScore;
 			
 			/** The minimum score to reach MASTER(達人) class */
-			public float masterScore;
+			public int masterScore;
 			
 			public BranchJudgeScore(int tjaFormatArg1, int tjaFormatArg2) {
 				super(BRANCH_JUDGE_SCORE);

@@ -2,6 +2,8 @@ package com.superguo.jiroplayer;
 
 import java.io.*;
 
+import com.superguo.jiroplayer.TJAFormatParser.TJAFormatParserException;
+
 /**
  * The parsed TJA format.
  * @author superguo
@@ -87,27 +89,11 @@ public final class TJAFormat {
 		}
 	}
 
-	public static final class TJAFormatException extends RuntimeException {
-		/**
-		 * 
-		 */
-		private static final long serialVersionUID = -7734235891270702334L;
-
-		public TJAFormatException(int lineNo, String iLine, String msg) {
-			super("Line " + lineNo + " " + msg + "\n"
-					+ (iLine == null ? "" : iLine));
-		}
-
-		public TJAFormatException(int lineNo, String line, Throwable r) {
-			super("Line " + lineNo + "\n" + (line == null ? "" : line), r);
-		}
-	}
-
 	public TJAFormat() {
 	}
 
 	public static TJAFormat fromReader(TJAFormatParser parser,
-			BufferedReader reader) throws IOException {
+			BufferedReader reader) throws IOException, TJAFormatParserException {
 		return parser.parse(reader);
 	}
 }

@@ -48,6 +48,10 @@ public final class TJANotation {
 	/** Judge type score */
 	public static final int BRANCH_JUDGE_SCORE 		= 2;
 	
+	public Bar[] normalBranch;
+	public Bar[] easyBranch;
+	public Bar[] masterBranch;
+	
 	public static final class Bar {
 		/** Indicates that whether it is a NoteBar or CommandBar.
 		 * If it is set true, noteBar is not null and commandBar is null.

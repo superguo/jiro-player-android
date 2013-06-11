@@ -12,6 +12,23 @@ import com.superguo.jiroplayer.TJAFormat.*;
 
 public final class TJAFormatParser
 {
+	public static final class TJAFormatParserException extends Exception {
+	
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = 375325974443057166L;
+
+		public TJAFormatParserException(int lineNo, String line, String msg) {
+			super("Line " + lineNo + " " + msg + "\n"
+					+ (line == null ? "" : line));
+		}
+	
+		public TJAFormatParserException(int lineNo, String line, Throwable r) {
+			super("Line " + lineNo + "\n" + (line == null ? "" : line), r);
+		}
+	}
+
 	// parse states
 	private float 				  mBPM;
 	private TJAFormat 			  mFormat;
@@ -32,9 +49,10 @@ public final class TJAFormatParser
 	/**
 	 * @param reader [in]
 	 * @return 
+	 * @throws TJAFormatParserException 
 	 */
 	public TJAFormat parse(BufferedReader reader)
-			throws IOException {
+			throws IOException, TJAFormatParserException {
 		mFormat = new TJAFormat();
 		mLineNo = 0;
 		mParsingCourse = new TJACourse();
@@ -112,12 +130,12 @@ public final class TJAFormatParser
 		return r.trim();
 	}
 
-	private void throwEx(String msg) throws TJAFormatException {
-		throw new TJAFormatException(mLineNo, mLine, msg);
+	private void throwEx(String msg) throws TJAFormatParserException {
+		throw new TJAFormatParserException(mLineNo, mLine, msg);
 	}
 
-	private void throwEx(Throwable r) throws TJAFormatException {
-		throw new TJAFormatException(mLineNo, mLine, r);
+	private void throwEx(Throwable r) throws TJAFormatParser.TJAFormatParserException {
+		throw new TJAFormatParserException(mLineNo, mLine, r);
 	}
 
 	private void emitNotes() {
@@ -132,7 +150,7 @@ public final class TJAFormatParser
 		mParsingNotes.clear();
 	}
 
-	private void parseCommandOfCurrentLine() {
+	private void parseCommandOfCurrentLine() throws TJAFormatParserException {
 		String fields[];
 
 		// judge if started
@@ -316,7 +334,7 @@ public final class TJAFormatParser
 		}
 	}
 
-	private void emitNotation() {
+	private void emitNotation() throws TJAFormatParserException {
 		if (mParsedCommands.size() == 0) {
 			throwEx("No notes at all!");
 		}
@@ -373,7 +391,7 @@ public final class TJAFormatParser
 		}
 	}
 
-	private void setHeader(String name, String value) {
+	private void setHeader(String name, String value) throws TJAFormatParserException {
 		// omit the empty value string
 		if (value.length() == 0) {
 			return;
@@ -487,7 +505,7 @@ public final class TJAFormatParser
 		}
 	}
 
-	private void emitBranch() {
+	private void emitBranch() throws TJAFormatParserException {
 		if (mCommandOfStartedBranch.args[3] == 0) {
 			throwEx("Missing #N");
 		} else if (mCommandOfStartedBranch.args[4] == 0) {

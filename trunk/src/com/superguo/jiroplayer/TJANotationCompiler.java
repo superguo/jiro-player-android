@@ -121,27 +121,36 @@ public class TJANotationCompiler {
 		/** The time offset of the beginning of the current note bar */
 		double preciseBeatTime = firstNoteBarBeatTime;
 		
-		long beatTime = (long) Math.floor(preciseBeatTime);
-		
 		for (int i=0; i<length; ++i) {
 			TJACommand oCmd = mNotationCommands[i];
 			Bar bar = new Bar();
 			
 			switch (oCmd.commandType) {
 			case TJAFormat.COMMAND_TYPE_NOTE: {
-				bar.beatTimeMillis = beatTime;
+				bar.beatTimeMillis = (long) Math.floor(preciseBeatTime);
 				bar.isNoteBar = true;
 				NoteBar noteBar = bar.noteBar = new NoteBar();
-				double preciseSpeed = bpm * PlayModel.BEAT_DIST * scroll * 1024.0 / 60.0;
+				/* One TJA note's width is 16th note (semiquaver) length
+				 * so 1 beat = 1 quarter notes(crotchets) = 4 16th note = 4 TJA notes
+				 * The BEAT_DIST is actually a TJA note's width
+				 * preciseSpeed is the bar's scrolling speed in pixels per 1024 seconds
+				 */
+				double preciseSpeed = bpm * PlayModel.BEAT_DIST * 4 * scroll * 1024.0 / 60.0;
 				noteBar.speed = (int) preciseSpeed;
-				noteBar.appearTimeMillis = (long) (beatTime - mScreenWidth / preciseSpeed);
+				noteBar.appearTimeMillis = (long) (preciseBeatTime - mScreenWidth / preciseSpeed);
+				noteBar.width = (int) ((double)measureX / measureY * 4 * PlayModel.BEAT_DIST * scroll);
 				int[] oNotes = oCmd.args;
 				ArrayList<Note> compiledNotes = new ArrayList<Note>();
-				if (isLastNoteRolling) {
-					// TODO
-				} else {
-					// TODO
+				for (int j=0; j<oNotes.length; ++j) {
+					
+					if (isLastNoteRolling) {
+						// TODO
+					} else {
+						// TODO
+					}
 				}
+				// Compute next beat time
+				preciseBeatTime += (double)measureX / measureY / bpm * 60000.0;
 				// Emit notes
 				noteBar.notes = (Note[]) compiledNotes.toArray();
 				break;

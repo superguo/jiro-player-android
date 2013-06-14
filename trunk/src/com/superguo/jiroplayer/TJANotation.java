@@ -78,6 +78,9 @@ public final class TJANotation {
 
 		/** The bar's scrolling speed in pixels per 1024 seconds */
 		public int speed;
+		
+		/** The bar's width in pixels */
+		public int width;
 
 		/** The notes */
 		public Note[] notes;

@@ -94,9 +94,6 @@ public final class TJANotation {
 		 * since the beginning of the game */
 		public long beatTimeMillis;
 
-		/** The scroll distance in pixels between the note
-		 *  and the beat at the beginning of the game */
-		public long beatDistance;
 	}
 	
 	public static class Command {

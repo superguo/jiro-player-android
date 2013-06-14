@@ -116,18 +116,19 @@ public class TJANotationCompiler {
 		boolean isLastNoteRolling = false;
 	
 		/**  The first note bar's beat time */
-		double firstNoteBarBeatTime = mTja.offset * 1000.0 + mPlayTimeMillis;
+		double firstBarBeatTime = mTja.offset * 1000.0 + mPlayTimeMillis;
 		
 		/** The time offset of the beginning of the current note bar */
-		double preciseBeatTime = firstNoteBarBeatTime;
+		double preciseBarBeatTime = firstBarBeatTime;
 		
 		for (int i=0; i<length; ++i) {
 			TJACommand oCmd = mNotationCommands[i];
 			Bar bar = new Bar();
+			ArrayList<Note> compiledNotes = new ArrayList<Note>();
 			
 			switch (oCmd.commandType) {
 			case TJAFormat.COMMAND_TYPE_NOTE: {
-				bar.beatTimeMillis = (long) Math.floor(preciseBeatTime);
+				bar.beatTimeMillis = (long) Math.floor(preciseBarBeatTime);
 				bar.isNoteBar = true;
 				NoteBar noteBar = bar.noteBar = new NoteBar();
 				/* One TJA note's width is 16th note (semiquaver) length
@@ -137,28 +138,61 @@ public class TJANotationCompiler {
 				 */
 				double preciseSpeed = bpm * PlayModel.BEAT_DIST * 4 * scroll * 1024.0 / 60.0;
 				noteBar.speed = (int) preciseSpeed;
-				noteBar.appearTimeMillis = (long) (preciseBeatTime - mScreenWidth / preciseSpeed);
+				noteBar.appearTimeMillis = (long) (preciseBarBeatTime - mScreenWidth / preciseSpeed);
 				noteBar.width = (int) ((double)measureX / measureY * 4 * PlayModel.BEAT_DIST * scroll);
 				int[] oNotes = oCmd.args;
-				ArrayList<Note> compiledNotes = new ArrayList<Note>();
-				for (int j=0; j<oNotes.length; ++j) {
+				
+				compiledNotes.clear();
+				double noteBeatSpan = 15000.0 / bpm; // == 0.25 / bpm * 60000;
+				double noteBeatTime = preciseBarBeatTime;
+				for (int j=0; j<oNotes.length; ++j, noteBeatTime += noteBeatSpan) {
 					
 					if (isLastNoteRolling) {
-						// TODO
+						if (oNotes[i] == 8) { // 8 means finished
+							isLastNoteRolling = false;
+							Note note = new Note();
+							note.beatTimeMillis = (long) noteBeatTime;
+							note.noteValue = PlayModel.NOTE_STOP_ROLLING; // i.e 8
+							compiledNotes.add(note);
+						}
 					} else {
-						// TODO
+						switch (oNotes[i]) {
+						case 5: // len-da (combo)
+						case 6: // Big len-da
+						case 7: // Balloon
+						case 9: // Potato
+							isLastNoteRolling = true;
+							// DO NOT break here
+						case 1:
+						case 2:
+						case 3:
+						case 4:
+							Note note = new Note();
+							note.beatTimeMillis = (long) noteBeatTime;
+							note.noteValue = oNotes[i];
+							compiledNotes.add(note);
+							break;
+
+						case 0:
+						case 8: // Bad note here
+						default:
+							break;
+						}
 					}
 				}
 				// Compute next beat time
-				preciseBeatTime += (double)measureX / measureY / bpm * 60000.0;
+				preciseBarBeatTime += (double)measureX / measureY / bpm * 60000.0;
 				// Emit notes
 				noteBar.notes = (Note[]) compiledNotes.toArray();
 				break;
 			}
 			
 			// TODO
+			
+			default:;
 			}
 			
+			branch.add(bar);
 		}
 		
 		return branch;

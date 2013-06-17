@@ -48,8 +48,16 @@ public final class TJANotation {
 	/** Judge type score */
 	public static final int BRANCH_JUDGE_SCORE 		= 2;
 	
+	/** The start time for the music to play since the beginning of the game */
+	public long musicStartTimeMillis;
+
+	/** The normal branch for branched notation; otherwise it is the only branch */
 	public Bar[] normalBranch;
+	
+	/** null if no branches exist */
 	public Bar[] easyBranch;
+	
+	/** null if no branches exist */
 	public Bar[] masterBranch;
 	
 	public static final class Bar {
@@ -79,7 +87,7 @@ public final class TJANotation {
 		/** The pre-computed x coordinations of the bar of evey millisecond
 		 * relative to {@link #appearTimeMillis}
 		 */
-		public int preComputedXCoords[];
+		public short preComputedXCoords[];
 		
 		/** The bar's width in pixels */
 		public int width;
@@ -96,6 +104,8 @@ public final class TJANotation {
 		 * since the beginning of the game */
 		public long beatTimeMillis;
 
+		/** The distance away from the beginning of its note bar*/
+		public int offsetX;
 	}
 	
 	public static class Command {

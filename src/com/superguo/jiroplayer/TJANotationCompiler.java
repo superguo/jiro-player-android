@@ -19,9 +19,8 @@ public class TJANotationCompiler {
 	private TJANotation mNotation;
 	private TJAFormat mTja;
 	private TJACommand[] mNotationCommands;
-	private long mPlayTimeMillis;
+	private long mPrepTimeMillis;
 	private TJACourse mCourse;
-	private long mScreenWidth;
 	private int mBeatDist;
 	private int mScrollBandFromX;
 	private int mScrollBandToX;
@@ -55,8 +54,9 @@ public class TJANotationCompiler {
 	 *            The index of the notation to compile. The index is one of
 	 *            {@link #NOTATION_INDEX_SINGLE}, {@link #NOTATION_INDEX_P1} or
 	 *            {@link #NOTATION_INDEX_P2}
-	 * @param playTimeMillis
-	 *            The time to wait before the notation starts to scroll.
+	 * @param prepTimeMillis
+	 *            The time to wait before the notation or music (choose the
+	 *            earlier) starts to scroll.
 	 * @param beatDist
 	 *            The distance between two 16th tja notes in standard scrolling
 	 *            speed, which also equals the diameter of one tja note
@@ -65,12 +65,12 @@ public class TJANotationCompiler {
 	 * @param scrollBandToX
 	 *            The rightmost x position of the scroll band
 	 * @param targetNoteX
-	 *            The horizontal x position of the target beat note
+	 *            The x position of the target beat note's center point
 	 * @return
 	 */
 	public TJANotation compile(TJAFormat tja, int courseIndex,
-			int notationIndex, long playTimeMillis, int beatDist, int scrollBandFromX,
-			int scrollBandToX, int targetNoteX) {
+			int notationIndex, long prepTimeMillis, int beatDist,
+			int scrollBandFromX, int scrollBandToX, int targetNoteX) {
 		mCourse = tja.courses[courseIndex];
 		if (mCourse == null) {
 			return null;
@@ -84,7 +84,7 @@ public class TJANotationCompiler {
 		mNotation = new TJANotation();
 		mTja = tja;
 		mNotationCommands = notationCommands;
-		mPlayTimeMillis = playTimeMillis;
+		mPrepTimeMillis = prepTimeMillis;
 		mBeatDist = beatDist;
 		mScrollBandFromX = scrollBandFromX;
 		mScrollBandToX = scrollBandToX;
@@ -94,6 +94,13 @@ public class TJANotationCompiler {
 	}
 
 	private void doCompile() {
+		if (mTja.offset<0) {
+			// If the music starts earlier than the notation
+			mNotation.musicStartTimeMillis = mPrepTimeMillis;
+		} else {
+			// If the music starts later than the notation - we should avoid this case
+			mNotation.musicStartTimeMillis = mPrepTimeMillis + Math.round(mTja.offset * 1000);
+		}
 		boolean hasBranch = mCourse.hasBranch;
 
 		ArrayList<TJANotation.Bar> normalBranch = compileBranch(BRANCH_INDEX_NORMAL);
@@ -120,6 +127,8 @@ public class TJANotationCompiler {
 		/** The branch to emit */
 		ArrayList<Bar> branch = new ArrayList<Bar>(length);
 		
+		final int beatDist = mBeatDist;
+		
 		/** The compiling bar's BPM */
 		double bpm = mCourse.BPM;
 		
@@ -132,17 +141,21 @@ public class TJANotationCompiler {
 		/** The compiling bar's scroll value  */
 		double scroll = 1.0;
 		
-		/** The compiling bar's barLine on/off state */
-		boolean barLine = true;
-		
 		/** The compiling  bar's flag indicating if the last compiled note is rolling */
 		boolean isLastNoteRolling = false;
 	
 		/**  The first note bar's beat time */
-		double firstBarBeatTime = mTja.offset * 1000.0 + mPlayTimeMillis;
+		double firstBarBeatTime;
+		if (mTja.offset<0) {
+			// If the music starts earlier than the notation
+			firstBarBeatTime = mPrepTimeMillis - Math.round(mTja.offset*1000);
+		} else {
+			// If the music starts later than the notation - we should avoid this case
+			firstBarBeatTime = mPrepTimeMillis;
+		}
 		
 		/** The time offset of the beginning of the current note bar */
-		double preciseBarBeatTime = firstBarBeatTime;
+		double barBeatTime = firstBarBeatTime;
 		
 		for (int i=0; i<length; ++i) {
 			TJACommand oCmd = mNotationCommands[i];
@@ -151,23 +164,43 @@ public class TJANotationCompiler {
 			
 			switch (oCmd.commandType) {
 			case TJAFormat.COMMAND_TYPE_NOTE: {
-				bar.beatTimeMillis = (long) Math.floor(preciseBarBeatTime);
+				bar.beatTimeMillis = Math.round(barBeatTime);
 				bar.isNoteBar = true;
 				NoteBar noteBar = bar.noteBar = new NoteBar();
 				/* One TJA note's width is 16th note (semiquaver) length
 				 * so 1 beat = 1 quarter notes(crotchets) = 4 16th note = 4 TJA notes
-				 * The BEAT_DIST is actually a TJA note's width
+				 * The mBeatDist is actually a TJA note's width
 				 * preciseSpeed is the bar's scrolling speed in pixels per 1024 seconds
 				 */
-				double preciseSpeed = bpm * PlayModel.BEAT_DIST * 4 * scroll * 1024.0 / 60.0;
-//				noteBar.speed = (int) preciseSpeed;
-				noteBar.appearTimeMillis = (long) (preciseBarBeatTime - mScreenWidth / preciseSpeed);
-				noteBar.width = (int) ((double)measureX / measureY * 4 * PlayModel.BEAT_DIST * scroll);
+				
+				if ( ! mTja.bmScroll && ! mTja.hbScroll ) {
+					// The bar's speed (pixel per millisecond) is bpm * 4 * mBeatDist  / 60000.0 * scroll
+					double barSpeed = bpm * beatDist / 15000.0 * scroll;
+					double appearTimeMillis = barBeatTime
+							- (mScrollBandToX - mScrollBandFromX + beatDist/2 - mTargetNoteX) / barSpeed;
+					double maxBarWidth = (double)measureX / measureY * 4 * beatDist * scroll;
+					// Bar duration = maxBarWidth/barSpeed = measureX / measureY / bpm * 15000
+					int barVisibleDuration =(int) (Math.round(maxBarWidth/barSpeed)) + 1;
+					short xCoords[] = new short[barVisibleDuration];
+					double preciseXCoord = mScrollBandToX + beatDist/2;
+					xCoords[0] =(short) preciseXCoord;
+					for (int t=1; t<barVisibleDuration; ++t) {
+						preciseXCoord -= appearTimeMillis;
+						xCoords[t] =(short) preciseXCoord;
+					}
+					
+					noteBar.appearTimeMillis = Math.round(appearTimeMillis); 
+					noteBar.preComputedXCoords = xCoords;
+					
+				} else {
+					// TODO
+				}
+				
 				int[] oNotes = oCmd.args;
 				
 				compiledNotes.clear();
 				double noteBeatSpan = 15000.0 / bpm; // == 0.25 / bpm * 60000;
-				double noteBeatTime = preciseBarBeatTime;
+				double noteBeatTime = barBeatTime;
 				for (int j=0; j<oNotes.length; ++j, noteBeatTime += noteBeatSpan) {
 					
 					if (isLastNoteRolling) {
@@ -204,7 +237,7 @@ public class TJANotationCompiler {
 					}
 				}
 				// Compute next beat time
-				preciseBarBeatTime += (double)measureX / measureY / bpm * 60000.0;
+				barBeatTime += (double)measureX / measureY / bpm * 60000.0;
 				// Emit notes
 				noteBar.notes = (Note[]) compiledNotes.toArray();
 				break;

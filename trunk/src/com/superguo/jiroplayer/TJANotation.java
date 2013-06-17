@@ -76,8 +76,10 @@ public final class TJANotation {
 		 * to player, always earlier than beatTimeMillis */
 		public long appearTimeMillis;
 
-		/** The bar's scrolling speed in pixels per 1024 seconds */
-		public int speed;
+		/** The pre-computed x coordinations of the bar of evey millisecond
+		 * relative to {@link #appearTimeMillis}
+		 */
+		public int preComputedXCoords[];
 		
 		/** The bar's width in pixels */
 		public int width;

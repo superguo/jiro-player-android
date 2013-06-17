@@ -22,6 +22,10 @@ public class TJANotationCompiler {
 	private long mPlayTimeMillis;
 	private TJACourse mCourse;
 	private long mScreenWidth;
+	private int mBeatDist;
+	private int mScrollBandFromX;
+	private int mScrollBandToX;
+	private int mTargetNoteX;
 	
 	public static final class TJANotationCompilerException extends Exception {
 	
@@ -42,15 +46,31 @@ public class TJANotationCompiler {
 
 	/**
 	 * Compile the specified notation of a TJA format into a compiled TJANotaion
-	 * @param tja The TJA format data.
-	 * @param courseIndex The index of the course stored in TJA format data.
-	 * @param notationIndex The index of the notation to compile. The index is one of 
-	 * 	{@link #NOTATION_INDEX_SINGLE}, {@link #NOTATION_INDEX_P1} or {@link #NOTATION_INDEX_P2}
-	 * @param playTimeMillis The time to wait before the song starts to play.
+	 * 
+	 * @param tja
+	 *            The TJA format data.
+	 * @param courseIndex
+	 *            The index of the course stored in TJA format data.
+	 * @param notationIndex
+	 *            The index of the notation to compile. The index is one of
+	 *            {@link #NOTATION_INDEX_SINGLE}, {@link #NOTATION_INDEX_P1} or
+	 *            {@link #NOTATION_INDEX_P2}
+	 * @param playTimeMillis
+	 *            The time to wait before the notation starts to scroll.
+	 * @param beatDist
+	 *            The distance between two 16th tja notes in standard scrolling
+	 *            speed, which also equals the diameter of one tja note
+	 * @param scrollBandFromX
+	 *            The leftmost x position of the scroll band
+	 * @param scrollBandToX
+	 *            The rightmost x position of the scroll band
+	 * @param targetNoteX
+	 *            The horizontal x position of the target beat note
 	 * @return
 	 */
 	public TJANotation compile(TJAFormat tja, int courseIndex,
-			int notationIndex, long playTimeMillis, int screenWidth) {
+			int notationIndex, long playTimeMillis, int beatDist, int scrollBandFromX,
+			int scrollBandToX, int targetNoteX) {
 		mCourse = tja.courses[courseIndex];
 		if (mCourse == null) {
 			return null;
@@ -65,7 +85,10 @@ public class TJANotationCompiler {
 		mTja = tja;
 		mNotationCommands = notationCommands;
 		mPlayTimeMillis = playTimeMillis;
-		mScreenWidth = screenWidth;
+		mBeatDist = beatDist;
+		mScrollBandFromX = scrollBandFromX;
+		mScrollBandToX = scrollBandToX;
+		mTargetNoteX = targetNoteX;
 		doCompile();
 		return mNotation;
 	}
@@ -137,7 +160,7 @@ public class TJANotationCompiler {
 				 * preciseSpeed is the bar's scrolling speed in pixels per 1024 seconds
 				 */
 				double preciseSpeed = bpm * PlayModel.BEAT_DIST * 4 * scroll * 1024.0 / 60.0;
-				noteBar.speed = (int) preciseSpeed;
+//				noteBar.speed = (int) preciseSpeed;
 				noteBar.appearTimeMillis = (long) (preciseBarBeatTime - mScreenWidth / preciseSpeed);
 				noteBar.width = (int) ((double)measureX / measureY * 4 * PlayModel.BEAT_DIST * scroll);
 				int[] oNotes = oCmd.args;

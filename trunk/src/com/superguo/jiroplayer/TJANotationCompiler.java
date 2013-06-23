@@ -132,6 +132,12 @@ public class TJANotationCompiler {
 		/** The compiling bar's BPM */
 		double bpm = mCourse.BPM;
 		
+		/**
+		 * The BPM to change to, from #BPMCHANGE. negative means the BPM is not
+		 * to be changed.
+		 */
+		double bpmToChange = -1.0;
+		
 		/** The compiling bar's X in MEASURE X/Y */
 		int measureX = 4;
 		
@@ -143,6 +149,8 @@ public class TJANotationCompiler {
 		
 		/** The compiling  bar's flag indicating if the last compiled note is rolling */
 		boolean isLastNoteRolling = false;
+		
+		double delay = 0.0;
 	
 		/**  The first note bar's beat time */
 		double firstBarBeatTime;
@@ -164,16 +172,22 @@ public class TJANotationCompiler {
 			
 			switch (oCmd.commandType) {
 			case TJAFormat.COMMAND_TYPE_NOTE: {
-				bar.beatTimeMillis = Math.round(barBeatTime);
+				bar.beatTimeMillis = Math.round(barBeatTime + delay);
 				bar.isNoteBar = true;
 				NoteBar noteBar = bar.noteBar = new NoteBar();
 				/* One TJA note's width is 16th note (semiquaver) length
-				 * so 1 beat = 1 quarter notes(crotchets) = 4 16th note = 4 TJA notes
+				 * so 1 beat = 1 quarter notes(crochets) = 4 16th note = 4 TJA notes
 				 * The mBeatDist is actually a TJA note's width
 				 * preciseSpeed is the bar's scrolling speed in pixels per 1024 seconds
 				 */
 				
-				if ( ! mTja.bmScroll && ! mTja.hbScroll ) {
+				if ( ! mTja.bmScroll && ! mTja.hbScroll || bpmToChange<0.0 && Math.abs(delay)<0.001 ) {
+					// BPM is changed immediately if neither BMSCROLL nor HBSCROLL is on, 
+					// or neither #BPMCHANGE nor #DELAY is present before this note begins
+					if (bpmToChange > 0) {
+						bpm = bpmToChange;
+						bpmToChange = -1.0;
+					}
 					// The bar's speed (pixel per millisecond) is bpm * 4 * mBeatDist  / 60000.0 * scroll
 					double barSpeed = bpm * beatDist / 15000.0 * scroll;
 					double appearTimeMillis = barBeatTime
@@ -240,8 +254,49 @@ public class TJANotationCompiler {
 				barBeatTime += (double)measureX / measureY / bpm * 60000.0;
 				// Emit notes
 				noteBar.notes = (Note[]) compiledNotes.toArray();
+				// Clear values
+				delay = 0.0;
 				break;
 			}
+			
+			case TJAFormat.COMMAND_TYPE_BPMCHANGE:
+				bpmToChange = (double)Float.intBitsToFloat(oCmd.args[0]);
+				break;
+				
+			case TJAFormat.COMMAND_TYPE_GOGOSTART:
+				bar.isNoteBar = false;
+				bar.command = new TJANotation.Command(TJANotation.COMMAND_GOGOSTART);
+				break;
+				
+			case TJAFormat.COMMAND_TYPE_GOGOEND:
+				bar.isNoteBar = false;
+				bar.command = new TJANotation.Command(TJANotation.COMMAND_GOGOEND);
+				break;
+				
+			case TJAFormat.COMMAND_TYPE_MEASURE: 	// X(int) / Y(int)( 0 < X < 100, 0 < Y < 100)
+				measureX = oCmd.args[0];
+				measureY = oCmd.args[1];
+				break;
+
+			case TJAFormat.COMMAND_TYPE_SCROLL: 	// float(0.1 - 16.0)
+				scroll = (double)Float.intBitsToFloat(oCmd.args[0]);
+				break;
+				
+			case TJAFormat.COMMAND_TYPE_DELAY: 	// float(>0.001)
+				// NOTE here that the delay value is to be accumulated rather
+				// than be set
+				delay += (double)Float.intBitsToFloat(oCmd.args[0]);
+				break;
+				
+			case TJAFormat.COMMAND_TYPE_SECTION:
+			case TJAFormat.COMMAND_TYPE_BRANCHSTART: 	// BRANCH_JUDGE_*(r/p/s, int), X(float), Y(float), #N index, #E index, #M index, exit index(may be invalid) 
+			case TJAFormat.COMMAND_TYPE_BRANCHEND:
+			case TJAFormat.COMMAND_TYPE_N:
+			case TJAFormat.COMMAND_TYPE_E:
+			case TJAFormat.COMMAND_TYPE_M:
+			case TJAFormat.COMMAND_TYPE_LEVELHOLD:
+			case TJAFormat.COMMAND_TYPE_BARLINEOFF:
+			case TJAFormat.COMMAND_TYPE_BARLINEON:
 			
 			// TODO
 			

@@ -22,9 +22,9 @@ public class TJANotationCompiler {
 	private long mPrepTimeMillis;
 	private TJACourse mCourse;
 	private int mBeatDist;
-	private int mScrollBandFromX;
-	private int mScrollBandToX;
-	private int mTargetNoteX;
+	private int mScrollBandLeft;
+	private int mScrollBandRight;
+	private int mTargetNoteCenter;
 	
 	public static final class TJANotationCompilerException extends Exception {
 	
@@ -60,17 +60,17 @@ public class TJANotationCompiler {
 	 * @param beatDist
 	 *            The distance between two 16th tja notes in standard scrolling
 	 *            speed, which also equals the diameter of one tja note
-	 * @param scrollBandFromX
+	 * @param scrollBandLeft
 	 *            The leftmost x position of the scroll band
-	 * @param scrollBandToX
+	 * @param scrollBandRight
 	 *            The rightmost x position of the scroll band
-	 * @param targetNoteX
+	 * @param targetNoteCenter
 	 *            The x position of the target beat note's center point
 	 * @return
 	 */
 	public TJANotation compile(TJAFormat tja, int courseIndex,
 			int notationIndex, long prepTimeMillis, int beatDist,
-			int scrollBandFromX, int scrollBandToX, int targetNoteX) {
+			int scrollBandLeft, int scrollBandRight, int targetNoteCenter) {
 		mCourse = tja.courses[courseIndex];
 		if (mCourse == null) {
 			return null;
@@ -86,9 +86,9 @@ public class TJANotationCompiler {
 		mNotationCommands = notationCommands;
 		mPrepTimeMillis = prepTimeMillis;
 		mBeatDist = beatDist;
-		mScrollBandFromX = scrollBandFromX;
-		mScrollBandToX = scrollBandToX;
-		mTargetNoteX = targetNoteX;
+		mScrollBandLeft = scrollBandLeft;
+		mScrollBandRight = scrollBandRight;
+		mTargetNoteCenter = targetNoteCenter;
 		doCompile();
 		return mNotation;
 	}
@@ -129,6 +129,8 @@ public class TJANotationCompiler {
 		
 		final int beatDist = mBeatDist;
 		
+		final int scrollBandWidth = mScrollBandRight - mScrollBandLeft;
+		
 		/** The compiling bar's BPM */
 		double bpm = mCourse.BPM;
 		
@@ -146,6 +148,10 @@ public class TJANotationCompiler {
 		
 		/** The compiling bar's scroll value  */
 		double scroll = 1.0;
+		
+		/** The scroll to change to, from #SCROLL. negative means the scroll is not
+		 * to be changed */
+		double scrollToChange = -1.0;
 		
 		/** The compiling  bar's flag indicating if the last compiled note is rolling */
 		boolean isLastNoteRolling = false;
@@ -165,6 +171,9 @@ public class TJANotationCompiler {
 		/** The time offset of the beginning of the current note bar */
 		double barBeatTime = firstBarBeatTime;
 		
+		/** The bar's speed in pixels per millisecond */
+		double barSpeed = computeBarSpeed(bpm, scroll, beatDist);
+		
 		for (int i=0; i<length; ++i) {
 			TJACommand oCmd = mNotationCommands[i];
 			Bar bar = new Bar();
@@ -175,40 +184,142 @@ public class TJANotationCompiler {
 				bar.beatTimeMillis = Math.round(barBeatTime + delay);
 				bar.isNoteBar = true;
 				NoteBar noteBar = bar.noteBar = new NoteBar();
+				double appearTimeMillis;
+				short[] xCoords;
 				/* One TJA note's width is 16th note (semiquaver) length
 				 * so 1 beat = 1 quarter notes(crochets) = 4 16th note = 4 TJA notes
 				 * The mBeatDist is actually a TJA note's width
-				 * preciseSpeed is the bar's scrolling speed in pixels per 1024 seconds
 				 */
+
+				boolean isBpmChanging = bpmToChange > 0;
+				boolean isScrollChanging = scrollToChange > 0;
 				
 				if ( ! mTja.bmScroll && ! mTja.hbScroll || bpmToChange<0.0 && Math.abs(delay)<0.001 ) {
-					// BPM is changed immediately if neither BMSCROLL nor HBSCROLL is on, 
+					// BPM or scroll changes immediately if neither BMSCROLL nor HBSCROLL is on, 
 					// or neither #BPMCHANGE nor #DELAY is present before this note begins
-					if (bpmToChange > 0) {
+					if (isBpmChanging) {
 						bpm = bpmToChange;
 						bpmToChange = -1.0;
 					}
-					// The bar's speed (pixel per millisecond) is bpm * 4 * mBeatDist  / 60000.0 * scroll
-					double barSpeed = bpm * beatDist / 15000.0 * scroll;
-					double appearTimeMillis = barBeatTime
-							- (mScrollBandToX - mScrollBandFromX + beatDist/2 - mTargetNoteX) / barSpeed;
+					if (isScrollChanging) {
+						scroll = scrollToChange;
+						scrollToChange = -1.0;
+					}
+					if (isBpmChanging || isScrollChanging) {
+						// Re-compute barSpeed if either bpm or scroll has just changed
+						barSpeed = computeBarSpeed(bpm, scroll, beatDist);	
+					}
+					
+					appearTimeMillis = barBeatTime
+							- (scrollBandWidth - mTargetNoteCenter + beatDist / 2.0) / barSpeed;
+					// maxBarWidth is the total width of the bar, i.e. the
+					// distance between the beginning of this bar and next bar
 					double maxBarWidth = (double)measureX / measureY * 4 * beatDist * scroll;
-					// Bar duration = maxBarWidth/barSpeed = measureX / measureY / bpm * 15000
-					int barVisibleDuration =(int) (Math.round(maxBarWidth/barSpeed)) + 1;
-					short xCoords[] = new short[barVisibleDuration];
-					double preciseXCoord = mScrollBandToX + beatDist/2;
+					// barVisibleDuration is the total time when the bar passes through the scroll band 
+					int barVisibleDuration = (int) (Math.round((maxBarWidth + scrollBandWidth) / barSpeed)) + 1;
+					xCoords = new short[barVisibleDuration];
+					double preciseXCoord = mScrollBandRight + beatDist/2.0;
 					xCoords[0] =(short) preciseXCoord;
 					for (int t=1; t<barVisibleDuration; ++t) {
-						preciseXCoord -= appearTimeMillis;
+						preciseXCoord -= barSpeed; // * 1.0;
 						xCoords[t] =(short) preciseXCoord;
 					}
 					
 					noteBar.appearTimeMillis = Math.round(appearTimeMillis); 
 					noteBar.preComputedXCoords = xCoords;
 					
-				} else {
-					// TODO
-				}
+				} else { // When HBSCROLL or BMSCROLL is on, the bar's speed
+						 // does not change until it is passing the target beat note
+
+					if (mTja.hbScroll && isScrollChanging) {
+						// When HBSCROLL is on, the post-beat-note bar speed
+						// takes the scroll value into account, on the condition
+						// that the scroll value has just changed
+						barSpeed = computeBarSpeed(bpm, scrollToChange, beatDist);
+					}
+					// postBarSpeed is the actual speed immediately after the
+					// bar enters the target beat note
+					double postBarSpeed = computeBarSpeed(
+							isBpmChanging ? bpmToChange : bpm,
+							isScrollChanging ? scrollToChange : scroll,
+							beatDist); 
+
+					// The minimum precision of delay is 0.001 second 
+					if (delay >= 0.001) {
+						// If delay is positive, the bar stops before target
+						// beat note until the delayed time has elapsed.
+						// In this case, we leave some space - the radius of the
+						// beatDist - before the the bar hit the target beat note
+						double spaceBetweenDelayAndBeat = beatDist / 2.0;
+						appearTimeMillis = barBeatTime
+								- (scrollBandWidth - mTargetNoteCenter + beatDist / 2.0) / barSpeed;
+						double maxBarWidth = (double) measureX / measureY * 4 * beatDist
+								* (mTja.hbScroll && isScrollChanging ? 
+										scrollToChange : scroll);
+						double visibleDurationBeforeDelay = (scrollBandWidth 
+								- mTargetNoteCenter - spaceBetweenDelayAndBeat) / barSpeed;
+						
+						int barVisibleDuration = (int) (Math.round(
+								delay
+								+ scrollBandWidth / barSpeed
+								+ maxBarWidth / postBarSpeed)) + 1;
+						xCoords = new short[barVisibleDuration];
+						double preciseXCoord = mScrollBandRight + beatDist/2.0;
+						xCoords[0] =(short) preciseXCoord;
+						double xCoordOnStop = mTargetNoteCenter + spaceBetweenDelayAndBeat;
+						for (int t=1; t<barVisibleDuration; ++t) {
+							if (t<visibleDurationBeforeDelay) {
+								preciseXCoord -= barSpeed;
+							} else if ( t < visibleDurationBeforeDelay + delay) {
+								// preciseXCoord remains unchanged
+								preciseXCoord = xCoordOnStop;
+							} else {
+								preciseXCoord -= postBarSpeed;
+							}
+							xCoords[t] =(short) preciseXCoord;
+						}
+						
+						noteBar.appearTimeMillis = Math.round(appearTimeMillis); 
+						noteBar.preComputedXCoords = xCoords;
+					} else {
+						// The delay is 0 or negative
+						appearTimeMillis = barBeatTime
+								- (scrollBandWidth - mTargetNoteCenter + beatDist / 2.0) / barSpeed;
+						double maxBarWidth = (double) measureX / measureY * 4 * beatDist
+								* (mTja.hbScroll && isScrollChanging ? 
+										scrollToChange : scroll);
+						double visibleDurationBeforeBeat = (scrollBandWidth - mTargetNoteCenter)
+								/ barSpeed;
+						
+						int barVisibleDuration = (int) (Math.round(
+								+ scrollBandWidth / barSpeed
+								+ maxBarWidth / postBarSpeed)) + 1;
+						xCoords = new short[barVisibleDuration];
+						double preciseXCoord = mScrollBandRight + beatDist/2.0;
+						xCoords[0] =(short) preciseXCoord;
+						for (int t=1; t<barVisibleDuration; ++t) {
+							if (t < visibleDurationBeforeBeat) {
+								preciseXCoord -= barSpeed;
+							} else {
+								preciseXCoord -= postBarSpeed;
+							}
+							xCoords[t] =(short) preciseXCoord;
+						}
+						
+					} // End of delay
+
+					if (isBpmChanging) {
+						bpm = bpmToChange;
+						bpmToChange = -1.0;
+					}
+					if (isScrollChanging) {
+						scroll = scrollToChange;
+						scrollToChange = -1.0;
+					}
+
+				} // End of hbscroll and bmscroll
+				noteBar.appearTimeMillis = Math.round(appearTimeMillis); 
+				noteBar.preComputedXCoords = xCoords;
 				
 				int[] oNotes = oCmd.args;
 				
@@ -279,7 +390,7 @@ public class TJANotationCompiler {
 				break;
 
 			case TJAFormat.COMMAND_TYPE_SCROLL: 	// float(0.1 - 16.0)
-				scroll = (double)Float.intBitsToFloat(oCmd.args[0]);
+				scrollToChange = (double)Float.intBitsToFloat(oCmd.args[0]);
 				break;
 				
 			case TJAFormat.COMMAND_TYPE_DELAY: 	// float(>0.001)
@@ -307,5 +418,17 @@ public class TJANotationCompiler {
 		}
 		
 		return branch;
+	}
+
+	/**
+	 * The bar's speed (pixel per millisecond) is 
+	 * bpm * 4 * beatDist / 60000.0 * scroll
+	 * @param bpm
+	 * @param scroll
+	 * @param beatDist
+	 * @return
+	 */
+	private static double computeBarSpeed(double bpm, double scroll, final int beatDist) {
+		return bpm * beatDist / 15000.0 * scroll;
 	}
 }

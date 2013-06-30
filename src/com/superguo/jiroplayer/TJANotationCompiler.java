@@ -7,6 +7,7 @@ import com.superguo.jiroplayer.TJAFormat.TJACourse;
 import com.superguo.jiroplayer.TJANotation.Bar;
 import com.superguo.jiroplayer.TJANotation.Note;
 import com.superguo.jiroplayer.TJANotation.NoteBar;
+import com.superguo.jiroplayer.TJANotation.StartBranchCommand;
 
 public class TJANotationCompiler {
 
@@ -153,13 +154,21 @@ public class TJANotationCompiler {
 		 * to be changed */
 		double scrollToChange = -1.0;
 		
+		/** The visibility of the bar line of the compiling note bar */
+		boolean isBarLineOn = true;
+		
 		/** The compiling  bar's flag indicating if the last compiled note is rolling */
 		boolean isLastNoteRolling = false;
 		
+		/**
+		 * The accumulated delay in millisecond before the next note bar starts.
+		 * It will be reseted to 0.0 once after the next note bar is compiled
+		 */
 		double delay = 0.0;
 	
 		/**  The first note bar's beat time */
 		double firstBarBeatTime;
+		
 		if (mTja.offset<0) {
 			// If the music starts earlier than the notation
 			firstBarBeatTime = mPrepTimeMillis - Math.round(mTja.offset*1000);
@@ -174,6 +183,9 @@ public class TJANotationCompiler {
 		/** The bar's speed in pixels per millisecond */
 		double barSpeed = computeBarSpeed(bpm, scroll, beatDist);
 		
+		/** The current #BRANCHSTART. It is not null until #BRANCHEND is reached */
+		StartBranchCommand startBranchCmd = null;
+		
 		for (int i=0; i<length; ++i) {
 			TJACommand oCmd = mNotationCommands[i];
 			Bar bar = new Bar();
@@ -184,6 +196,7 @@ public class TJANotationCompiler {
 				bar.beatTimeMillis = Math.round(barBeatTime + delay);
 				bar.isNoteBar = true;
 				NoteBar noteBar = bar.noteBar = new NoteBar();
+				noteBar.isBarLineOn = isBarLineOn;
 				double appearTimeMillis;
 				short[] xCoords;
 				/* One TJA note's width is 16th note (semiquaver) length
@@ -400,16 +413,38 @@ public class TJANotationCompiler {
 				break;
 				
 			case TJAFormat.COMMAND_TYPE_SECTION:
-			case TJAFormat.COMMAND_TYPE_BRANCHSTART: 	// BRANCH_JUDGE_*(r/p/s, int), X(float), Y(float), #N index, #E index, #M index, exit index(may be invalid) 
+				bar.isNoteBar = false;
+				bar.command = new TJANotation.Command(TJANotation.COMMAND_SECTION);
+				break;
+
+			case TJAFormat.COMMAND_TYPE_BRANCHSTART: {
+				bar.isNoteBar = false;
+				startBranchCmd = new TJANotation.StartBranchCommand();
+				startBranchCmd.compileTJAFormatArgs(oCmd.args);
+				bar.command = startBranchCmd;
+				break;
+			}
+
 			case TJAFormat.COMMAND_TYPE_BRANCHEND:
 			case TJAFormat.COMMAND_TYPE_N:
 			case TJAFormat.COMMAND_TYPE_E:
 			case TJAFormat.COMMAND_TYPE_M:
+				// TODO
+				break;
+
 			case TJAFormat.COMMAND_TYPE_LEVELHOLD:
+				bar.isNoteBar = false;
+				bar.command = new TJANotation.Command(TJANotation.COMMAND_LEVEL_HOLD);
+				break;
+
+				
 			case TJAFormat.COMMAND_TYPE_BARLINEOFF:
+				isBarLineOn = false;
+				break;
+				
 			case TJAFormat.COMMAND_TYPE_BARLINEON:
-			
-			// TODO
+				isBarLineOn = true;
+				break;
 			
 			default:;
 			}

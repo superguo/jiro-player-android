@@ -36,8 +36,10 @@ public final class TJANotation {
 	public final static int COMMAND_EMPTY		= 0;
 	public final static int COMMAND_GOGOSTART	= 1;
 	public final static int COMMAND_GOGOEND		= 2;
-	public final static int COMMAND_STARTBRANCH	= 3;
-	public final static int COMMAND_EXITBRANCH	= 4;
+	public final static int COMMAND_SECTION		= 3;
+	public final static int COMMAND_STARTBRANCH	= 4;
+	public final static int COMMAND_EXITBRANCH	= 5;
+	public final static int COMMAND_LEVEL_HOLD	= 6;
 	
 	/** Judge type rolling */
 	public static final int BRANCH_JUDGE_ROLL 		= 0;
@@ -84,7 +86,10 @@ public final class TJANotation {
 		 * to player, always earlier than beatTimeMillis */
 		public long appearTimeMillis;
 
-		/** The pre-computed x coordinations of the bar of evey millisecond
+		/** Indicates whether the bar line is visible */
+		public boolean isBarLineOn;
+		
+		/** The pre-computed x coordinations of the bar of every millisecond
 		 * relative to {@link #appearTimeMillis}
 		 */
 		public short preComputedXCoords[];

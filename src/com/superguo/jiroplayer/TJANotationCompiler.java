@@ -14,6 +14,8 @@ public class TJANotationCompiler {
 	public static final int NOTATION_INDEX_SINGLE = 0;
 	public static final int NOTATION_INDEX_P1     = 1;
 	public static final int NOTATION_INDEX_P2     = 2;
+	/** Special branch index used for the case outside #BRANCHSTART */
+	private static final int BRANCH_INDEX_COMMON = -1;
 	private static final int BRANCH_INDEX_NORMAL = 0;
 	private static final int BRANCH_INDEX_EASY   = 1;
 	private static final int BRANCH_INDEX_MASTER   = 2;
@@ -122,7 +124,7 @@ public class TJANotationCompiler {
 		}
 	}
 
-	private ArrayList<Bar> compileBranch(int brachIndex) {
+	private ArrayList<Bar> compileBranch(final int branchIndex) {
 		int length = mNotationCommands.length;
 		
 		/** The branch to emit */
@@ -131,6 +133,9 @@ public class TJANotationCompiler {
 		final int beatDist = mBeatDist;
 		
 		final int scrollBandWidth = mScrollBandRight - mScrollBandLeft;
+		
+		/** The started branch outside */
+		int startedBranch = BRANCH_INDEX_COMMON;
 		
 		/** The compiling bar's BPM */
 		double bpm = mCourse.BPM;
@@ -207,7 +212,7 @@ public class TJANotationCompiler {
 				boolean isBpmChanging = bpmToChange > 0;
 				boolean isScrollChanging = scrollToChange > 0;
 				
-				if ( ! mTja.bmScroll && ! mTja.hbScroll || bpmToChange<0.0 && Math.abs(delay)<0.001 ) {
+				if ( ! mTja.bmScroll && ! mTja.hbScroll || !isBpmChanging && Math.abs(delay)<0.001 ) {
 					// BPM or scroll changes immediately if neither BMSCROLL nor HBSCROLL is on, 
 					// or neither #BPMCHANGE nor #DELAY is present before this note begins
 					if (isBpmChanging) {

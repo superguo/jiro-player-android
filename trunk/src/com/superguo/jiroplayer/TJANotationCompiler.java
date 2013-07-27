@@ -15,7 +15,6 @@ public class TJANotationCompiler {
 	public static final int NOTATION_INDEX_P1     = 1;
 	public static final int NOTATION_INDEX_P2     = 2;
 	/** Special branch index used for the case outside #BRANCHSTART */
-	private static final int BRANCH_INDEX_COMMON = -1;
 	private static final int BRANCH_INDEX_NORMAL = 0;
 	private static final int BRANCH_INDEX_EASY   = 1;
 	private static final int BRANCH_INDEX_MASTER   = 2;
@@ -134,9 +133,6 @@ public class TJANotationCompiler {
 		
 		final int scrollBandWidth = mScrollBandRight - mScrollBandLeft;
 		
-		/** The started branch outside */
-		int startedBranch = BRANCH_INDEX_COMMON;
-		
 		/** The compiling bar's BPM */
 		double bpm = mCourse.BPM;
 		
@@ -190,11 +186,34 @@ public class TJANotationCompiler {
 		
 		/** The current #BRANCHSTART. It is not null until #BRANCHEND is reached */
 		StartBranchCommand startBranchCmd = null;
-		
+
+		/**
+		 * If we are in #N, #E or #M corresponding to current branchIndex. It is
+		 * valid only when startBranchCmd is not null
+		 */
+		boolean inStartedBranch = false;
+
 		for (int i=0; i<length; ++i) {
 			TJACommand oCmd = mNotationCommands[i];
 			Bar bar = new Bar();
 			ArrayList<Note> compiledNotes = new ArrayList<Note>();
+			
+			// Ignore the command if we are the corresponding started branch 
+			if (startBranchCmd != null && inStartedBranch) {
+				boolean ignoreCommand = true;
+				switch (oCmd.commandType) {
+				case TJAFormat.COMMAND_TYPE_BRANCHEND:
+				case TJAFormat.COMMAND_TYPE_N:
+				case TJAFormat.COMMAND_TYPE_E:
+				case TJAFormat.COMMAND_TYPE_M:
+					ignoreCommand = false;
+				}
+				if (ignoreCommand) {
+					// We still have to add the ignored command to keep the command index consistent 
+					branch.add(bar);
+					continue;
+				}
+			}
 			
 			switch (oCmd.commandType) {
 			case TJAFormat.COMMAND_TYPE_NOTE: {
@@ -434,7 +453,18 @@ public class TJANotationCompiler {
 			case TJAFormat.COMMAND_TYPE_N:
 			case TJAFormat.COMMAND_TYPE_E:
 			case TJAFormat.COMMAND_TYPE_M:
-				// TODO
+				assert startBranchCmd != null;
+				if (inStartedBranch) {
+					bar.isNoteBar = false;
+					bar.command = new TJANotation.Command(TJANotation.COMMAND_EXITBRANCH);
+					inStartedBranch = false;
+				} else if (
+						branchIndex == BRANCH_INDEX_NORMAL && oCmd.commandType == TJAFormat.COMMAND_TYPE_N ||
+						branchIndex == BRANCH_INDEX_EASY && oCmd.commandType == TJAFormat.COMMAND_TYPE_E ||
+						branchIndex == BRANCH_INDEX_MASTER && oCmd.commandType == TJAFormat.COMMAND_TYPE_M) {
+					inStartedBranch = true;
+					// ignore the command
+				} // else ignore the command
 				break;
 
 			case TJAFormat.COMMAND_TYPE_LEVELHOLD:

@@ -191,15 +191,18 @@ public class TJANotationCompiler {
 		 * If we are in #N, #E or #M corresponding to current branchIndex. It is
 		 * valid only when startBranchCmd is not null
 		 */
-		boolean inStartedBranch = false;
+		boolean inCompilingBranch = false;
 
 		for (int i=0; i<length; ++i) {
 			TJACommand oCmd = mNotationCommands[i];
 			Bar bar = new Bar();
 			ArrayList<Note> compiledNotes = new ArrayList<Note>();
 			
-			// Ignore the command if we are the corresponding started branch 
-			if (startBranchCmd != null && inStartedBranch) {
+			/*
+			 * Ignore the command if #BRANCHSTART is encountered but not in the
+			 * compiling branch, except that it is a branch control command
+			 */
+			if (startBranchCmd != null && inCompilingBranch) {
 				boolean ignoreCommand = true;
 				switch (oCmd.commandType) {
 				case TJAFormat.COMMAND_TYPE_BRANCHEND:
@@ -209,7 +212,8 @@ public class TJANotationCompiler {
 					ignoreCommand = false;
 				}
 				if (ignoreCommand) {
-					// We still have to add the ignored command to keep the command index consistent 
+					bar.isNoteBar = false;
+					bar.command = new TJANotation.Command(TJANotation.COMMAND_EMPTY);
 					branch.add(bar);
 					continue;
 				}
@@ -454,17 +458,27 @@ public class TJANotationCompiler {
 			case TJAFormat.COMMAND_TYPE_E:
 			case TJAFormat.COMMAND_TYPE_M:
 				assert startBranchCmd != null;
-				if (inStartedBranch) {
+				if (inCompilingBranch) {
 					bar.isNoteBar = false;
 					bar.command = new TJANotation.Command(TJANotation.COMMAND_EXITBRANCH);
-					inStartedBranch = false;
-				} else if (
-						branchIndex == BRANCH_INDEX_NORMAL && oCmd.commandType == TJAFormat.COMMAND_TYPE_N ||
-						branchIndex == BRANCH_INDEX_EASY && oCmd.commandType == TJAFormat.COMMAND_TYPE_E ||
-						branchIndex == BRANCH_INDEX_MASTER && oCmd.commandType == TJAFormat.COMMAND_TYPE_M) {
-					inStartedBranch = true;
-					// ignore the command
-				} // else ignore the command
+					inCompilingBranch = false;
+				} else if (matchesBranch(oCmd.commandType, branchIndex)) {
+					// We are entering the compiling branch
+					inCompilingBranch = true;
+					// Just ignore the command
+					bar.isNoteBar = false;
+					bar.command = new TJANotation.Command(TJANotation.COMMAND_EMPTY);
+				} else {
+					// We are here because we encounter another branch or reach the end of branch
+					inCompilingBranch = false;
+					// Just ignore the command
+					bar.isNoteBar = false;
+					bar.command = new TJANotation.Command(TJANotation.COMMAND_EMPTY);
+				}
+				// Set startBranchCmd to be null if we encounter #BRANCHEND
+				if (oCmd.commandType == TJAFormat.COMMAND_TYPE_BRANCHEND) {
+					startBranchCmd = null;
+				}
 				break;
 
 			case TJAFormat.COMMAND_TYPE_LEVELHOLD:
@@ -500,5 +514,13 @@ public class TJANotationCompiler {
 	 */
 	private static double computeBarSpeed(double bpm, double scroll, final int beatDist) {
 		return bpm * beatDist / 15000.0 * scroll;
+	}
+	
+	private static boolean matchesBranch(int commandType, int branchIndex) {
+		int c=commandType;
+		int b=branchIndex;
+		return b == BRANCH_INDEX_NORMAL && c == TJAFormat.COMMAND_TYPE_N
+				|| b == BRANCH_INDEX_EASY && c == TJAFormat.COMMAND_TYPE_E
+				|| b == BRANCH_INDEX_MASTER && c == TJAFormat.COMMAND_TYPE_M;
 	}
 }

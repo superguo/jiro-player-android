@@ -1,5 +1,7 @@
 package com.superguo.jiroplayer;
 
+import java.util.LinkedList;
+
 import com.superguo.jiroplayer.TJAFormat.TJACourse;
 
 /** PlayModel's publicly visible data are all in this class
@@ -15,7 +17,7 @@ public final class PlayerMessage {
 	 * are contained only when it is not in playing(rolling)
 	 */
 	public static final class NotePos {
-		public int noteType;
+		public int noteValue;
 		public int notePos;
 	}
 	
@@ -72,9 +74,8 @@ public final class PlayerMessage {
 	 * Drawer must set to HIT_NONE after the frame is drawn
 	 */
 	//public int iHit;
-	
-	public int notePosCount;
-	public NotePos[] notePosArray = new NotePos[MAX_NOTE_POS];
+
+	public LinkedList<NotePos> notePosList = new LinkedList<PlayerMessage.NotePos>(); 
 	
 	/** Indicate the current note is played good,
 	 * 	play normal, missed, passed or not judged yet
@@ -118,8 +119,7 @@ public final class PlayerMessage {
 		// Reset hit
 		//iHit = PlayModel.HIT_NONE;
 		
-		// Reset the number of note position
-		notePosCount = 0;
+		notePosList.clear();
 
 		// Reset judge
 		noteJudged = JUDGED_NONE;

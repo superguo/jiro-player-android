@@ -5,6 +5,8 @@ package com.superguo.jiroplayer;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import android.os.SystemClock;
+
 import com.superguo.jiroplayer.TJAFormat.TJACommand;
 import com.superguo.jiroplayer.TJAFormat.TJACourse;
 import com.superguo.jiroplayer.TJANotation.Bar;
@@ -138,8 +140,9 @@ public final class PlayModel {
 			0.76		// 10
 		}
 	};
-	
-	public static final int FIXED_START_TIME_OFFSET = 2000;	// start after 2 seconds
+
+	/** Wait 2 seconds before we start */
+	public static final long PREP_TIME = 2000;
 	public static final int FIXED_END_TIME_OFFSET = 2000;		// 2 seconds after notes end 
 	public static final int BEAT_DIST = 64;	// pixel distance between two beats
 	
@@ -153,8 +156,6 @@ public final class PlayModel {
 	public static final int TIME_JUDGE_NORMAL 	= 150;
 	public static final int TIME_JUDGE_MISSED 	= 217;
 
-	/** Wait 2 seconds before we start */
-	public static final long PREP_TIME = 2000;
 	
 	private static final int SCORE_INDEX_NOT_GGT	= 0;
 	private static final int SCORE_INDEX_GGT	 	= 1;
@@ -191,14 +192,15 @@ public final class PlayModel {
 	private int mScoreDiff;
 	private int[] mGaugePerNote = new int[3];
 	private int[][] mScorePerNote = new int[2][3];
-	private SectionStat mSectionStat = new SectionStat();
-	
+	private SectionStat mSectionStat;
+	/** Indicate a new #SECION is arranged before next notation	 */
+	private boolean mIsSectionArranging;
 
 	/** The adjusted offset time before first bar begins.
 	 * In milliseconds.
 	 * It can be positive or negative.
 	 */
-	private long mStartOffsetTimeMillis;
+	private long mStartTimeMillis;
 	
 	/** The end time (when last bar is just passed) in milliseconds
 	 */
@@ -215,8 +217,11 @@ public final class PlayModel {
 //	private PlayPreprocessor mPreprocessor = new PlayPreprocessor();
 	
 	private String mPlayTimeError = "";
+	private int mCurrentBarIndex;
+	private Bar[] mCurrentBranch;
+	private long mLastOffset;
 	
-//	// private SectionStat iSectionStat = new SectionStat();
+	
 //
 //	static final class PreprocessedNote {
 //		/**
@@ -322,24 +327,49 @@ public final class PlayModel {
 		mScorePerNote[SCORE_INDEX_GGT][GAUGE_OR_SCORE_INDEX_HALF] = ((mScoreInit / 10) >> 1) * 10;
 
 		mSectionStat.reset(); // Reset the SECTION statistics
-//		mPreprocessor.reset(mCourse.BPM); // reset preprocessor values
+
+		mIsSectionArranging = mNotation.easyBranch == null ? false : true;
+		mCurrentBarIndex = 0;
+		mCurrentBranch = mNotation.normalBranch;
 
 		return mPlayerMessage;
 	}
 
-//	public final void start() {
-//		mStartOffsetTimeMillis = FIXED_START_TIME_OFFSET
-//				+ (int) (mTJA.offset * 1000);
-//		mEndTimeMillis = 0;
-//		mLastEventTimeMillis = 0;
-//		while (PlayPreprocessor.PROCESS_RESULT_OK == tryPreprocessNextBar())
-//			;
-//
-//		mPlayerMessage.notePosCount = translateNotePos(
-//				mPlayerMessage.notePosArray, -mStartOffsetTimeMillis * 1000,
-//				mBars, mLastPlayingBarIndex);
-//	}
+	private void emitSomeNotePos() {
+		// TODO Emit positions of notes of a bar or more
+		// into the mPlayMessage.notePosList
+	}
+	
+	public final void start() {
+		mStartTimeMillis = SystemClock.uptimeMillis();
+		mEndTimeMillis = 0;
+		mLastOffset = 0;
+		
+//		mPlayerMessage.notePosCount = 0;
 
+//		mPlayerMessage.notePosCount = translateNotePos(
+//				mPlayerMessage.notePosArray, -mStartTimeMillis * 1000,
+//				mBars, mLastPlayingBarIndex);
+	}
+
+	/**
+	 * 
+	 * @param aTimeMillisSinceStarted
+	 *            The time in milliseconds since start() is called
+	 * @param aHit
+	 *            one of HIT_NONE, HIT_FACE and HIT_SIDE
+	 * @return true if and only if the playing is not finished.
+	 */
+	public final boolean onEvent(long eventTimeMillis, int hit) {
+		long currentOffset = eventTimeMillis - mStartTimeMillis;
+		assert currentOffset>=0;
+		// TODO handles if mIsSectionArranging is true
+		// TODO handles all commands until we reach a noteBar or the end  
+		
+		mLastOffset = currentOffset;
+		// TODO tell whether we reach the end
+		return true;
+	}
 //	/**
 //	 * 
 //	 * @param aTimeMillisSinceStarted

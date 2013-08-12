@@ -8,7 +8,7 @@ public class PlayLayout implements Cloneable
 	public static final int SCREEN_WIDTH = 512;
 	public static final int MTAIKO_WIDTH = 94;
 	public static final int NOTE_SIZE = 48;
-	public static final int SCROLL_WIDTH =
+	public static final int SCROLL_BAND_WIDTH =
 		PlayLayout.SCREEN_WIDTH - PlayLayout.MTAIKO_WIDTH - PlayLayout.NOTE_SIZE;
 	public int MTaikoY = 90;
 	public int scrollFieldHeight=56;

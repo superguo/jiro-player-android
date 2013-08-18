@@ -2,6 +2,8 @@ package com.superguo.jiroplayer;
 
 import java.util.ArrayList;
 
+import android.util.Log;
+
 import com.superguo.jiroplayer.TJAFormat.TJACommand;
 import com.superguo.jiroplayer.TJAFormat.TJACourse;
 import com.superguo.jiroplayer.TJANotation.Bar;
@@ -10,7 +12,7 @@ import com.superguo.jiroplayer.TJANotation.NoteBar;
 import com.superguo.jiroplayer.TJANotation.StartBranchCommand;
 
 public class TJANotationCompiler {
-
+	private static final String TAG = "TJANotationCompiler";
 	public static final int NOTATION_INDEX_SINGLE = 0;
 	public static final int NOTATION_INDEX_P1     = 1;
 	public static final int NOTATION_INDEX_P2     = 2;
@@ -18,10 +20,12 @@ public class TJANotationCompiler {
 	private static final int BRANCH_INDEX_NORMAL = 0;
 	private static final int BRANCH_INDEX_EASY   = 1;
 	private static final int BRANCH_INDEX_MASTER   = 2;
+	
 	private TJANotation mNotation;
 	private TJAFormat mTja;
 	private TJACommand[] mNotationCommands;
-	private long mPrepTimeMillis;
+	private long mStartWaitTimeMillis;
+	private long mEndWaitTimeMillis;
 	private TJACourse mCourse;
 	private int mBeatDist;
 	private int mScrollBandLeft;
@@ -56,9 +60,11 @@ public class TJANotationCompiler {
 	 *            The index of the notation to compile. The index is one of
 	 *            {@link #NOTATION_INDEX_SINGLE}, {@link #NOTATION_INDEX_P1} or
 	 *            {@link #NOTATION_INDEX_P2}
-	 * @param prepTimeMillis
+	 * @param startWaitTimeMillis
 	 *            The time to wait before the notation or music (choose the
 	 *            earlier) starts to scroll.
+	 * @param endWaitTimeMillis
+	 *            The time to wait after notation ends
 	 * @param beatDist
 	 *            The distance between two 16th tja notes in standard scrolling
 	 *            speed, which also equals the diameter of one tja note
@@ -71,7 +77,7 @@ public class TJANotationCompiler {
 	 * @return
 	 */
 	public TJANotation compile(TJAFormat tja, int courseIndex,
-			int notationIndex, long prepTimeMillis, int beatDist,
+			int notationIndex, long startWaitTimeMillis, long endWaitTimeMillis, int beatDist,
 			int scrollBandLeft, int scrollBandRight, int targetNoteCenter) {
 		mCourse = tja.courses[courseIndex];
 		if (mCourse == null) {
@@ -86,7 +92,8 @@ public class TJANotationCompiler {
 		mNotation = new TJANotation();
 		mTja = tja;
 		mNotationCommands = notationCommands;
-		mPrepTimeMillis = prepTimeMillis;
+		mStartWaitTimeMillis = startWaitTimeMillis;
+		mEndWaitTimeMillis = endWaitTimeMillis;
 		mBeatDist = beatDist;
 		mScrollBandLeft = scrollBandLeft;
 		mScrollBandRight = scrollBandRight;
@@ -98,10 +105,10 @@ public class TJANotationCompiler {
 	private void doCompile() {
 		if (mTja.offset<0) {
 			// If the music starts earlier than the notation
-			mNotation.musicStartTimeMillis = mPrepTimeMillis;
+			mNotation.musicStartTimeMillis = mStartWaitTimeMillis;
 		} else {
 			// If the music starts later than the notation - we should avoid this case
-			mNotation.musicStartTimeMillis = mPrepTimeMillis + Math.round(mTja.offset * 1000);
+			mNotation.musicStartTimeMillis = mStartWaitTimeMillis + Math.round(mTja.offset * 1000);
 		}
 		boolean hasBranch = mCourse.hasBranch;
 
@@ -111,10 +118,10 @@ public class TJANotationCompiler {
 			ArrayList<TJANotation.Bar> easyBranch = compileBranch(BRANCH_INDEX_EASY);
 			ArrayList<TJANotation.Bar> masterBranch = compileBranch(BRANCH_INDEX_MASTER);
 			
-			int numBars = normalBranch.size();
-			for (int i=0; i<numBars; ++i) {
-				// TODO Check all sub-branches' duration consistency 
-			}
+//			int numBars = normalBranch.size();
+//			for (int i=0; i<numBars; ++i) {
+//				 // Check all sub-branches' duration consistency 
+//			}
 			mNotation.normalBranch = (Bar[]) normalBranch.toArray();
 			mNotation.easyBranch   = (Bar[]) easyBranch.toArray();
 			mNotation.masterBranch = (Bar[]) masterBranch.toArray();
@@ -172,10 +179,10 @@ public class TJANotationCompiler {
 		
 		if (mTja.offset<0) {
 			// If the music starts earlier than the notation
-			firstBarBeatTime = mPrepTimeMillis - Math.round(mTja.offset*1000);
+			firstBarBeatTime = mStartWaitTimeMillis - Math.round(mTja.offset*1000);
 		} else {
 			// If the music starts later than the notation - we should avoid this case
-			firstBarBeatTime = mPrepTimeMillis;
+			firstBarBeatTime = mStartWaitTimeMillis;
 		}
 		
 		/** The time offset of the beginning of the current note bar */
@@ -500,7 +507,15 @@ public class TJANotationCompiler {
 			
 			branch.add(bar);
 		}
-		
+		long endTimeMillis = (long)barBeatTime + mEndWaitTimeMillis;
+		if (mNotation.endTimeMillis == 0) {
+			mNotation.endTimeMillis = endTimeMillis;
+		} else if (mNotation.endTimeMillis != endTimeMillis) {
+			Log.w(TAG, "Inconsistent branch duration");
+			if (mNotation.endTimeMillis < endTimeMillis) {
+				mNotation.endTimeMillis = endTimeMillis;
+			}
+		}
 		return branch;
 	}
 

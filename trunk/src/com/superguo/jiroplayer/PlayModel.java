@@ -141,9 +141,11 @@ public final class PlayModel {
 		}
 	};
 
-	/** Wait 2 seconds before we start */
-	public static final long PREP_TIME = 2000;
-	public static final int FIXED_END_TIME_OFFSET = 2000;		// 2 seconds after notes end 
+	/** The time to wait before we start */
+	public static final long START_WAIT_TIME = 2000;
+	
+	/** The time to wait after the whole notation ends */
+	public static final int END_WAIT_TIME = 2000; 
 	public static final int BEAT_DIST = 64;	// pixel distance between two beats
 	
 	public static final int HIT_NONE = 0;
@@ -218,6 +220,7 @@ public final class PlayModel {
 	
 	private String mPlayTimeError = "";
 	private int mCurrentBarIndex;
+	private int mNextBarIndex;
 	private Bar[] mCurrentBranch;
 	private long mLastOffset;
 	
@@ -302,7 +305,8 @@ public final class PlayModel {
 		mNotation = compiler.compile(aTJA,
 				courseIndex,
 				notationIndex,
-				PREP_TIME,
+				START_WAIT_TIME,
+				END_WAIT_TIME,
 				PlayLayout.NOTE_SIZE,
 				PlayLayout.MTAIKO_WIDTH	+ PlayLayout.NOTE_SIZE,
 				PlayLayout.SCREEN_WIDTH,
@@ -329,8 +333,22 @@ public final class PlayModel {
 		mSectionStat.reset(); // Reset the SECTION statistics
 
 		mIsSectionArranging = mNotation.easyBranch == null ? false : true;
+		
 		mCurrentBarIndex = 0;
 		mCurrentBranch = mNotation.normalBranch;
+		
+		// Fill actionNoteBar and nextActionNoteBar
+		for (Bar bar : mCurrentBranch) {
+			if (bar.isNoteBar) {
+				if (mPlayerMessage.actionNoteBar==null) {
+					mPlayerMessage.actionNoteBar = bar.noteBar;
+					mPlayerMessage.actionNoteIndex = 0;
+				} else {
+					mPlayerMessage.nextActionNoteBar = bar.noteBar;
+					break;
+				}
+			}
+		}
 
 		return mPlayerMessage;
 	}
@@ -340,8 +358,8 @@ public final class PlayModel {
 		// into the mPlayMessage.notePosList
 	}
 	
-	public final void start() {
-		mStartTimeMillis = SystemClock.uptimeMillis();
+	public final void start(long startTimeMillis) {
+		mStartTimeMillis = startTimeMillis;
 		mEndTimeMillis = 0;
 		mLastOffset = 0;
 		
@@ -354,9 +372,9 @@ public final class PlayModel {
 
 	/**
 	 * 
-	 * @param aTimeMillisSinceStarted
-	 *            The time in milliseconds since start() is called
-	 * @param aHit
+	 * @param eventTimeMillis
+	 *            The time in milliseconds when hit event occurs
+	 * @param hit
 	 *            one of HIT_NONE, HIT_FACE and HIT_SIDE
 	 * @return true if and only if the playing is not finished.
 	 */

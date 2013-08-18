@@ -3,6 +3,7 @@ package com.superguo.jiroplayer;
 import java.util.LinkedList;
 
 import com.superguo.jiroplayer.TJAFormat.TJACourse;
+import com.superguo.jiroplayer.TJANotation.NoteBar;
 
 /** PlayModel's publicly visible data are all in this class
  * 
@@ -75,7 +76,20 @@ public final class PlayerMessage {
 	 */
 	//public int iHit;
 
-	public LinkedList<NotePos> notePosList = new LinkedList<PlayerMessage.NotePos>(); 
+//	public LinkedList<NotePos> notePosList = new LinkedList<PlayerMessage.NotePos>(); 
+
+	/** The action note bar is the one that appears in the screen first. */
+	public NoteBar actionNoteBar;
+
+	/** The index of the nearest coming note that is not hit or missed or broken yet. */
+	public int actionNoteIndex;
+
+	/**
+	 * The next action note bar that immediately after the action note bar. It
+	 * may be null.
+	 */
+	public NoteBar nextActionNoteBar;
+	
 	
 	/** Indicate the current note is played good,
 	 * 	play normal, missed, passed or not judged yet
@@ -116,10 +130,14 @@ public final class PlayerMessage {
 		
 		gauge = 0;
 
+		actionNoteBar = null;
+		actionNoteIndex = 0;
+		nextActionNoteBar = null;
+		
 		// Reset hit
 		//iHit = PlayModel.HIT_NONE;
 		
-		notePosList.clear();
+//		notePosList.clear();
 
 		// Reset judge
 		noteJudged = JUDGED_NONE;

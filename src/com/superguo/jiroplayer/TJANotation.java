@@ -52,6 +52,9 @@ public final class TJANotation {
 	
 	/** The start time for the music to play since the beginning of the game */
 	public long musicStartTimeMillis;
+	
+	/** The end time */
+	public long endTimeMillis;
 
 	/** The normal branch for branched notation; otherwise it is the only branch */
 	public Bar[] normalBranch;

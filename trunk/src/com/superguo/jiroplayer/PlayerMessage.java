@@ -1,7 +1,5 @@
 package com.superguo.jiroplayer;
 
-import java.util.LinkedList;
-
 import com.superguo.jiroplayer.TJAFormat.TJACourse;
 import com.superguo.jiroplayer.TJANotation.NoteBar;
 
@@ -11,19 +9,20 @@ import com.superguo.jiroplayer.TJANotation.NoteBar;
  *
  */
 public final class PlayerMessage {
-	/** Contain moving notes only 
-	 * So notes with type of
-	 * NOTE_START_ROLLING_BALOON or
-	 * NOTE_START_ROLLING_POTATO
-	 * are contained only when it is not in playing(rolling)
-	 */
-	public static final class NotePos {
-		public int noteValue;
-		public int notePos;
-	}
+//	/** Contain moving notes only 
+//	 * So notes with type of
+//	 * NOTE_START_ROLLING_BALOON or
+//	 * NOTE_START_ROLLING_POTATO
+//	 * are contained only when it is not in playing(rolling)
+//	 */
+//	public static final class NotePos {
+//		public int noteValue;
+//		public int notePos;
+//	}
+//	
+//	public static final int MAX_NOTE_POS 	= 64;
 	
-	public static final int MAX_NOTE_POS 	= 64;
-	
+
 	/** The note is not judged yet	 */
 	public static final int JUDGED_NONE 	= 0;
 	
@@ -38,11 +37,8 @@ public final class PlayerMessage {
 	public static final int JUDGED_MISSED 	= 3;
 	
 	/** The note is not hit within TIME_JUDGE_MISSED */
-	public static final int JUDGED_BREAK 	= 4;
-	
-	/**  */
-	public static final int JUDGED_MASK_SPECIAL = 0x10;
-	
+	public static final int JUDGED_BAD	 	= 4;
+
 	public static final int SPECIAL_ROLLING_COUNT_BALLOON_FINISHED 	= -1;
 	public static final int SPECIAL_ROLLING_COUNT_BALLOON_FAILED 	= -2;
 	public static final int SPECIAL_ROLLING_COUNT_POTATO_FINISHED 	= -3;
@@ -60,14 +56,14 @@ public final class PlayerMessage {
 	public int numMaxCombos;
 	
 	/** The number of NORMAL notes */
-	public int numNormalNotes;
+	public int numBeatedNormalNotes;
 	
 	/** The number of GOOD notes */
-	public int numGoodNotes;
-	
-	/** The number of MISSED+BREAK+NORMAL+GOOD notes */
-	public int numTotalNotes;
-	
+	public int numBeatedGoodNotes;
+
+	/** The number of BAD+MISSED notes */
+	public int numMissedOrBadNotes;
+
 	/** The number of all rolled */
 	public int numTotalRolled;
 
@@ -90,6 +86,8 @@ public final class PlayerMessage {
 	 */
 	public NoteBar nextActionNoteBar;
 	
+	/** The note beated */
+	public int beatedNote;
 	
 	/** Indicate the current note is played good,
 	 * 	play normal, missed, passed or not judged yet
@@ -99,6 +97,7 @@ public final class PlayerMessage {
 	
 	/** Current branch */
 	public int branch;
+	
 	public boolean isGGT;
 	
 	/**
@@ -156,6 +155,6 @@ public final class PlayerMessage {
 		rollingCount = 0;
 
 		// Reset some counters
-		numMaxCombos = numNormalNotes = numGoodNotes = numTotalNotes = numTotalRolled = 0;
+		numMaxCombos = numBeatedNormalNotes = numBeatedGoodNotes = numMissedOrBadNotes = numTotalRolled = 0;
 	}
 }

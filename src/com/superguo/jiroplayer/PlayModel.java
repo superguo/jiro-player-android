@@ -19,11 +19,17 @@ public final class PlayModel {
 	public static final int NOTE_SIDE 			= 2;
 	public static final int NOTE_BIG_FACE 		= 3;
 	public static final int NOTE_BIG_SIDE 		= 4;
-	public static final int NOTE_START_ROLLING_LENDA 		= 5;
-	public static final int NOTE_START_ROLLING_BIG_LENDA 	= 6;
-	public static final int NOTE_START_ROLLING_BALOON		= 7;
-	public static final int NOTE_START_ROLLING_POTATO		= 9;
+	public static final int NOTE_START_ROLLING_BAR 		= 5;
+	public static final int NOTE_START_ROLLING_BIG_BAR 	= 6;
+	public static final int NOTE_START_ROLLING_BALLOON	= 7;
+	public static final int NOTE_START_ROLLING_POTATO	= 9;
 	public static final int NOTE_STOP_ROLLING	= 8;
+
+	public static final int BEAT_NOTE_NONE     = 0;
+	public static final int BEAT_NOTE_FACE     = 1;
+	public static final int BEAT_NOTE_BIG_FACE = 2;
+	public static final int BEAT_NOTE_SIDE 	   = 3;
+	public static final int BEAT_NOTE_BIG_SIDE = 4;
 
 	public static final int BRANCH_NONE			= 0;
 	public static final int BRANCH_NORMAL		= 1;
@@ -137,7 +143,7 @@ public final class PlayModel {
 			0.69,	// 7
 			0.69,	// 8
 			0.77,	// 9
-			0.76		// 10
+			0.76	// 10
 		}
 	};
 
@@ -158,7 +164,6 @@ public final class PlayModel {
 	public static final int TIME_JUDGE_NORMAL 	= 150;
 	public static final int TIME_JUDGE_MISSED 	= 217;
 
-	
 	private static final int SCORE_INDEX_NOT_GGT	= 0;
 	private static final int SCORE_INDEX_GGT	 	= 1;
 	private static final int GAUGE_OR_SCORE_INDEX_HALF 	= 0;
@@ -318,9 +323,9 @@ public final class PlayModel {
 //		mLastPlayingNoteIndex = 0;
 		mRollingBaloonIndex = -1;
 		float totalScoringNotes;
-		AtomicInteger totalGaugeRef = new AtomicInteger();
-		totalScoringNotes = computeScoringNotesAndGauge(mNotation, totalGaugeRef);
-		resetGauge(totalGaugeRef.get()); // Reset iGaugePerNote
+		AtomicInteger totalGaugeNotesRef = new AtomicInteger();
+		totalScoringNotes = computeScoringNotesAndGaugeNotes(mNotation, totalGaugeNotesRef);
+		resetGauge(totalGaugeNotesRef.get()); // Reset iGaugePerNote
 		resetScores(totalScoringNotes); // Reset the score info
 		mScorePerNote[SCORE_INDEX_NOT_GGT][GAUGE_OR_SCORE_INDEX_FULL] = mScoreInit;
 		mScorePerNote[SCORE_INDEX_GGT][GAUGE_OR_SCORE_INDEX_FULL] = (int) (mScoreInit * 1.2f) / 10 * 10;
@@ -867,11 +872,11 @@ public final class PlayModel {
 //
 //	}
 
-	private final void resetGauge(int totalGauge) {
+	private final void resetGauge(int totalGaugeNotes) {
 		int course = mCourse.course;
 		int level = Math.min(mCourse.level, MAX_LEVEL_OF[course]);
 
-		int gauge = (int) (MAX_GAUGE / (MAX_GAUGE_RATES[course][level] * totalGauge));
+		int gauge = (int) (MAX_GAUGE / (MAX_GAUGE_RATES[course][level] * totalGaugeNotes));
 
 		if ((gauge & 1) == 1)
 			--gauge;
@@ -910,10 +915,11 @@ public final class PlayModel {
 	 * <li> Doubled if the note is "big" </li>
 	 * </ul>
 	 * @param notation
-	 * @param gaugeRef
+	 * @param totalGaugeNotesRef
 	 * @return
 	 */
-	private static final float computeScoringNotesAndGauge(TJANotation notation, AtomicInteger gaugeRef) {
+	private static final float computeScoringNotesAndGaugeNotes(
+			TJANotation notation, AtomicInteger totalGaugeNotesRef) {
 		TJANotation.Bar[] maxBranch = notation.normalBranch;
 		float maxScoringNotes = computeScoringNotes(maxBranch);
 		if (notation.easyBranch!=null) {
@@ -928,7 +934,7 @@ public final class PlayModel {
 				maxBranch = notation.masterBranch;
 			}
 		}
-		gaugeRef.set(computeGaugeNotes(maxBranch));
+		totalGaugeNotesRef.set(computeGaugeNotes(maxBranch));
 		return maxScoringNotes;
 	}
 	

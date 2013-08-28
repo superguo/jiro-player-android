@@ -22,28 +22,6 @@ public final class PlayerMessage {
 //	
 //	public static final int MAX_NOTE_POS 	= 64;
 	
-
-	/** The note is not judged yet	 */
-	public static final int JUDGED_NONE 	= 0;
-	
-	/** The note is hit correctly within TIME_JUDGE_GOOD */
-	public static final int JUDGED_GOOD 	= 1;
-	
-	/** The note is hit correctly between TIME_JUDGE_GOOD and TIME_JUDGE_NORMAL */
-	public static final int JUDGED_NORMAL 	= 2;
-	
-	/** The note is hit correctly between TIME_JUDGE_NORMAL and TIME_JUDGE_MISSED 
-	 * or the note is hit incorrectly within TIME_JUDGE_NORMAL */
-	public static final int JUDGED_MISSED 	= 3;
-	
-	/** The note is not hit within TIME_JUDGE_MISSED */
-	public static final int JUDGED_BAD	 	= 4;
-
-	public static final int SPECIAL_ROLLING_COUNT_BALLOON_FINISHED 	= -1;
-	public static final int SPECIAL_ROLLING_COUNT_BALLOON_FAILED 	= -2;
-	public static final int SPECIAL_ROLLING_COUNT_POTATO_FINISHED 	= -3;
-	public static final int SPECIAL_ROLLING_COUNT_POTATO_FAILED 	= -4;
-
 	public int course;
 	public int score;
 	public int gauge;
@@ -117,7 +95,7 @@ public final class PlayerMessage {
 	 * after the "rolling end" animation just starts to draw
 	 * 
 	 */
-	public int rollingCount;	
+	public int rollingCount;
 	
 	public void reset(TJACourse aCourse) {
 		// Reset current course
@@ -139,7 +117,7 @@ public final class PlayerMessage {
 //		notePosList.clear();
 
 		// Reset judge
-		noteJudged = JUDGED_NONE;
+		noteJudged = PlayModel.JUDGED_NONE;
 		
 		// Reset branch state
 		if (aCourse.hasBranch)

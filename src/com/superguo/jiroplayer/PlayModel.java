@@ -5,12 +5,15 @@ package com.superguo.jiroplayer;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import android.os.SystemClock;
-
 import com.superguo.jiroplayer.TJAFormat.TJACommand;
 import com.superguo.jiroplayer.TJAFormat.TJACourse;
 import com.superguo.jiroplayer.TJANotation.Bar;
 import com.superguo.jiroplayer.TJANotation.Note;
+import com.superguo.jiroplayer.TJANotation.StartBranchCommand;
+import com.superguo.jiroplayer.TJANotation.StartBranchCommand.BranchJudge;
+import com.superguo.jiroplayer.TJANotation.StartBranchCommand.BranchJudgePrecision;
+import com.superguo.jiroplayer.TJANotation.StartBranchCommand.BranchJudgeRoll;
+import com.superguo.jiroplayer.TJANotation.StartBranchCommand.BranchJudgeScore;
 
 public final class PlayModel {
 	public static final int NOTE_BARLINE		= -1;
@@ -36,13 +39,57 @@ public final class PlayModel {
 	public static final int BRANCH_EASY			= 2;
 	public static final int BRANCH_MASTER		= 3;
 	
-	public static final int ROLLING_NONE_LENDA		= -1;	// Just in convenience to display 
-	public static final int ROLLING_NONE_BIG_LENDA	= -2;	// Just in convenience to display
+//	public static final int ROLLING_NONE_LENDA		= -1;	// Just in convenience to display 
+//	public static final int ROLLING_NONE_BIG_LENDA	= -2;	// Just in convenience to display
 	public static final int ROLLING_NONE			= 0;
 	public static final int ROLLING_LENDA_BAR		= 1;
 	public static final int ROLLING_BIG_LENDA_BAR	= 2;
 	public static final int ROLLING_BALLOON			= 3;
 	public static final int ROLLING_POTATO			= 4;
+
+	public static final int SPECIAL_ROLLING_COUNT_BALLOON_FINISHED 	= -1;
+	public static final int SPECIAL_ROLLING_COUNT_BALLOON_FAILED 	= -2;
+	public static final int SPECIAL_ROLLING_COUNT_POTATO_FINISHED 	= -3;
+	public static final int SPECIAL_ROLLING_COUNT_POTATO_FAILED 	= -4;
+
+	/** The time to wait before we start */
+	public static final long START_WAIT_TIME = 2000;
+	
+	/** The time to wait after the whole notation ends */
+	public static final int END_WAIT_TIME = 2000; 
+	public static final int BEAT_DIST = 64;	// pixel distance between two beats
+	
+	public static final int HIT_NONE = 0;
+	public static final int HIT_FACE = 1;
+	public static final int HIT_SIDE = 2;
+	
+//	public static final int MAX_PREPROCESSED_BAR = 3;
+	
+	public static final int TIME_JUDGE_GOOD 	= 50;
+	public static final int TIME_JUDGE_NORMAL 	= 150;
+	public static final int TIME_JUDGE_MISSED 	= 217;
+
+	private static final int SCORE_INDEX_NOT_GGT	= 0;
+	private static final int SCORE_INDEX_GGT	 	= 1;
+	private static final int GAUGE_OR_SCORE_INDEX_HALF 	= 0;
+	private static final int GAUGE_OR_SCORE_INDEX_FULL 	= 1;
+	private static final int GAUGE_OR_SCORE_INDEX_TWICE = 2;
+
+	/** The note is not judged yet	 */
+	public static final int JUDGED_NONE 	= 0;
+	
+	/** The note is hit correctly within TIME_JUDGE_GOOD */
+	public static final int JUDGED_GOOD 	= 1;
+	
+	/** The note is hit correctly between TIME_JUDGE_GOOD and TIME_JUDGE_NORMAL */
+	public static final int JUDGED_NORMAL 	= 2;
+	
+	/** The note is hit correctly between TIME_JUDGE_NORMAL and TIME_JUDGE_MISSED 
+	 * or the note is hit incorrectly within TIME_JUDGE_NORMAL */
+	public static final int JUDGED_MISSED 	= 3;
+	
+	/** The note is not hit within TIME_JUDGE_MISSED */
+	public static final int JUDGED_BAD	 	= 4;
 
 	/** The maximum level of 4 course */
 	public static final int MAX_LEVEL_OF[] = { 5, 7, 8, 10 };
@@ -147,29 +194,7 @@ public final class PlayModel {
 		}
 	};
 
-	/** The time to wait before we start */
-	public static final long START_WAIT_TIME = 2000;
 	
-	/** The time to wait after the whole notation ends */
-	public static final int END_WAIT_TIME = 2000; 
-	public static final int BEAT_DIST = 64;	// pixel distance between two beats
-	
-	public static final int HIT_NONE = 0;
-	public static final int HIT_FACE = 1;
-	public static final int HIT_SIDE = 2;
-	
-	public static final int MAX_PREPROCESSED_BAR = 3;
-	
-	public static final int TIME_JUDGE_GOOD 	= 50;
-	public static final int TIME_JUDGE_NORMAL 	= 150;
-	public static final int TIME_JUDGE_MISSED 	= 217;
-
-	private static final int SCORE_INDEX_NOT_GGT	= 0;
-	private static final int SCORE_INDEX_GGT	 	= 1;
-	private static final int GAUGE_OR_SCORE_INDEX_HALF 	= 0;
-	private static final int GAUGE_OR_SCORE_INDEX_FULL 	= 1;
-	private static final int GAUGE_OR_SCORE_INDEX_TWICE = 2;
-
 	// SECTION statistics
 	final class SectionStat {
 		int numRolled;
@@ -221,8 +246,6 @@ public final class PlayModel {
 //	private int mLastPlayingBarIndex;
 //	private int mLastPlayingNoteIndex;
 
-//	private PlayPreprocessor mPreprocessor = new PlayPreprocessor();
-	
 	private String mPlayTimeError = "";
 	private int mCurrentBarIndex;
 	private int mNextBarIndex;
@@ -230,75 +253,6 @@ public final class PlayModel {
 	private long mLastOffset;
 	
 	
-//
-//	static final class PreprocessedNote {
-//		/**
-//		 * The note type @see contance begins with NOTE_ The NOTE_NONE note is
-//		 * deleted after being parsed But it will become NOTE_NONE after being
-//		 * hit/missed/passed
-//		 */
-//		public int noteType;
-//
-//		/**
-//		 * The time offset of the note in milliseconds since beginning of its
-//		 * bar
-//		 */
-//		public short offsetTimeMillis;
-//
-//		/**
-//		 * The distance offset of the note in pixels since beginning of its bar
-//		 */
-//		public int offsetPos;
-//	}
-//	
-//	static final class Bar {
-//		/** The beginning time in microseconds since first bar.	 */
-//		public long offsetTimeMicros;
-//		
-//		/** Indicates whether it is pre-processed
-//		 * Will changed to false if this Bar has finished
-//		 * been played 
-//		 */
-//		public boolean preprocessed;
-//		
-//		/** All commands that cannot be pre-processed 
-//		 * fall here
-//		 */
-//		public TJACommand[] unprocessedCommand;
-//		
-//		/** The duration in microseconds */
-//		public long durationMicros;	
-//		
-//		/** The length in pixels */
-//		public int length;		
-//		
-//		/** The speed of one note in pixels per 1000 seconds */
-//		public int speed;
-//		
-//		/** Indicates if there is #BRANCHSTART before next bar */
-//		public boolean hasBranchStartNextBar;
-//		
-//		/** The processed notes */
-//		public PreprocessedNote[] notes = new PreprocessedNote[PlayerMessage.MAX_NOTE_POS];
-//		
-//		/** The number of compiled notes. The note 0 is omitted if not rolling */
-//		public int numPreprocessedNotes;
-//		
-//		public void addPreprocessedNote(int noteType, int origIndex, int origTotal)	{
-//			PreprocessedNote noteOffset = notes[numPreprocessedNotes++];
-//			noteOffset.noteType 	= noteType;
-//			noteOffset.offsetTimeMillis = (short) (durationMicros * origIndex / origTotal / 1000);
-//			noteOffset.offsetPos 	=  length * origIndex / origTotal;
-//		}
-//	}
-//
-//	// package private
-//	static final int nextIndexOfBar(int index) {
-//		++index;
-//		if (index == MAX_PREPROCESSED_BAR)
-//			index = 0;
-//		return index;
-//	}
 
 	public final PlayerMessage prepare(TJAFormat aTJA, int courseIndex, int notationIndex) {
 		mTJA = aTJA;
@@ -343,13 +297,16 @@ public final class PlayModel {
 		mCurrentBranch = mNotation.normalBranch;
 		
 		// Fill actionNoteBar and nextActionNoteBar
-		for (Bar bar : mCurrentBranch) {
-			if (bar.isNoteBar) {
+		for (int index=0; index<mCurrentBranch.length; ++index) {
+			
+			if (mCurrentBranch[index].isNoteBar) {
 				if (mPlayerMessage.actionNoteBar==null) {
-					mPlayerMessage.actionNoteBar = bar.noteBar;
+					mPlayerMessage.actionNoteBar = mCurrentBranch[index].noteBar;
 					mPlayerMessage.actionNoteIndex = 0;
-				} else {
-					mPlayerMessage.nextActionNoteBar = bar.noteBar;
+					int nextNoteBarIndex = nextNoteBarIndex(index, null, false);
+					if (nextNoteBarIndex != -1) {
+						mPlayerMessage.nextActionNoteBar = mCurrentBranch[nextNoteBarIndex].noteBar;
+					}
 					break;
 				}
 			}
@@ -386,12 +343,132 @@ public final class PlayModel {
 	public final boolean onEvent(long eventTimeMillis, int hit) {
 		long currentOffset = eventTimeMillis - mStartTimeMillis;
 		assert currentOffset>=0;
+		
+		TJANotation notaion = mNotation;
+		PlayerMessage playerMessage = mPlayerMessage;
+		
+		// Return false if we reach the end of notation plus the ending wait time
+		if (playerMessage.actionNoteBar == null
+				&& notaion.endTimeMillis >= currentOffset) {
+			return false;
+		}
 		// TODO handles if mIsSectionArranging is true
 		// TODO handles all commands until we reach a noteBar or the end  
 		
 		mLastOffset = currentOffset;
 		// TODO tell whether we reach the end
 		return true;
+	}
+	
+	/**
+	 * Computes the next note bar index of specified note bar index
+	 * 
+	 * @param index
+	 *            The specified note bar index next to which we want to compute
+	 * @param branchIndexRef
+	 *            The output reference of branch index of the result note bar
+	 * @param areBarNotesPassed
+	 *            Indicates whether the notes of the current bar are all passed.
+	 * @return
+	 */
+	private int nextNoteBarIndex(int index, IntegerRef branchIndexRef, boolean areBarNotesPassed) {
+		final int totalBars = mCurrentBranch.length;
+		// If the course has no branch
+		if ( ! mCourse.hasBranch ) {
+			safeSetIntegerRef(branchIndexRef, BRANCH_NORMAL);
+			for (;;) {
+				++index;
+				if (index >= totalBars) {
+					return -1;
+				}
+				if (mCurrentBranch[index].isNoteBar) {
+					return index;
+				}
+			}
+		}
+		// If the course has branches
+		for (;;) {
+			++index;
+			if (index >= totalBars) {
+				return -1;
+			}
+			Bar bar = mCurrentBranch[index];
+			if (bar.isNoteBar) {
+				safeSetIntegerRef(branchIndexRef, mPlayerMessage.branch);
+				return index;
+			}
+			if (bar.command.commandValue == TJANotation.COMMAND_STARTBRANCH) {
+				StartBranchCommand command = (StartBranchCommand) bar.command;
+				int branch = selectBranch(command, mSectionStat, areBarNotesPassed);
+				
+				switch (branch) {
+				case BRANCH_NONE:
+					safeSetIntegerRef(branchIndexRef, mPlayerMessage.branch);
+					return -1;
+				case BRANCH_NORMAL:
+					safeSetIntegerRef(branchIndexRef, BRANCH_NORMAL);
+					return command.normalIndex;
+				case BRANCH_EASY:
+					safeSetIntegerRef(branchIndexRef, BRANCH_EASY);
+					return command.easyIndex;
+				case BRANCH_MASTER:
+					safeSetIntegerRef(branchIndexRef, BRANCH_MASTER);
+					return command.masterIndex;
+				default:
+					assert false;
+				}
+			}
+		}
+	}
+
+	private static final int selectBranch(StartBranchCommand startBranchCommand,
+			SectionStat sectionStat, boolean areBarNotesPassed) {
+		// N < E < M
+		// Normal < Easy < Master !
+
+		int limitE, limitM, played;
+		BranchJudge branchJudge = startBranchCommand.branchJudge;
+		int judgeType = startBranchCommand.branchJudge.judgeType;
+		switch (judgeType) {
+		case TJANotation.BRANCH_JUDGE_ROLL:
+			limitE = ((BranchJudgeRoll)branchJudge).easyRollingCount;
+			limitM = ((BranchJudgeRoll)branchJudge).masterRollingCount;
+			played = sectionStat.numRolled;
+			break;
+
+		case TJANotation.BRANCH_JUDGE_SCORE:
+			limitE = ((BranchJudgeScore)branchJudge).easyScore;
+			limitM = ((BranchJudgeScore)branchJudge).masterScore;
+			played = sectionStat.score;
+			break;
+
+		case TJANotation.BRANCH_JUDGE_PRECISION:
+			limitE = (int) Math.ceil(sectionStat.precisionTotal
+					* ((BranchJudgePrecision) branchJudge).easyBeatPrecision);
+			limitM = (int) Math.ceil(sectionStat.precisionTotal
+					* ((BranchJudgePrecision) branchJudge).masterBeatPrecision);
+			played = sectionStat.precisionPlayed;
+			break;
+
+		default:
+			return BRANCH_NONE;
+		}
+
+		if (areBarNotesPassed) {
+			// Normal, Easy, Master!
+			if (played < limitE) {
+				return BRANCH_NORMAL;
+			} else if (played < limitM) {
+				return BRANCH_EASY;
+			} else {
+				return BRANCH_MASTER;
+			}
+		} else if (judgeType==TJANotation.BRANCH_JUDGE_ROLL || judgeType==TJANotation.BRANCH_JUDGE_SCORE){
+			if (played>=limitM) {
+				return BRANCH_MASTER;
+			}
+		}
+		return BRANCH_NONE;
 	}
 //	/**
 //	 * 
@@ -1054,46 +1131,10 @@ public final class PlayModel {
 //		return notePosCount;
 //	}
 
-	@SuppressWarnings("unused")
-	private static final int selectBranch(TJACommand startBranchCommand,
-			SectionStat aSectionStat) {
-		// N < E < M
-		// Normal < Easy < Master !
-
-		int args[] = startBranchCommand.args;
-		int limitE, limitM, played;
-		switch (args[0]) {
-		case TJAFormat.BRANCH_JUDGE_ROLL:
-			limitE = (int) Float.intBitsToFloat(args[1]);
-			limitM = (int) Float.intBitsToFloat(args[2]);
-			played = aSectionStat.numRolled;
-			break;
-
-		case TJAFormat.BRANCH_JUDGE_SCORE:
-			limitE = (int) Float.intBitsToFloat(args[1]);
-			limitM = (int) Float.intBitsToFloat(args[2]);
-			played = aSectionStat.score;
-			break;
-
-		case TJAFormat.BRANCH_JUDGE_PRECISION:
-			limitE = (int) Math.ceil((aSectionStat.precisionTotal * Float
-					.intBitsToFloat(args[1])));
-			limitM = (int) Math.ceil((aSectionStat.precisionTotal * Float
-					.intBitsToFloat(args[2])));
-			played = aSectionStat.precisionPlayed;
-			break;
-
-		default:
-			return BRANCH_NONE;
+	private static void safeSetIntegerRef(IntegerRef ref, int value) {
+		if (ref==null) {
+			return;
 		}
-
-		// Normal, Easy, Master!
-		if (played < limitE) {
-			return BRANCH_NORMAL;
-		} else if (played < limitM) {
-			return BRANCH_EASY;
-		} else {
-			return BRANCH_MASTER;
-		}
+		ref.value = value;
 	}
 }

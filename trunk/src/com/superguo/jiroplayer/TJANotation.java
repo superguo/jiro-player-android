@@ -73,10 +73,6 @@ public final class TJANotation {
 		 * the class cast consuming.  */
 		public boolean isNoteBar;
 		
-		/** The start time when the bar enters the center 
-		 * of the beat since the beginning of the game */
-		public long beatTimeMillis;
-
 		/** Not null if {@link #isNoteBar} is true; null if {@link #isNoteBar} is false */
 		public NoteBar noteBar;
 		
@@ -85,6 +81,10 @@ public final class TJANotation {
 	}
 	
 	public static final class NoteBar {
+		/** The start time when the bar enters the center 
+		 * of the beat since the beginning of the game */
+		public long beatTimeMillis;
+
 		/** The time when the bar appears in the screen 
 		 * to player, always earlier than beatTimeMillis */
 		public long appearTimeMillis;

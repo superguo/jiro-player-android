@@ -5,10 +5,10 @@ package com.superguo.jiroplayer;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.superguo.jiroplayer.TJAFormat.TJACommand;
 import com.superguo.jiroplayer.TJAFormat.TJACourse;
 import com.superguo.jiroplayer.TJANotation.Bar;
 import com.superguo.jiroplayer.TJANotation.Note;
+import com.superguo.jiroplayer.TJANotation.NoteBar;
 import com.superguo.jiroplayer.TJANotation.StartBranchCommand;
 import com.superguo.jiroplayer.TJANotation.StartBranchCommand.BranchJudge;
 import com.superguo.jiroplayer.TJANotation.StartBranchCommand.BranchJudgePrecision;
@@ -247,21 +247,21 @@ public final class PlayModel {
 //	private int mLastPlayingNoteIndex;
 
 	private String mPlayTimeError = "";
-	private int mCurrentBarIndex;
-	private int mNextBarIndex;
+	private int mActionNoteBarIndex;
+	private int mNextActionNoteBarIndex;
 	private Bar[] mCurrentBranch;
 	private long mLastOffset;
 	
 	
 
-	public final PlayerMessage prepare(TJAFormat aTJA, int courseIndex, int notationIndex) {
-		mTJA = aTJA;
+	public final PlayerMessage prepare(TJAFormat tja, int courseIndex, int notationIndex) {
+		mTJA = tja;
 		mCourse = mTJA.courses[courseIndex];
 		mPlayerMessage.reset(mCourse);
 		
 		// Compile and reset internal values
 		TJANotationCompiler compiler = new TJANotationCompiler();
-		mNotation = compiler.compile(aTJA,
+		mNotation = compiler.compile(tja,
 				courseIndex,
 				notationIndex,
 				START_WAIT_TIME,
@@ -293,8 +293,10 @@ public final class PlayModel {
 
 		mIsSectionArranging = mNotation.easyBranch == null ? false : true;
 		
-		mCurrentBarIndex = 0;
+		mActionNoteBarIndex = 0;
 		mCurrentBranch = mNotation.normalBranch;
+		
+		mNextActionNoteBarIndex = -1;
 		
 		// Fill actionNoteBar and nextActionNoteBar
 		for (int index=0; index<mCurrentBranch.length; ++index) {
@@ -303,12 +305,14 @@ public final class PlayModel {
 				if (mPlayerMessage.actionNoteBar==null) {
 					mPlayerMessage.actionNoteBar = mCurrentBranch[index].noteBar;
 					mPlayerMessage.actionNoteIndex = 0;
-					int nextNoteBarIndex = nextNoteBarIndex(index, null, false);
-					if (nextNoteBarIndex != -1) {
-						mPlayerMessage.nextActionNoteBar = mCurrentBranch[nextNoteBarIndex].noteBar;
+					mActionNoteBarIndex = index;
+					mNextActionNoteBarIndex = nextNoteBarIndex(index, null, false);
+					if (mNextActionNoteBarIndex != -1) {
+						mPlayerMessage.nextActionNoteBar = mCurrentBranch[mNextActionNoteBarIndex].noteBar;
 					}
 					break;
 				}
+				
 			}
 		}
 
@@ -342,22 +346,51 @@ public final class PlayModel {
 	 */
 	public final boolean onEvent(long eventTimeMillis, int hit) {
 		long currentOffset = eventTimeMillis - mStartTimeMillis;
-		assert currentOffset>=0;
+		if (currentOffset<mLastOffset) {
+			throw new IllegalStateException("Time rewinded");
+		}
 		
 		TJANotation notaion = mNotation;
 		PlayerMessage playerMessage = mPlayerMessage;
+		NoteBar actionNoteBar = playerMessage.actionNoteBar;
+		NoteBar nextActionNoteBar = playerMessage.nextActionNoteBar;
 		
 		// Return false if we reach the end of notation plus the ending wait time
-		if (playerMessage.actionNoteBar == null
-				&& notaion.endTimeMillis >= currentOffset) {
-			return false;
+		if (actionNoteBar == null) {
+			if (notaion.endTimeMillis >= currentOffset) {
+				return false;
+			} else {
+				return true;
+			}
 		}
+		
+		for (;;) {
+			// If the current note bar has no notes at all!
+			if (playerMessage.actionNoteBar.notes == null) {
+				if (nextActionNoteBar == null) {
+					throw new IllegalStateException("No notes in current bar and no next action bar");
+				}
+				if (currentOffset >= nextActionNoteBar.beatTimeMillis) {
+					walkToNextActionNoteBar();
+				} else {
+					break;
+				}
+			} else {
+				int index = playerMessage.actionNoteIndex;
+				// TODO
+			}
+		}
+
 		// TODO handles if mIsSectionArranging is true
 		// TODO handles all commands until we reach a noteBar or the end  
 		
 		mLastOffset = currentOffset;
 		// TODO tell whether we reach the end
 		return true;
+	}
+	
+	private void walkToNextActionNoteBar() {
+		// TODO Walks from actionBarIndex to nextActionNoteBarIndex
 	}
 	
 	/**

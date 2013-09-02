@@ -228,9 +228,9 @@ public class TJANotationCompiler {
 			
 			switch (oCmd.commandType) {
 			case TJAFormat.COMMAND_TYPE_NOTE: {
-				bar.beatTimeMillis = Math.round(barBeatTime + delay);
 				bar.isNoteBar = true;
 				NoteBar noteBar = bar.noteBar = new NoteBar();
+				noteBar.beatTimeMillis = Math.round(barBeatTime + delay);
 				noteBar.isBarLineOn = isBarLineOn;
 				double appearTimeMillis;
 				short[] xCoords;

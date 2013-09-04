@@ -14,19 +14,29 @@ import com.superguo.jiroplayer.TJANotation.StartBranchCommand.BranchJudge;
 import com.superguo.jiroplayer.TJANotation.StartBranchCommand.BranchJudgePrecision;
 import com.superguo.jiroplayer.TJANotation.StartBranchCommand.BranchJudgeRoll;
 import com.superguo.jiroplayer.TJANotation.StartBranchCommand.BranchJudgeScore;
+import static com.superguo.jiroplayer.TJANotation.NOTE_EMPTY;
+import static com.superguo.jiroplayer.TJANotation.NOTE_FACE;
+import static com.superguo.jiroplayer.TJANotation.NOTE_SIDE;
+import static com.superguo.jiroplayer.TJANotation.NOTE_BIG_FACE;
+import static com.superguo.jiroplayer.TJANotation.NOTE_BIG_SIDE;
+import static com.superguo.jiroplayer.TJANotation.NOTE_LENDA;
+import static com.superguo.jiroplayer.TJANotation.NOTE_BIG_LENDA;
+import static com.superguo.jiroplayer.TJANotation.NOTE_BALLOON;
+import static com.superguo.jiroplayer.TJANotation.NOTE_POTATO;
+import static com.superguo.jiroplayer.TJANotation.NOTE_ROLLING_END;
 
 public final class PlayModel {
-	public static final int NOTE_BARLINE		= -1;
-	public static final int NOTE_NONE 			= 0;
-	public static final int NOTE_FACE 			= 1;
-	public static final int NOTE_SIDE 			= 2;
-	public static final int NOTE_BIG_FACE 		= 3;
-	public static final int NOTE_BIG_SIDE 		= 4;
-	public static final int NOTE_START_ROLLING_BAR 		= 5;
-	public static final int NOTE_START_ROLLING_BIG_BAR 	= 6;
-	public static final int NOTE_START_ROLLING_BALLOON	= 7;
-	public static final int NOTE_START_ROLLING_POTATO	= 9;
-	public static final int NOTE_STOP_ROLLING	= 8;
+//	public static final int NOTE_BARLINE		= -1;
+//	public static final int NOTE_NONE 			= 0;
+//	public static final int NOTE_FACE 			= 1;
+//	public static final int NOTE_SIDE 			= 2;
+//	public static final int NOTE_BIG_FACE 		= 3;
+//	public static final int NOTE_BIG_SIDE 		= 4;
+//	public static final int NOTE_START_ROLLING_BAR 		= 5;
+//	public static final int NOTE_START_ROLLING_BIG_BAR 	= 6;
+//	public static final int NOTE_START_ROLLING_BALLOON	= 7;
+//	public static final int NOTE_START_ROLLING_POTATO	= 9;
+//	public static final int NOTE_STOP_ROLLING	= 8;
 
 	public static final int BEAT_NOTE_NONE     = 0;
 	public static final int BEAT_NOTE_FACE     = 1;
@@ -71,9 +81,21 @@ public final class PlayModel {
 
 	private static final int SCORE_INDEX_NOT_GGT	= 0;
 	private static final int SCORE_INDEX_GGT	 	= 1;
-	private static final int GAUGE_OR_SCORE_INDEX_HALF 	= 0;
-	private static final int GAUGE_OR_SCORE_INDEX_FULL 	= 1;
-	private static final int GAUGE_OR_SCORE_INDEX_TWICE = 2;
+	
+	/** Full gauge/scoring index */
+	private static final int GAUGE_OR_SCORE_INDEX_FULL 	= 0;
+
+	/** Half gauge/scoring index. */
+	private static final int GAUGE_OR_SCORE_INDEX_HALF 	= 1;
+
+	/** Twice gauge index. Not used in scoring */
+	private static final int GAUGE_INDEX_TWICE = 2;
+	
+	private static final int LENDA_SCORE_INDEX = 0;
+	
+	private static final int BIG_LENDA_SCORE_INDEX = 1;
+	
+	private static final int COMPLETE_LENDA_SCORE_INDEX = 2;
 
 	/** The note is not judged yet	 */
 	public static final int JUDGED_NONE 	= 0;
@@ -193,7 +215,11 @@ public final class PlayModel {
 			0.76	// 10
 		}
 	};
-
+	
+	static final int[][] SCORE_PER_LENDA_NOTE = {
+		{ 300, 430, 3000 },	// Not in GGT
+		{ 450, 640, 5000 }	// In GGT
+	};
 	
 	// SECTION statistics
 	final class SectionStat {
@@ -284,8 +310,8 @@ public final class PlayModel {
 		mScorePerNote[SCORE_INDEX_NOT_GGT][GAUGE_OR_SCORE_INDEX_FULL] = mScoreInit;
 		mScorePerNote[SCORE_INDEX_GGT][GAUGE_OR_SCORE_INDEX_FULL] = (int) (mScoreInit * 1.2f) / 10 * 10;
 		
-		mScorePerNote[SCORE_INDEX_NOT_GGT][GAUGE_OR_SCORE_INDEX_TWICE] = mScoreInit << 1;
-		mScorePerNote[SCORE_INDEX_GGT][GAUGE_OR_SCORE_INDEX_TWICE] = (int) (mScoreInit * 2.4f) / 10 * 10;
+		mScorePerNote[SCORE_INDEX_NOT_GGT][GAUGE_INDEX_TWICE] = mScoreInit << 1;
+		mScorePerNote[SCORE_INDEX_GGT][GAUGE_INDEX_TWICE] = (int) (mScoreInit * 2.4f) / 10 * 10;
 		mScorePerNote[SCORE_INDEX_NOT_GGT][GAUGE_OR_SCORE_INDEX_HALF] = ((mScoreInit / 10) >> 1) * 10;
 		mScorePerNote[SCORE_INDEX_GGT][GAUGE_OR_SCORE_INDEX_HALF] = ((mScoreInit / 10) >> 1) * 10;
 
@@ -364,9 +390,11 @@ public final class PlayModel {
 			}
 		}
 		
+		Note[] actionNotes = actionNoteBar.notes;
+		
 		for (;;) {
 			// If the current note bar has no notes at all!
-			if (playerMessage.actionNoteBar.notes == null) {
+			if (actionNotes == null) {
 				if (nextActionNoteBar == null) {
 					throw new IllegalStateException("No notes in current bar and no next action bar");
 				}
@@ -377,6 +405,9 @@ public final class PlayModel {
 				}
 			} else {
 				int index = playerMessage.actionNoteIndex;
+				switch (actionNotes[index].noteValue) {
+				
+				}
 				// TODO
 			}
 		}
@@ -993,7 +1024,7 @@ public final class PlayModel {
 
 		mGaugePerNote[GAUGE_OR_SCORE_INDEX_FULL] = gauge;
 		mGaugePerNote[GAUGE_OR_SCORE_INDEX_HALF] = gauge >> 1;
-		mGaugePerNote[GAUGE_OR_SCORE_INDEX_TWICE] = gauge << 1;
+		mGaugePerNote[GAUGE_INDEX_TWICE] = gauge << 1;
 	}
 
 	private final void resetScores(float totalScoringNotes) {

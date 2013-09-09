@@ -91,11 +91,15 @@ public final class PlayModel {
 	/** Twice gauge index. Not used in scoring */
 	private static final int GAUGE_INDEX_TWICE = 2;
 	
-	private static final int LENDA_SCORE_INDEX = 0;
+	private static final int LENDA_SCORE_INDEX_NORMAL = 0;
 	
-	private static final int BIG_LENDA_SCORE_INDEX = 1;
+	private static final int LENDA_SCORE_INDEX_BIG = 1;
 	
-	private static final int COMPLETE_LENDA_SCORE_INDEX = 2;
+	private static final int LENDA_SCORE_INDEX_BALLON_POPPED = 2;
+
+	static final int[] SCORE_PER_LENDA_NOTE = {
+		300, 430, 3000
+	};
 
 	/** The note is not judged yet	 */
 	public static final int JUDGED_NONE 	= 0;
@@ -214,11 +218,6 @@ public final class PlayModel {
 			0.77,	// 9
 			0.76	// 10
 		}
-	};
-	
-	static final int[][] SCORE_PER_LENDA_NOTE = {
-		{ 300, 430, 3000 },	// Not in GGT
-		{ 450, 640, 5000 }	// In GGT
 	};
 	
 	// SECTION statistics
@@ -394,9 +393,17 @@ public final class PlayModel {
 		
 		for (;;) {
 			// If the current note bar has no notes at all!
-			if (actionNotes == null) {
+			if (actionNotes.length == 0) {
+				// handle special case - no next action note bar!
 				if (nextActionNoteBar == null) {
-					throw new IllegalStateException("No notes in current bar and no next action bar");
+					if (mActionNoteBarIndex==mCurrentBranch.length-1) {
+						// reach the end of notation
+						playerMessage.actionNoteBar = null;
+						break;
+					} else {
+						// exception!
+						throw new IllegalStateException("No notes in current bar and no next action bar");
+					}
 				}
 				if (currentOffset >= nextActionNoteBar.beatTimeMillis) {
 					walkToNextActionNoteBar();
@@ -405,10 +412,15 @@ public final class PlayModel {
 				}
 			} else {
 				int index = playerMessage.actionNoteIndex;
-				switch (actionNotes[index].noteValue) {
-				
+				if (index < actionNotes.length) {
+					switch (actionNotes[index].noteValue) {
+//					case 
+					// TODO				
+					}
+				} else {
+					// TODO
 				}
-				// TODO
+				
 			}
 		}
 

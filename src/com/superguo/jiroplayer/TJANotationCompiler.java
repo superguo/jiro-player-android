@@ -381,7 +381,7 @@ public class TJANotationCompiler {
 							isLastNoteRolling = false;
 							Note note = new Note();
 							note.beatTimeMillis = (long) noteBeatTime;
-							note.noteValue = PlayModel.NOTE_STOP_ROLLING; // i.e 8
+							note.noteValue = TJANotation.NOTE_ROLLING_END; // i.e 8
 							compiledNotes.add(note);
 						}
 					} else {

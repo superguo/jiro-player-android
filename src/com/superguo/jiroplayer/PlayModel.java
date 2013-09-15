@@ -27,16 +27,6 @@ import static com.superguo.jiroplayer.TJANotation.NOTE_ROLLING_END;
 
 public final class PlayModel {
 //	public static final int NOTE_BARLINE		= -1;
-//	public static final int NOTE_NONE 			= 0;
-//	public static final int NOTE_FACE 			= 1;
-//	public static final int NOTE_SIDE 			= 2;
-//	public static final int NOTE_BIG_FACE 		= 3;
-//	public static final int NOTE_BIG_SIDE 		= 4;
-//	public static final int NOTE_START_ROLLING_BAR 		= 5;
-//	public static final int NOTE_START_ROLLING_BIG_BAR 	= 6;
-//	public static final int NOTE_START_ROLLING_BALLOON	= 7;
-//	public static final int NOTE_START_ROLLING_POTATO	= 9;
-//	public static final int NOTE_STOP_ROLLING	= 8;
 
 	public static final int BEAT_NOTE_NONE     = 0;
 	public static final int BEAT_NOTE_FACE     = 1;
@@ -413,8 +403,39 @@ public final class PlayModel {
 			} else {
 				int index = playerMessage.actionNoteIndex;
 				if (index < actionNotes.length) {
+					long diff = actionNotes[index].beatTimeMillis - currentOffset;
 					switch (actionNotes[index].noteValue) {
-//					case 
+					case NOTE_FACE:
+					case NOTE_BIG_FACE:
+						if (diff>TIME_JUDGE_MISSED) {
+							// Not reach yet
+							return true;
+						} else if (Math.abs(diff)<=TIME_JUDGE_GOOD){
+							if (hit==HIT_FACE) {
+								// TODO mark GOOD, add score, gauge, and stat
+							} else if (hit==HIT_SIDE){
+								// TODO mark BAD, minus score, gauge, and stat
+							} else {
+								return true;
+							}
+						} else if (Math.abs(diff)<=TIME_JUDGE_NORMAL){
+							if (hit==HIT_FACE) {
+								// TODO mark NORMAL, add score, gauge, and stat
+							} else if (hit==HIT_SIDE){
+								// TODO mark BAD, minus score, gauge, and stat
+							} else {
+								return true;
+							}
+						} else if (Math.abs(diff)<=TIME_JUDGE_MISSED){
+							if (hit!=HIT_NONE) {
+								// TODO mark BAD, minus score, gauge, and stat
+							} else {
+								return true;
+							}
+						}
+						break;
+						
+					case NOTE_ROLLING_END:
 					// TODO				
 					}
 				} else {

@@ -79,7 +79,14 @@ public final class PlayerMessage {
 	public boolean isGGT;
 	
 	/**
-	 * 
+	 * One if following values
+	 * <ul>
+	 * <li>{@link PlayModel#ROLLING_NONE}</li>
+	 * <li>{@link PlayModel#ROLLING_LENDA_BAR}</li>
+	 * <li>{@link PlayModel#ROLLING_BIG_LENDA_BAR}</li>
+	 * <li>{@link PlayModel#ROLLING_BALLOON}</li>
+	 * <li>{@link PlayModel#ROLLING_POTATO}</li>
+	 * </ul>
 	 */
 	public int rollingState;		
 	

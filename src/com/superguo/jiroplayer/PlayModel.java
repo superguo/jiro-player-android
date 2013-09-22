@@ -222,6 +222,19 @@ public final class PlayModel {
 		}
 	}
 
+	/** Result for {@link #handleNormalNoteHit(boolean, boolean, boolean, int))}.
+	 * Tells onEvent() to return with nothing to do	 */
+	private static final int NORMAL_NOTE_RESULT_DO_NOTHING = 0;
+	
+	/** Result for {@link #handleNormalNoteHit(boolean, boolean, boolean, int))}.
+	 * Tells onEvent() that it should not process next note
+	 */
+	private static final int NORMAL_NOTE_RESULT_REMOVE_NOTE = 1;
+	
+	/** Result for {@link #handleNormalNoteHit(boolean, boolean, boolean, int))}.
+	 * Tells onEvent() that it should process next note	 */
+	private static final int NORMAL_NOTE_RESULT_REMOVE_MISSED_NOTE = 2;
+
 	private TJAFormat mTJA;
 	private TJACourse mCourse;
 	private TJANotation mNotation;
@@ -403,35 +416,18 @@ public final class PlayModel {
 			} else {
 				int index = playerMessage.actionNoteIndex;
 				if (index < actionNotes.length) {
-					long diff = actionNotes[index].beatTimeMillis - currentOffset;
-					switch (actionNotes[index].noteValue) {
+					int diff = (int) (actionNotes[index].beatTimeMillis - currentOffset);
+					int noteValue = actionNotes[index].noteValue;
+					switch (noteValue) {
 					case NOTE_FACE:
 					case NOTE_BIG_FACE:
-						if (diff>TIME_JUDGE_MISSED) {
-							// Not reach yet
+						switch (handleNormalNoteHit(hit!=HIT_NONE, hit==HIT_FACE, noteValue==NOTE_BIG_FACE, diff)) {
+						case NORMAL_NOTE_RESULT_DO_NOTHING:
 							return true;
-						} else if (Math.abs(diff)<=TIME_JUDGE_GOOD){
-							if (hit==HIT_FACE) {
-								// TODO mark GOOD, add score, gauge, and stat
-							} else if (hit==HIT_SIDE){
-								// TODO mark BAD, minus score, gauge, and stat
-							} else {
-								return true;
-							}
-						} else if (Math.abs(diff)<=TIME_JUDGE_NORMAL){
-							if (hit==HIT_FACE) {
-								// TODO mark NORMAL, add score, gauge, and stat
-							} else if (hit==HIT_SIDE){
-								// TODO mark BAD, minus score, gauge, and stat
-							} else {
-								return true;
-							}
-						} else if (Math.abs(diff)<=TIME_JUDGE_MISSED){
-							if (hit!=HIT_NONE) {
-								// TODO mark BAD, minus score, gauge, and stat
-							} else {
-								return true;
-							}
+						case NORMAL_NOTE_RESULT_REMOVE_NOTE:
+							// TODO
+						case NORMAL_NOTE_RESULT_REMOVE_MISSED_NOTE:
+							// TODO
 						}
 						break;
 						
@@ -457,6 +453,51 @@ public final class PlayModel {
 		// TODO Walks from actionBarIndex to nextActionNoteBarIndex
 	}
 	
+	/**
+	 * Handles the hit on NOTE_FACE/NOTE_SIDE and their big case. This method
+	 * only marks GOOD/NORMAL/BAD, adds score, adds/reduces gauge, and does
+	 * stat. Called by {@link #onEvent(long, int)}.
+	 * 
+	 * @param hasHit
+	 * @param isExptectedHit
+	 * @param isBig
+	 * @param diff
+	 * @return {@link #NORMAL_NOTE_RESULT_DO_NOTHING},
+	 *         {@link #NORMAL_NOTE_RESULT_REMOVE_NOTE},
+	 *         {@link #NORMAL_NOTE_RESULT_REMOVE_MISSED_NOTE}
+	 */
+	private int handleNormalNoteHit(boolean hasHit, boolean isExptectedHit, boolean isBig, int diff) {
+		int absDiff = Math.abs(diff);
+		// Dealing special case - not hit 
+		if (!hasHit) {
+			if (absDiff<=TIME_JUDGE_MISSED) {
+				return NORMAL_NOTE_RESULT_DO_NOTHING;
+			}
+			// TODO mark BAD, minus gauge, and stat
+			return NORMAL_NOTE_RESULT_REMOVE_MISSED_NOTE;
+		}
+		
+		// We are here and hasHit is true
+		if (diff>TIME_JUDGE_MISSED) {
+			// Not reach yet
+			return NORMAL_NOTE_RESULT_DO_NOTHING;
+		} else if (absDiff<=TIME_JUDGE_GOOD){
+			if (isExptectedHit) {
+				// TODO mark GOOD, add score, gauge, and stat
+			} else {
+				// TODO mark BAD, minus gauge, and stat
+			}
+		} else if (absDiff<=TIME_JUDGE_NORMAL){
+			if (isExptectedHit) {
+				// TODO mark NORMAL, add score, gauge, and stat
+			} else {
+				// TODO mark BAD, minus gauge, and stat
+			}
+		} else if (absDiff<=TIME_JUDGE_MISSED){
+			// TODO mark BAD, minus gauge, and stat
+		}
+		return NORMAL_NOTE_RESULT_REMOVE_NOTE;
+	}
 	/**
 	 * Computes the next note bar index of specified note bar index
 	 * 

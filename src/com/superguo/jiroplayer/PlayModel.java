@@ -5,6 +5,8 @@ package com.superguo.jiroplayer;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import android.util.Log;
+
 import com.superguo.jiroplayer.TJAFormat.TJACourse;
 import com.superguo.jiroplayer.TJANotation.Bar;
 import com.superguo.jiroplayer.TJANotation.Note;
@@ -67,19 +69,19 @@ public final class PlayModel {
 	
 	public static final int TIME_JUDGE_GOOD 	= 50;
 	public static final int TIME_JUDGE_NORMAL 	= 150;
-	public static final int TIME_JUDGE_MISSED 	= 217;
+	public static final int TIME_JUDGE_BAD	 	= 217;
 
-	private static final int SCORE_INDEX_NOT_GGT	= 0;
-	private static final int SCORE_INDEX_GGT	 	= 1;
+	static final int SCORE_INDEX_NOT_GGT	= 0;
+	static final int SCORE_INDEX_GGT	 	= 1;
 	
 	/** Full gauge/scoring index */
-	private static final int GAUGE_OR_SCORE_INDEX_FULL 	= 0;
+	static final int GAUGE_OR_SCORE_INDEX_FULL 	= 0;
 
 	/** Half gauge/scoring index. */
-	private static final int GAUGE_OR_SCORE_INDEX_HALF 	= 1;
+	static final int GAUGE_OR_SCORE_INDEX_HALF 	= 1;
 
 	/** Twice gauge index. Not used in scoring */
-	private static final int GAUGE_INDEX_TWICE = 2;
+	static final int GAUGE_OR_SCORE_INDEX_TWICE = 2;
 	
 	private static final int LENDA_SCORE_INDEX_NORMAL = 0;
 	
@@ -102,10 +104,10 @@ public final class PlayModel {
 	
 	/** The note is hit correctly between TIME_JUDGE_NORMAL and TIME_JUDGE_MISSED 
 	 * or the note is hit incorrectly within TIME_JUDGE_NORMAL */
-	public static final int JUDGED_MISSED 	= 3;
+	public static final int JUDGED_BAD 		= 3;
 	
 	/** The note is not hit within TIME_JUDGE_MISSED */
-	public static final int JUDGED_BAD	 	= 4;
+	public static final int JUDGED_MISSED	= 4;
 
 	/** The maximum level of 4 course */
 	public static final int MAX_LEVEL_OF[] = { 5, 7, 8, 10 };
@@ -234,6 +236,7 @@ public final class PlayModel {
 	/** Result for {@link #handleNormalNoteHit(boolean, boolean, boolean, int))}.
 	 * Tells onEvent() that it should process next note	 */
 	private static final int NORMAL_NOTE_RESULT_REMOVE_MISSED_NOTE = 2;
+	private static final String TAG = "PlayModel";
 
 	private TJAFormat mTJA;
 	private TJACourse mCourse;
@@ -311,9 +314,8 @@ public final class PlayModel {
 		resetScores(totalScoringNotes); // Reset the score info
 		mScorePerNote[SCORE_INDEX_NOT_GGT][GAUGE_OR_SCORE_INDEX_FULL] = mScoreInit;
 		mScorePerNote[SCORE_INDEX_GGT][GAUGE_OR_SCORE_INDEX_FULL] = (int) (mScoreInit * 1.2f) / 10 * 10;
-		
-		mScorePerNote[SCORE_INDEX_NOT_GGT][GAUGE_INDEX_TWICE] = mScoreInit << 1;
-		mScorePerNote[SCORE_INDEX_GGT][GAUGE_INDEX_TWICE] = (int) (mScoreInit * 2.4f) / 10 * 10;
+		mScorePerNote[SCORE_INDEX_NOT_GGT][GAUGE_OR_SCORE_INDEX_TWICE] = mScoreInit << 1;
+		mScorePerNote[SCORE_INDEX_GGT][GAUGE_OR_SCORE_INDEX_TWICE] = (int) (mScoreInit * 2.4f) / 10 * 10;
 		mScorePerNote[SCORE_INDEX_NOT_GGT][GAUGE_OR_SCORE_INDEX_HALF] = ((mScoreInit / 10) >> 1) * 10;
 		mScorePerNote[SCORE_INDEX_GGT][GAUGE_OR_SCORE_INDEX_HALF] = ((mScoreInit / 10) >> 1) * 10;
 
@@ -467,23 +469,32 @@ public final class PlayModel {
 	 *         {@link #NORMAL_NOTE_RESULT_REMOVE_MISSED_NOTE}
 	 */
 	private int handleNormalNoteHit(boolean hasHit, boolean isExptectedHit, boolean isBig, int diff) {
+		PlayerMessage playerMessage = mPlayerMessage;
 		int absDiff = Math.abs(diff);
+		mSectionStat.precisionTotal += 2;
+		
 		// Dealing special case - not hit 
 		if (!hasHit) {
-			if (absDiff<=TIME_JUDGE_MISSED) {
+			if (absDiff<=TIME_JUDGE_BAD) {
 				return NORMAL_NOTE_RESULT_DO_NOTHING;
 			}
-			// TODO mark BAD, minus gauge, and stat
+			// mark MISSED, minus gauge, and stat
+			playerMessage.noteJudged = JUDGED_MISSED;
+			playerMessage.handleBadOrMissedHit(mGaugePerNote);
 			return NORMAL_NOTE_RESULT_REMOVE_MISSED_NOTE;
 		}
 		
 		// We are here and hasHit is true
-		if (diff>TIME_JUDGE_MISSED) {
+		if (diff>TIME_JUDGE_BAD) {
 			// Not reach yet
 			return NORMAL_NOTE_RESULT_DO_NOTHING;
 		} else if (absDiff<=TIME_JUDGE_GOOD){
 			if (isExptectedHit) {
-				// TODO mark GOOD, add score, gauge, and stat
+				// mark GOOD, add score, gauge, and stat
+				playerMessage.noteJudged = JUDGED_GOOD;
+				playerMessage.handleExpectedHit(true, isBig, mGaugePerNote, mScorePerNote);
+				mSectionStat.score = playerMessage.score;
+				mSectionStat.precisionPlayed += 2;
 			} else {
 				// TODO mark BAD, minus gauge, and stat
 			}
@@ -493,8 +504,11 @@ public final class PlayModel {
 			} else {
 				// TODO mark BAD, minus gauge, and stat
 			}
-		} else if (absDiff<=TIME_JUDGE_MISSED){
+		} else if (absDiff<=TIME_JUDGE_BAD){
 			// TODO mark BAD, minus gauge, and stat
+		} else {
+			Log.w(TAG, "Too lagged");
+			// TODO mark MISSED, minus gauge, and stat
 		}
 		return NORMAL_NOTE_RESULT_REMOVE_NOTE;
 	}
@@ -1098,7 +1112,7 @@ public final class PlayModel {
 
 		mGaugePerNote[GAUGE_OR_SCORE_INDEX_FULL] = gauge;
 		mGaugePerNote[GAUGE_OR_SCORE_INDEX_HALF] = gauge >> 1;
-		mGaugePerNote[GAUGE_INDEX_TWICE] = gauge << 1;
+		mGaugePerNote[GAUGE_OR_SCORE_INDEX_TWICE] = gauge << 1;
 	}
 
 	private final void resetScores(float totalScoringNotes) {
@@ -1112,8 +1126,7 @@ public final class PlayModel {
 				fullScore = FULL_SCORES[course.course][course.level];
 			else
 				fullScore = FULL_SCORES[course.course][MAX_LEVEL_OF[course.course]]
-						+ 100000
-						* (MAX_LEVEL_OF[course.course] - course.level);
+						+ 100000 * (MAX_LEVEL_OF[course.course] - course.level);
 			float fullNormalNote = (float) fullScore / totalScoringNotes;
 			mScoreInit = (int) Math.floor(fullNormalNote * 0.08f) * 10;
 			mScoreDiff = (int) Math.floor(fullNormalNote * 0.02f) * 10;

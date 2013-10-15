@@ -423,15 +423,38 @@ public final class PlayModel {
 					switch (noteValue) {
 					case NOTE_FACE:
 					case NOTE_BIG_FACE:
-						switch (handleNormalNoteHit(hit!=HIT_NONE, hit==HIT_FACE, noteValue==NOTE_BIG_FACE, diff)) {
+					case NOTE_SIDE:
+					case NOTE_BIG_SIDE: {
+						boolean hasHit = hit!=HIT_NONE;
+						boolean isExpectedHit = false;
+						boolean isBig = false;
+						if (hasHit) {
+							isExpectedHit = 
+									((noteValue==NOTE_FACE || noteValue==NOTE_BIG_FACE) && hit==HIT_FACE) ||
+									((noteValue==NOTE_SIDE || noteValue==NOTE_BIG_SIDE) && hit==HIT_SIDE);
+							if (isExpectedHit) {
+								isBig = noteValue==NOTE_BIG_FACE || noteValue==NOTE_BIG_SIDE;
+							}
+						}
+						int handleResult = handleNormalNoteHit(hasHit, isExpectedHit, isBig, diff);
+						switch (handleResult) {
 						case NORMAL_NOTE_RESULT_DO_NOTHING:
 							return true;
 						case NORMAL_NOTE_RESULT_REMOVE_NOTE:
-							// TODO
 						case NORMAL_NOTE_RESULT_REMOVE_MISSED_NOTE:
-							// TODO
+							if (index < actionNotes.length - 1) {
+								playerMessage.actionNoteIndex++;
+							} else {
+								walkToNextActionNoteBar();
+							}
+							if (handleResult==NORMAL_NOTE_RESULT_REMOVE_MISSED_NOTE) {
+								continue;
+							} else {
+								return true;
+							}
 						}
 						break;
+					}
 						
 					case NOTE_ROLLING_END:
 					// TODO				
@@ -476,6 +499,7 @@ public final class PlayModel {
 		// Dealing special case - not hit 
 		if (!hasHit) {
 			if (absDiff<=TIME_JUDGE_BAD) {
+				playerMessage.noteJudged = JUDGED_NONE;
 				return NORMAL_NOTE_RESULT_DO_NOTHING;
 			}
 			// mark MISSED, minus gauge, and stat
@@ -487,6 +511,7 @@ public final class PlayModel {
 		// We are here and hasHit is true
 		if (diff>TIME_JUDGE_BAD) {
 			// Not reach yet
+			playerMessage.noteJudged = JUDGED_NONE;
 			return NORMAL_NOTE_RESULT_DO_NOTHING;
 		} else if (absDiff<=TIME_JUDGE_GOOD){
 			if (isExptectedHit) {
@@ -496,19 +521,32 @@ public final class PlayModel {
 				mSectionStat.score = playerMessage.score;
 				mSectionStat.precisionPlayed += 2;
 			} else {
-				// TODO mark BAD, minus gauge, and stat
+				// mark BAD, minus gauge, and stat
+				playerMessage.noteJudged = JUDGED_BAD;
+				playerMessage.handleBadOrMissedHit(mGaugePerNote);
 			}
 		} else if (absDiff<=TIME_JUDGE_NORMAL){
 			if (isExptectedHit) {
-				// TODO mark NORMAL, add score, gauge, and stat
+				// mark NORMAL, add score, gauge, and stat
+				playerMessage.noteJudged = JUDGED_NORMAL;
+				playerMessage.handleExpectedHit(false, isBig, mGaugePerNote, mScorePerNote);
+				mSectionStat.score = playerMessage.score;
+				mSectionStat.precisionPlayed ++;
 			} else {
-				// TODO mark BAD, minus gauge, and stat
+				// mark BAD, minus gauge, and stat
+				playerMessage.noteJudged = JUDGED_BAD;
+				playerMessage.handleBadOrMissedHit(mGaugePerNote);
 			}
 		} else if (absDiff<=TIME_JUDGE_BAD){
-			// TODO mark BAD, minus gauge, and stat
+			// mark BAD, minus gauge, and stat
+			playerMessage.noteJudged = JUDGED_BAD;
+			playerMessage.handleBadOrMissedHit(mGaugePerNote);
 		} else {
+			// Too lagged if we reach here
+			// mark MISSED, minus gauge, and stat.
 			Log.w(TAG, "Too lagged");
-			// TODO mark MISSED, minus gauge, and stat
+			playerMessage.noteJudged = JUDGED_MISSED;
+			playerMessage.handleBadOrMissedHit(mGaugePerNote);
 		}
 		return NORMAL_NOTE_RESULT_REMOVE_NOTE;
 	}

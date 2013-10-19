@@ -71,17 +71,13 @@ public final class PlayModel {
 	public static final int TIME_JUDGE_NORMAL 	= 150;
 	public static final int TIME_JUDGE_BAD	 	= 217;
 
-	static final int SCORE_INDEX_NOT_GGT	= 0;
-	static final int SCORE_INDEX_GGT	 	= 1;
-	
-	/** Full gauge/scoring index */
-	static final int GAUGE_OR_SCORE_INDEX_FULL 	= 0;
+	static final int GGT_INDEX_OFF	= 0;
+	static final int GGT_INDEX_ON	= 1;
 
-	/** Half gauge/scoring index. */
-	static final int GAUGE_OR_SCORE_INDEX_HALF 	= 1;
-
-	/** Twice gauge index. Not used in scoring */
-	static final int GAUGE_OR_SCORE_INDEX_TWICE = 2;
+	/** Half/full/twice gauge/scoring indice. */
+	static final int GS_INDEX_HALF 	= 0;
+	static final int GS_INDEX_FULL 	= 1;
+	static final int GS_INDEX_TWICE = 2;
 	
 	private static final int LENDA_SCORE_INDEX_NORMAL = 0;
 	
@@ -312,12 +308,12 @@ public final class PlayModel {
 		totalScoringNotes = computeScoringNotesAndGaugeNotes(mNotation, totalGaugeNotesRef);
 		resetGauge(totalGaugeNotesRef.get()); // Reset iGaugePerNote
 		resetScores(totalScoringNotes); // Reset the score info
-		mScorePerNote[SCORE_INDEX_NOT_GGT][GAUGE_OR_SCORE_INDEX_FULL] = mScoreInit;
-		mScorePerNote[SCORE_INDEX_GGT][GAUGE_OR_SCORE_INDEX_FULL] = (int) (mScoreInit * 1.2f) / 10 * 10;
-		mScorePerNote[SCORE_INDEX_NOT_GGT][GAUGE_OR_SCORE_INDEX_TWICE] = mScoreInit << 1;
-		mScorePerNote[SCORE_INDEX_GGT][GAUGE_OR_SCORE_INDEX_TWICE] = (int) (mScoreInit * 2.4f) / 10 * 10;
-		mScorePerNote[SCORE_INDEX_NOT_GGT][GAUGE_OR_SCORE_INDEX_HALF] = ((mScoreInit / 10) >> 1) * 10;
-		mScorePerNote[SCORE_INDEX_GGT][GAUGE_OR_SCORE_INDEX_HALF] = ((mScoreInit / 10) >> 1) * 10;
+		mScorePerNote[GGT_INDEX_OFF][GS_INDEX_FULL] = mScoreInit;
+		mScorePerNote[GGT_INDEX_ON][GS_INDEX_FULL] = (int) (mScoreInit * 1.2f) / 10 * 10;
+		mScorePerNote[GGT_INDEX_OFF][GS_INDEX_TWICE] = mScoreInit << 1;
+		mScorePerNote[GGT_INDEX_ON][GS_INDEX_TWICE] = (int) (mScoreInit * 2.4f) / 10 * 10;
+		mScorePerNote[GGT_INDEX_OFF][GS_INDEX_HALF] = ((mScoreInit / 10) >> 1) * 10;
+		mScorePerNote[GGT_INDEX_ON][GS_INDEX_HALF] = ((mScoreInit / 10) >> 1) * 10;
 
 		mSectionStat.reset(); // Reset the SECTION statistics
 
@@ -455,6 +451,12 @@ public final class PlayModel {
 						}
 						break;
 					}
+					
+					case NOTE_LENDA:
+					case NOTE_BIG_LENDA:
+					case NOTE_BALLOON:
+					case NOTE_POTATO:
+					
 						
 					case NOTE_ROLLING_END:
 					// TODO				
@@ -1148,9 +1150,9 @@ public final class PlayModel {
 		if ((gauge & 1) == 1)
 			--gauge;
 
-		mGaugePerNote[GAUGE_OR_SCORE_INDEX_FULL] = gauge;
-		mGaugePerNote[GAUGE_OR_SCORE_INDEX_HALF] = gauge >> 1;
-		mGaugePerNote[GAUGE_OR_SCORE_INDEX_TWICE] = gauge << 1;
+		mGaugePerNote[GS_INDEX_FULL] = gauge;
+		mGaugePerNote[GS_INDEX_HALF] = gauge >> 1;
+		mGaugePerNote[GS_INDEX_TWICE] = gauge << 1;
 	}
 
 	private final void resetScores(float totalScoringNotes) {

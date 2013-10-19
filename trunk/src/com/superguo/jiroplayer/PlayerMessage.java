@@ -144,7 +144,7 @@ public final class PlayerMessage {
 	}
 	
 	public void handleBadOrMissedHit(int[] gaugePerNote) {
-		gauge -= gaugePerNote[PlayModel.GAUGE_OR_SCORE_INDEX_TWICE];
+		gauge -= gaugePerNote[PlayModel.GS_INDEX_TWICE];
 		if (gauge<0) {
 			gauge=0;
 		}
@@ -155,14 +155,20 @@ public final class PlayerMessage {
 		if (++numCombos > numMaxCombos) {
 			numMaxCombos = numCombos;
 		}
-		int gaugeOrScoreIndex = isGood ? (isBig ? PlayModel.GAUGE_OR_SCORE_INDEX_TWICE : PlayModel.GAUGE_OR_SCORE_INDEX_FULL) :
-			(isBig ? PlayModel.GAUGE_OR_SCORE_INDEX_FULL : PlayModel.GAUGE_OR_SCORE_INDEX_HALF);
-		gauge += gaugePerNote[gaugeOrScoreIndex];
+		int gsIndex = 0;
+		if (isGood) {
+			gsIndex++;
+			numBeatedGoodNotes++;
+		} else {
+			numBeatedNormalNotes++;
+		}
+		if (isBig) gsIndex++;
+		gauge += gaugePerNote[gsIndex];
 		if (gauge >= PlayModel.MAX_GAUGE) {
 			gauge = PlayModel.MAX_GAUGE;
 		}
-		int ggtIndex = isGGT ? PlayModel.SCORE_INDEX_GGT : PlayModel.SCORE_INDEX_NOT_GGT;
-		int baseScore = scorePerNote[ggtIndex][gaugeOrScoreIndex];
+		int ggtIndex = isGGT ? PlayModel.GGT_INDEX_ON : PlayModel.GGT_INDEX_OFF;
+		int baseScore = scorePerNote[ggtIndex][gsIndex];
 		if (numCombos<100) {
 			addedScore = baseScore * (numCombos / 10 + 1);  
 		} else if (numCombos==100){

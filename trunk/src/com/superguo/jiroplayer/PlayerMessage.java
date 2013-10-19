@@ -148,6 +148,7 @@ public final class PlayerMessage {
 		if (gauge<0) {
 			gauge=0;
 		}
+		numMissedOrBadNotes++;
 		numCombos = 0;
 	}
 	

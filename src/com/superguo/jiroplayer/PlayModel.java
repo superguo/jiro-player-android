@@ -383,11 +383,7 @@ public final class PlayModel {
 		
 		// Return false if we reach the end of notation plus the ending wait time
 		if (actionNoteBar == null) {
-			if (notaion.endTimeMillis >= currentOffset) {
-				return false;
-			} else {
-				return true;
-			}
+			return notaion.endTimeMillis < currentOffset;
 		}
 		
 		Note[] actionNotes = actionNoteBar.notes;
@@ -453,12 +449,36 @@ public final class PlayModel {
 					}
 					
 					case NOTE_LENDA:
+						assert playerMessage.rollingState == ROLLING_NONE; 
+						playerMessage.rollingState = ROLLING_LENDA_BAR;
+						playerMessage.rollingCount = 0;
+						break;
+						
 					case NOTE_BIG_LENDA:
+						assert playerMessage.rollingState == ROLLING_NONE;
+						playerMessage.rollingState = ROLLING_BIG_LENDA_BAR;
+						playerMessage.rollingCount = 0;
+						break;
+						
 					case NOTE_BALLOON:
+						assert playerMessage.rollingState == ROLLING_NONE;
+						playerMessage.rollingState = ROLLING_BALLOON;
+						playerMessage.rollingCount = mCourse.balloons[++mRollingBaloonIndex];
+						break;
+						
 					case NOTE_POTATO:
-					
+						assert playerMessage.rollingState == ROLLING_NONE;
+						playerMessage.rollingState = ROLLING_POTATO;
+						playerMessage.rollingCount = mCourse.balloons[++mRollingBaloonIndex];
+						break;
 						
 					case NOTE_ROLLING_END:
+						assert playerMessage.rollingState != ROLLING_NONE;
+						if (diff>=0) {
+							playerMessage.rollingState = ROLLING_NONE;
+						} else {
+							
+						}
 					// TODO				
 					}
 				} else {
@@ -1228,8 +1248,7 @@ public final class PlayModel {
 				default:
 					continue;
 				}
-			}
-
+			} else {
 				for (Note note : bar.noteBar.notes) {
 					switch (note.noteValue) {
 					case TJANotation.NOTE_FACE:
@@ -1252,7 +1271,7 @@ public final class PlayModel {
 						;
 					}
 				}
-			
+			}			
 
 			i++;
 		}

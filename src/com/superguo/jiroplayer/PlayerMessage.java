@@ -177,4 +177,39 @@ public final class PlayerMessage {
 		}
 		score += addedScore;
 	}
+	
+	public void handleRollingHit() {
+		int ggtIndex = isGGT ? PlayModel.GGT_INDEX_ON : PlayModel.GGT_INDEX_OFF;
+		switch (rollingState) {
+		case PlayModel.ROLLING_LENDA_BAR:
+			addedScore = PlayModel.SCORE_PER_LENDA_NOTE[ggtIndex][PlayModel.LENDA_SCORE_INDEX_NORMAL];
+			rollingCount++;
+			break;
+
+		case PlayModel.ROLLING_BIG_LENDA_BAR:
+			addedScore = PlayModel.SCORE_PER_LENDA_NOTE[ggtIndex][PlayModel.LENDA_SCORE_INDEX_BIG];
+			rollingCount++;
+			break;
+
+		case PlayModel.ROLLING_BALLOON:
+			if (rollingCount==1) {
+				rollingCount = PlayModel.SPECIAL_ROLLING_COUNT_BALLOON_FINISHED;
+				addedScore = PlayModel.SCORE_PER_LENDA_NOTE[ggtIndex][PlayModel.LENDA_SCORE_INDEX_BALLON_POPPED];
+			} else {
+				rollingCount--;
+				addedScore = PlayModel.SCORE_PER_LENDA_NOTE[ggtIndex][PlayModel.LENDA_SCORE_INDEX_NORMAL];
+			}
+			break;
+
+		case PlayModel.ROLLING_POTATO:
+			if (rollingCount==1) {
+				rollingCount = PlayModel.SPECIAL_ROLLING_COUNT_POTATO_FINISHED;
+				addedScore = PlayModel.SCORE_PER_LENDA_NOTE[ggtIndex][PlayModel.LENDA_SCORE_INDEX_BALLON_POPPED];
+			} else {
+				rollingCount--;
+				addedScore = PlayModel.SCORE_PER_LENDA_NOTE[ggtIndex][PlayModel.LENDA_SCORE_INDEX_NORMAL];
+			}
+			break;
+		}
+	}
 }

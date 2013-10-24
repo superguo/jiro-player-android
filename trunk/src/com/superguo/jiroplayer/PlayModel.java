@@ -79,14 +79,15 @@ public final class PlayModel {
 	static final int GS_INDEX_FULL 	= 1;
 	static final int GS_INDEX_TWICE = 2;
 	
-	private static final int LENDA_SCORE_INDEX_NORMAL = 0;
+	public static final int LENDA_SCORE_INDEX_NORMAL = 0;
 	
-	private static final int LENDA_SCORE_INDEX_BIG = 1;
+	public static final int LENDA_SCORE_INDEX_BIG = 1;
 	
-	private static final int LENDA_SCORE_INDEX_BALLON_POPPED = 2;
+	public static final int LENDA_SCORE_INDEX_BALLON_POPPED = 2;
 
-	static final int[] SCORE_PER_LENDA_NOTE = {
-		300, 430, 3000
+	public static final int[][] SCORE_PER_LENDA_NOTE = {
+		{ 300, 360, 3000 },	// not in GGT
+		{ 360, 430, 5000 }	// in GGT
 	};
 
 	/** The note is not judged yet	 */
@@ -278,8 +279,6 @@ public final class PlayModel {
 	private int mNextActionNoteBarIndex;
 	private Bar[] mCurrentBranch;
 	private long mLastOffset;
-	
-	
 
 	public final PlayerMessage prepare(TJAFormat tja, int courseIndex, int notationIndex) {
 		mTJA = tja;
@@ -449,37 +448,52 @@ public final class PlayModel {
 					}
 					
 					case NOTE_LENDA:
-						assert playerMessage.rollingState == ROLLING_NONE; 
+//						assert playerMessage.rollingState == ROLLING_NONE; 
 						playerMessage.rollingState = ROLLING_LENDA_BAR;
 						playerMessage.rollingCount = 0;
 						break;
 						
 					case NOTE_BIG_LENDA:
-						assert playerMessage.rollingState == ROLLING_NONE;
+//						assert playerMessage.rollingState == ROLLING_NONE;
 						playerMessage.rollingState = ROLLING_BIG_LENDA_BAR;
 						playerMessage.rollingCount = 0;
 						break;
 						
 					case NOTE_BALLOON:
-						assert playerMessage.rollingState == ROLLING_NONE;
+//						assert playerMessage.rollingState == ROLLING_NONE;
 						playerMessage.rollingState = ROLLING_BALLOON;
 						playerMessage.rollingCount = mCourse.balloons[++mRollingBaloonIndex];
 						break;
 						
 					case NOTE_POTATO:
-						assert playerMessage.rollingState == ROLLING_NONE;
+//						assert playerMessage.rollingState == ROLLING_NONE;
 						playerMessage.rollingState = ROLLING_POTATO;
 						playerMessage.rollingCount = mCourse.balloons[++mRollingBaloonIndex];
 						break;
 						
 					case NOTE_ROLLING_END:
-						assert playerMessage.rollingState != ROLLING_NONE;
+//						assert playerMessage.rollingState != ROLLING_NONE;
 						if (diff>=0) {
-							playerMessage.rollingState = ROLLING_NONE;
-						} else {
-							
+							int rollingState = playerMessage.rollingState;
+							int rollintCount = playerMessage.rollingCount;
+							if ( rollingState==ROLLING_BALLOON || rollingState==ROLLING_POTATO) {
+								if (rollintCount > 0) {
+									playerMessage.rollingCount = rollingState==ROLLING_BALLOON ?
+											SPECIAL_ROLLING_COUNT_BALLOON_FAILED : SPECIAL_ROLLING_COUNT_POTATO_FAILED;
+								}
+							} else {
+								playerMessage.rollingState = ROLLING_NONE;
+							}
+						} else if (hit!=HIT_NONE){
+							int rollingState = playerMessage.rollingState;
+							if (rollingState==ROLLING_LENDA_BAR ||
+								rollingState==ROLLING_BIG_LENDA_BAR ||
+								rollingState==ROLLING_BALLOON && hit==HIT_FACE ||
+								rollingState==ROLLING_POTATO && hit==HIT_FACE) {
+								playerMessage.handleRollingHit();
+							}
 						}
-					// TODO				
+						break;
 					}
 				} else {
 					// TODO

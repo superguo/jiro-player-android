@@ -105,10 +105,10 @@ public class TJANotationCompiler {
 	private void doCompile() {
 		if (mTja.offset<0) {
 			// If the music starts earlier than the notation
-			mNotation.musicStartTimeMillis = mStartWaitTimeMillis;
+			mNotation.musicStartMillis = mStartWaitTimeMillis;
 		} else {
 			// If the music starts later than the notation - we should avoid this case
-			mNotation.musicStartTimeMillis = mStartWaitTimeMillis + Math.round(mTja.offset * 1000);
+			mNotation.musicStartMillis = mStartWaitTimeMillis + Math.round(mTja.offset * 1000);
 		}
 		boolean hasBranch = mCourse.hasBranch;
 
@@ -140,6 +140,8 @@ public class TJANotationCompiler {
 		
 		final int scrollBandWidth = mScrollBandRight - mScrollBandLeft;
 		
+		final int scrollBandWidthFromTarget = mScrollBandRight - mTargetNoteCenter;
+		
 		/** The compiling bar's BPM */
 		double bpm = mCourse.BPM;
 		
@@ -165,8 +167,11 @@ public class TJANotationCompiler {
 		/** The visibility of the bar line of the compiling note bar */
 		boolean isBarLineOn = true;
 		
-		/** The compiling  bar's flag indicating if the last compiled note is rolling */
+		/** The compiling bar's flag indicating if the last compiled note is rolling */
 		boolean isLastNoteRolling = false;
+		
+		/** The the last rolling note. */
+		Note lastRollingNote = null;
 		
 		/**
 		 * The accumulated delay in millisecond before the next note bar starts.
@@ -186,7 +191,7 @@ public class TJANotationCompiler {
 		}
 		
 		/** The time offset of the beginning of the current note bar */
-		double barBeatTime = firstBarBeatTime;
+		double barBeatMillis = firstBarBeatTime;
 		
 		/** The bar's speed in pixels per millisecond */
 		double barSpeed = computeBarSpeed(bpm, scroll, beatDist);
@@ -230,15 +235,14 @@ public class TJANotationCompiler {
 			case TJAFormat.COMMAND_TYPE_NOTE: {
 				bar.isNoteBar = true;
 				NoteBar noteBar = bar.noteBar = new NoteBar();
-				noteBar.beatTimeMillis = Math.round(barBeatTime + delay);
+				noteBar.beatMillis = Math.round(barBeatMillis + delay);
 				noteBar.isBarLineOn = isBarLineOn;
-				double appearTimeMillis;
-				short[] xCoords;
-				/* One TJA note's width is 16th note (semiquaver) length
-				 * so 1 beat = 1 quarter notes(crochets) = 4 16th note = 4 TJA notes
+				double appearMillis;
+				short[] millisDistances;
+				/* One TJA note's width is 16th note (semiquaver) length.
+				 * So 1 beat = 1 quarter notes(crochets) = Four 16th notes = 4 TJA notes.
 				 * The mBeatDist is actually a TJA note's width
 				 */
-
 				boolean isBpmChanging = bpmToChange > 0;
 				boolean isScrollChanging = scrollToChange > 0;
 				
@@ -258,23 +262,23 @@ public class TJANotationCompiler {
 						barSpeed = computeBarSpeed(bpm, scroll, beatDist);	
 					}
 					
-					appearTimeMillis = barBeatTime
-							- (scrollBandWidth - mTargetNoteCenter + beatDist / 2.0) / barSpeed;
+					appearMillis = barBeatMillis
+							- (scrollBandWidthFromTarget + beatDist / 2.0) / barSpeed;
 					// maxBarWidth is the total width of the bar, i.e. the
 					// distance between the beginning of this bar and next bar
 					double maxBarWidth = (double)measureX / measureY * 4 * beatDist * scroll;
 					// barVisibleDuration is the total time when the bar passes through the scroll band 
 					int barVisibleDuration = (int) (Math.round((maxBarWidth + scrollBandWidth) / barSpeed)) + 1;
-					xCoords = new short[barVisibleDuration];
+					millisDistances = new short[barVisibleDuration];
 					double preciseXCoord = mScrollBandRight + beatDist/2.0;
-					xCoords[0] =(short) preciseXCoord;
+					millisDistances[0] =(short) preciseXCoord;
 					for (int t=1; t<barVisibleDuration; ++t) {
 						preciseXCoord -= barSpeed; // * 1.0;
-						xCoords[t] =(short) preciseXCoord;
+						millisDistances[t] =(short) preciseXCoord;
 					}
 					
-					noteBar.appearTimeMillis = Math.round(appearTimeMillis); 
-					noteBar.preComputedXCoords = xCoords;
+					noteBar.appearMillis = Math.round(appearMillis); 
+					noteBar.millisDistances = millisDistances;
 					
 				} else { // When HBSCROLL or BMSCROLL is on, the bar's speed
 						 // does not change until it is passing the target beat note
@@ -299,8 +303,8 @@ public class TJANotationCompiler {
 						// In this case, we leave some space - the radius of the
 						// beatDist - before the the bar hit the target beat note
 						double spaceBetweenDelayAndBeat = beatDist / 2.0;
-						appearTimeMillis = barBeatTime
-								- (scrollBandWidth - mTargetNoteCenter + beatDist / 2.0) / barSpeed;
+						appearMillis = barBeatMillis
+								- (scrollBandWidthFromTarget + beatDist / 2.0) / barSpeed;
 						double maxBarWidth = (double) measureX / measureY * 4 * beatDist
 								* (mTja.hbScroll && isScrollChanging ? 
 										scrollToChange : scroll);
@@ -311,9 +315,9 @@ public class TJANotationCompiler {
 								delay
 								+ scrollBandWidth / barSpeed
 								+ maxBarWidth / postBarSpeed)) + 1;
-						xCoords = new short[barVisibleDuration];
+						millisDistances = new short[barVisibleDuration];
 						double preciseXCoord = mScrollBandRight + beatDist/2.0;
-						xCoords[0] =(short) preciseXCoord;
+						millisDistances[0] =(short) preciseXCoord;
 						double xCoordOnStop = mTargetNoteCenter + spaceBetweenDelayAndBeat;
 						for (int t=1; t<barVisibleDuration; ++t) {
 							if (t<visibleDurationBeforeDelay) {
@@ -324,34 +328,34 @@ public class TJANotationCompiler {
 							} else {
 								preciseXCoord -= postBarSpeed;
 							}
-							xCoords[t] =(short) preciseXCoord;
+							millisDistances[t] =(short) preciseXCoord;
 						}
 						
-						noteBar.appearTimeMillis = Math.round(appearTimeMillis); 
-						noteBar.preComputedXCoords = xCoords;
+						noteBar.appearMillis = Math.round(appearMillis); 
+						noteBar.millisDistances = millisDistances;
 					} else {
 						// The delay is 0 or negative
-						appearTimeMillis = barBeatTime
-								- (scrollBandWidth - mTargetNoteCenter + beatDist / 2.0) / barSpeed;
+						appearMillis = barBeatMillis
+								- (scrollBandWidthFromTarget + beatDist / 2.0) / barSpeed;
 						double maxBarWidth = (double) measureX / measureY * 4 * beatDist
 								* (mTja.hbScroll && isScrollChanging ? 
 										scrollToChange : scroll);
-						double visibleDurationBeforeBeat = (scrollBandWidth - mTargetNoteCenter)
+						double visibleDurationBeforeBeat = (scrollBandWidthFromTarget)
 								/ barSpeed;
 						
 						int barVisibleDuration = (int) (Math.round(
 								+ scrollBandWidth / barSpeed
 								+ maxBarWidth / postBarSpeed)) + 1;
-						xCoords = new short[barVisibleDuration];
+						millisDistances = new short[barVisibleDuration];
 						double preciseXCoord = mScrollBandRight + beatDist/2.0;
-						xCoords[0] =(short) preciseXCoord;
+						millisDistances[0] =(short) preciseXCoord;
 						for (int t=1; t<barVisibleDuration; ++t) {
 							if (t < visibleDurationBeforeBeat) {
 								preciseXCoord -= barSpeed;
 							} else {
 								preciseXCoord -= postBarSpeed;
 							}
-							xCoords[t] =(short) preciseXCoord;
+							millisDistances[t] =(short) preciseXCoord;
 						}
 						
 					} // End of delay
@@ -366,42 +370,52 @@ public class TJANotationCompiler {
 					}
 
 				} // End of hbscroll and bmscroll
-				noteBar.appearTimeMillis = Math.round(appearTimeMillis); 
-				noteBar.preComputedXCoords = xCoords;
+				noteBar.appearMillis = Math.round(appearMillis); 
+				noteBar.millisDistances = millisDistances;
 				
 				int[] oNotes = oCmd.args;
 				
 				compiledNotes.clear();
 				double noteBeatSpan = 15000.0 / bpm; // == 0.25 / bpm * 60000;
-				double noteBeatTime = barBeatTime;
+				double noteBeatTime = barBeatMillis;
 				for (int j=0; j<oNotes.length; ++j, noteBeatTime += noteBeatSpan) {
 					
 					if (isLastNoteRolling) {
 						if (oNotes[i] == 8) { // 8 means finished
+							lastRollingNote.handleEndMillis = (long) noteBeatTime;
+							lastRollingNote.offsetX2 = (int) (barSpeed * noteBeatSpan * j);
 							isLastNoteRolling = false;
-							Note note = new Note();
-							note.beatTimeMillis = (long) noteBeatTime;
-							note.noteValue = TJANotation.NOTE_ROLLING_END; // i.e 8
-							compiledNotes.add(note);
 						}
 					} else {
 						switch (oNotes[i]) {
-						case 5: // len-da (combo)
-						case 6: // Big len-da
-						case 7: // Balloon
-						case 9: // Potato
-							isLastNoteRolling = true;
-							// DO NOT break here
 						case 1:
 						case 2:
 						case 3:
-						case 4:
+						case 4: {
 							Note note = new Note();
-							note.beatTimeMillis = (long) noteBeatTime;
 							note.noteValue = oNotes[i];
+							note.beatMillis = (long) noteBeatTime;
+							note.handleStartMillis = note.beatMillis - PlayModel.TIME_JUDGE_BAD;
+							note.handleEndMillis = note.beatMillis + PlayModel.TIME_JUDGE_BAD;
+							note.offsetX = (int) (barSpeed * noteBeatSpan * j);
 							compiledNotes.add(note);
 							break;
+						}
 
+						case 5: // len-da (combo)
+						case 6: // Big len-da
+						case 7: // Balloon
+						case 9: { // Potato
+							isLastNoteRolling = true;
+							Note note = lastRollingNote = new Note();
+							note.noteValue = oNotes[i];
+							note.beatMillis = (long) noteBeatTime;
+							note.handleStartMillis = note.beatMillis;
+							note.offsetX = (int) (barSpeed * noteBeatSpan * j);
+							compiledNotes.add(note);
+							break;
+						}
+							
 						case 0:
 						case 8: // Bad note here
 						default:
@@ -410,7 +424,7 @@ public class TJANotationCompiler {
 					}
 				}
 				// Compute next beat time
-				barBeatTime += (double)measureX / measureY / bpm * 60000.0;
+				barBeatMillis += (double)measureX / measureY / bpm * 60000.0;
 				// Emit notes
 				noteBar.notes = (Note[]) compiledNotes.toArray();
 				// Clear values
@@ -507,13 +521,13 @@ public class TJANotationCompiler {
 			
 			branch.add(bar);
 		}
-		long endTimeMillis = (long)barBeatTime + mEndWaitTimeMillis;
-		if (mNotation.endTimeMillis == 0) {
-			mNotation.endTimeMillis = endTimeMillis;
-		} else if (mNotation.endTimeMillis != endTimeMillis) {
+		long endMillis = (long)barBeatMillis + mEndWaitTimeMillis;
+		if (mNotation.endMillis == 0) {
+			mNotation.endMillis = endMillis;
+		} else if (mNotation.endMillis != endMillis) {
 			Log.w(TAG, "Inconsistent branch duration");
-			if (mNotation.endTimeMillis < endTimeMillis) {
-				mNotation.endTimeMillis = endTimeMillis;
+			if (mNotation.endMillis < endMillis) {
+				mNotation.endMillis = endMillis;
 			}
 		}
 		return branch;

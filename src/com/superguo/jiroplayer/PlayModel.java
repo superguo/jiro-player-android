@@ -25,7 +25,6 @@ import static com.superguo.jiroplayer.TJANotation.NOTE_LENDA;
 import static com.superguo.jiroplayer.TJANotation.NOTE_BIG_LENDA;
 import static com.superguo.jiroplayer.TJANotation.NOTE_BALLOON;
 import static com.superguo.jiroplayer.TJANotation.NOTE_POTATO;
-import static com.superguo.jiroplayer.TJANotation.NOTE_ROLLING_END;
 
 public final class PlayModel {
 //	public static final int NOTE_BARLINE		= -1;
@@ -253,7 +252,7 @@ public final class PlayModel {
 	private int[] mGaugePerNote = new int[3];
 	private int[][] mScorePerNote = new int[2][3];
 	private SectionStat mSectionStat;
-	/** Indicate a new #SECION is arranged before next notation	 */
+	/** Indicate a new #SECTION is arranged before next notation	 */
 	private boolean mIsSectionArranging;
 
 	/** The adjusted offset time before first bar begins.
@@ -344,11 +343,6 @@ public final class PlayModel {
 		return mPlayerMessage;
 	}
 
-	private void emitSomeNotePos() {
-		// TODO Emit positions of notes of a bar or more
-		// into the mPlayMessage.notePosList
-	}
-	
 	public final void start(long startTimeMillis) {
 		mStartTimeMillis = startTimeMillis;
 		mEndTimeMillis = 0;
@@ -382,11 +376,13 @@ public final class PlayModel {
 		
 		// Return false if we reach the end of notation plus the ending wait time
 		if (actionNoteBar == null) {
-			return notaion.endTimeMillis < currentOffset;
+			return notaion.endMillis < currentOffset;
 		}
 		
 		Note[] actionNotes = actionNoteBar.notes;
 		
+		// TODO fetch nextActionNoteBar if null
+
 		for (;;) {
 			// If the current note bar has no notes at all!
 			if (actionNotes.length == 0) {
@@ -401,7 +397,7 @@ public final class PlayModel {
 						throw new IllegalStateException("No notes in current bar and no next action bar");
 					}
 				}
-				if (currentOffset >= nextActionNoteBar.beatTimeMillis) {
+				if (currentOffset >= nextActionNoteBar.beatMillis) {
 					walkToNextActionNoteBar();
 				} else {
 					break;
@@ -409,7 +405,7 @@ public final class PlayModel {
 			} else {
 				int index = playerMessage.actionNoteIndex;
 				if (index < actionNotes.length) {
-					int diff = (int) (actionNotes[index].beatTimeMillis - currentOffset);
+					int diff = (int) (actionNotes[index].beatMillis - currentOffset);
 					int noteValue = actionNotes[index].noteValue;
 					switch (noteValue) {
 					case NOTE_FACE:
@@ -497,6 +493,7 @@ public final class PlayModel {
 					}
 				} else {
 					// TODO
+					// walkToNextActionNoteBar();
 				}
 				
 			}

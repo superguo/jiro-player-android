@@ -31,7 +31,7 @@ public final class TJANotation {
 	public final static int NOTE_BIG_LENDA	= 6;
 	public final static int NOTE_BALLOON	= 7;
 	public final static int NOTE_POTATO		= 9;
-	public final static int NOTE_ROLLING_END = 8;
+//	public final static int NOTE_ROLLING_END = 8;
 
 	public final static int COMMAND_EMPTY		= 0;
 	public final static int COMMAND_GOGOSTART	= 1;
@@ -51,10 +51,10 @@ public final class TJANotation {
 	public static final int BRANCH_JUDGE_SCORE 		= 2;
 	
 	/** The start time for the music to play since the beginning of the game */
-	public long musicStartTimeMillis;
+	public long musicStartMillis;
 	
 	/** The end time */
-	public long endTimeMillis;
+	public long endMillis;
 
 	/** The normal branch for branched notation; otherwise it is the only branch */
 	public Bar[] normalBranch;
@@ -83,19 +83,19 @@ public final class TJANotation {
 	public static final class NoteBar {
 		/** The start time when the bar enters the center 
 		 * of the beat since the beginning of the game */
-		public long beatTimeMillis;
+		public long beatMillis;
 
 		/** The time when the bar appears in the screen 
 		 * to player, always earlier than beatTimeMillis */
-		public long appearTimeMillis;
+		public long appearMillis;
 
 		/** Indicates whether the bar line is visible */
 		public boolean isBarLineOn;
 		
 		/** The pre-computed x coordinations of the bar of every millisecond
-		 * relative to {@link #appearTimeMillis}
+		 * relative to {@link #appearMillis}
 		 */
-		public short preComputedXCoords[];
+		public short millisDistances[];
 		
 		/** The bar's width in pixels */
 		public int width;
@@ -110,10 +110,25 @@ public final class TJANotation {
 
 		/** The time when the note hit the beat right 
 		 * since the beginning of the game */
-		public long beatTimeMillis;
+		public long beatMillis;
+
+		/**
+		 * Start time to handle i.e. beatTimeMillis - TIME_JUDGE_BAD for normal
+		 * note, and beatTimeMillis for rolling notes
+		 */
+		public long handleStartMillis;
+
+		/**
+		 * End time to handle i.e. beatTimeMillis + TIME_JUDGE_BAD for normal
+		 * note
+		 */
+		public long handleEndMillis;
 
 		/** The distance away from the beginning of its note bar*/
 		public int offsetX;
+
+		/** For len-da note. The ending distance away from the beginning of its note bar*/
+		public int offsetX2;
 	}
 	
 	public static class Command {
@@ -204,7 +219,6 @@ public final class TJANotation {
 				easyBeatPrecision = Float.intBitsToFloat(tjaFormatArg1);
 				masterBeatPrecision = Float.intBitsToFloat(tjaFormatArg2);
 			}
-			
 		}
 		
 		public static class BranchJudgeScore extends BranchJudge {

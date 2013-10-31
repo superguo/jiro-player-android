@@ -42,8 +42,8 @@ public final class PlayerMessage {
 	/** The number of BAD+MISSED notes */
 	public int numMissedOrBadNotes;
 
-	/** The number of all rolled */
-	public int numTotalRolled;
+	/** The number of len-da hits */
+	public int numTotalLenda;
 
 	/** The value is one of HIT_NONE, HIT_FACE and HIT_SIDE
 	 * Drawer must set to HIT_NONE after the frame is drawn
@@ -55,7 +55,7 @@ public final class PlayerMessage {
 	/** The action note bar is the one that appears in the screen first. */
 	public NoteBar actionNoteBar;
 
-	/** The index of the nearest coming note that is not hit or missed or broken yet. */
+	/** The index of the upcoming note that is not hit or missed or broken yet. */
 	public int actionNoteIndex;
 
 	/**
@@ -140,7 +140,7 @@ public final class PlayerMessage {
 		rollingCount = 0;
 
 		// Reset some counters
-		numMaxCombos = numBeatedNormalNotes = numBeatedGoodNotes = numMissedOrBadNotes = numTotalRolled = 0;
+		numMaxCombos = numBeatedNormalNotes = numBeatedGoodNotes = numMissedOrBadNotes = numTotalLenda = 0;
 	}
 	
 	public void handleBadOrMissedHit(int[] gaugePerNote) {

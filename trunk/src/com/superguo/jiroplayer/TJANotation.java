@@ -38,7 +38,7 @@ public final class TJANotation {
 	public final static int COMMAND_GOGOEND		= 2;
 	public final static int COMMAND_SECTION		= 3;
 	public final static int COMMAND_STARTBRANCH	= 4;
-	public final static int COMMAND_EXITBRANCH	= 5;
+//	public final static int COMMAND_EXITBRANCH	= 5;
 	public final static int COMMAND_LEVEL_HOLD	= 6;
 	
 	/** Judge type rolling */
@@ -102,14 +102,16 @@ public final class TJANotation {
 
 		/** The notes */
 		public Note[] notes;
+		
+		/** The index of bar that is its next note bar */
+		public int nextNoteBarIndex = -1;
 	}
 
 	public static final class Note {
 		/** The note value */
 		public int noteValue;
 
-		/** The time when the note hit the beat right 
-		 * since the beginning of the game */
+		/** The beat time since the beginning of the game */
 		public long beatMillis;
 
 		/**
@@ -124,10 +126,10 @@ public final class TJANotation {
 		 */
 		public long handleEndMillis;
 
-		/** The distance away from the beginning of its note bar*/
+		/** The distance relative to the beginning of its note bar */
 		public int offsetX;
 
-		/** For len-da note. The ending distance away from the beginning of its note bar*/
+		/** For len-da note. The ending distance relative to the beginning of its note bar*/
 		public int offsetX2;
 	}
 	

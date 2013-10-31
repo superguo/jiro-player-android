@@ -243,9 +243,6 @@ public final class PlayModel {
 //	private IntegerRef mPreprocessedCommandIndexRef = new IntegerRef();
 //	private IntegerRef mPreprocessedBarIndexRef = new IntegerRef();
 	
-	/** The command index of the exit of the playing branch */
-//	private IntegerRef mBranchExitIndexRef = new IntegerRef();
-	
 	private int mRollingBaloonIndex;
 	private int mScoreInit;
 	private int mScoreDiff;
@@ -275,9 +272,11 @@ public final class PlayModel {
 
 	private String mPlayTimeError = "";
 	private int mActionNoteBarIndex;
+	private int mActionNoteIndex;
 	private int mNextActionNoteBarIndex;
 	private Bar[] mCurrentBranch;
 	private long mLastOffset;
+	private StartBranchCommand mUpcomingStartBranchCommand;
 
 	public final PlayerMessage prepare(TJAFormat tja, int courseIndex, int notationIndex) {
 		mTJA = tja;
@@ -318,6 +317,7 @@ public final class PlayModel {
 		mIsSectionArranging = mNotation.easyBranch == null ? false : true;
 		
 		mActionNoteBarIndex = 0;
+		mActionNoteIndex = 0;
 		mCurrentBranch = mNotation.normalBranch;
 		
 		mNextActionNoteBarIndex = -1;
@@ -509,6 +509,24 @@ public final class PlayModel {
 	
 	private void walkToNextActionNoteBar() {
 		// TODO Walks from actionBarIndex to nextActionNoteBarIndex
+	}
+	
+	
+	private void handleEnteringNoteBar() {
+		// TODO
+		if (mIsSectionArranging) {
+			mSectionStat.reset();
+			mIsSectionArranging = false;
+		}
+		if (mCourse.hasBranch) {
+			int index = mPlayerMessage.actionNoteIndex + 1;
+			while (index < mCurrentBranch.length && ! mCurrentBranch[index].isNoteBar) {
+				if (mCurrentBranch[index].command.commandValue == TJANotation.COMMAND_STARTBRANCH) {
+					mUpcomingStartBranchCommand = (StartBranchCommand) mCurrentBranch[index].command;
+					break;
+				}
+			}
+		}
 	}
 	
 	/**

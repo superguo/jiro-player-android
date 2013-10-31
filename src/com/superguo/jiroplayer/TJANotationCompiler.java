@@ -204,7 +204,9 @@ public class TJANotationCompiler {
 		 * valid only when startBranchCmd is not null
 		 */
 		boolean inCompilingBranch = false;
-
+		
+		NoteBar lastNoteBar = null;
+		
 		for (int i=0; i<length; ++i) {
 			TJACommand oCmd = mNotationCommands[i];
 			Bar bar = new Bar();
@@ -376,42 +378,44 @@ public class TJANotationCompiler {
 				int[] oNotes = oCmd.args;
 				
 				compiledNotes.clear();
-				double noteBeatSpan = 15000.0 / bpm; // == 0.25 / bpm * 60000;
 				double noteBeatTime = barBeatMillis;
-				for (int j=0; j<oNotes.length; ++j, noteBeatTime += noteBeatSpan) {
-					
+				double noteBeatTimeSpan = 15000.0 / bpm; // == 0.25 / bpm * 60000;
+				double noteBeatDistSpan = barSpeed * noteBeatTimeSpan;
+				double offsetX = 0.0;
+				
+				for (int noteValue : oNotes) {
 					if (isLastNoteRolling) {
-						if (oNotes[i] == 8) { // 8 means finished
+						if (noteValue == 8) { // 8 means finished
 							lastRollingNote.handleEndMillis = (long) noteBeatTime;
-							lastRollingNote.offsetX2 = (int) (barSpeed * noteBeatSpan * j);
+							lastRollingNote.offsetX2 = (int) offsetX;
 							isLastNoteRolling = false;
 						}
 					} else {
-						switch (oNotes[i]) {
-						case 1:
-						case 2:
-						case 3:
-						case 4: {
+						switch (noteValue) {
+						case 1:		// face
+						case 2:		// side
+						case 3:		// big face
+						case 4: {	// big side
 							Note note = new Note();
-							note.noteValue = oNotes[i];
+							note.noteValue = noteValue;
 							note.beatMillis = (long) noteBeatTime;
 							note.handleStartMillis = note.beatMillis - PlayModel.TIME_JUDGE_BAD;
 							note.handleEndMillis = note.beatMillis + PlayModel.TIME_JUDGE_BAD;
-							note.offsetX = (int) (barSpeed * noteBeatSpan * j);
+							note.offsetX = (int) offsetX;
 							compiledNotes.add(note);
 							break;
 						}
 
-						case 5: // len-da (combo)
-						case 6: // Big len-da
-						case 7: // Balloon
-						case 9: { // Potato
+						case 5: 	// len-da
+						case 6: 	// Big len-da
+						case 7: 	// Balloon
+						case 9: {	// Potato
 							isLastNoteRolling = true;
 							Note note = lastRollingNote = new Note();
-							note.noteValue = oNotes[i];
+							note.noteValue = noteValue;
 							note.beatMillis = (long) noteBeatTime;
 							note.handleStartMillis = note.beatMillis;
-							note.offsetX = (int) (barSpeed * noteBeatSpan * j);
+							note.offsetX = (int) offsetX;
 							compiledNotes.add(note);
 							break;
 						}
@@ -422,13 +426,21 @@ public class TJANotationCompiler {
 							break;
 						}
 					}
+					noteBeatTime += noteBeatTimeSpan;
+					offsetX += noteBeatDistSpan;
 				}
 				// Compute next beat time
 				barBeatMillis += (double)measureX / measureY / bpm * 60000.0;
 				// Emit notes
 				noteBar.notes = (Note[]) compiledNotes.toArray();
+				// Set last note bar's nextNoteBarIndex to this note bar's index 
+				if (lastNoteBar!=null) {
+					lastNoteBar.nextNoteBarIndex = i;
+				}
 				// Clear values
 				delay = 0.0;
+				// Set last note bar
+				lastNoteBar = noteBar;
 				break;
 			}
 			
@@ -481,7 +493,8 @@ public class TJANotationCompiler {
 				assert startBranchCmd != null;
 				if (inCompilingBranch) {
 					bar.isNoteBar = false;
-					bar.command = new TJANotation.Command(TJANotation.COMMAND_EXITBRANCH);
+//					bar.command = new TJANotation.Command(TJANotation.COMMAND_EXITBRANCH);
+					bar.command = new TJANotation.Command(TJANotation.COMMAND_EMPTY);
 					inCompilingBranch = false;
 				} else if (matchesBranch(oCmd.commandType, branchIndex)) {
 					// We are entering the compiling branch

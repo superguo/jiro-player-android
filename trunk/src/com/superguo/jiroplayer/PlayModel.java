@@ -35,10 +35,10 @@ public final class PlayModel {
 	public static final int BEAT_NOTE_SIDE 	   = 3;
 	public static final int BEAT_NOTE_BIG_SIDE = 4;
 
-	public static final int BRANCH_NONE			= 0;
-	public static final int BRANCH_NORMAL		= 1;
-	public static final int BRANCH_EASY			= 2;
-	public static final int BRANCH_MASTER		= 3;
+	public static final int BRANCH_INDEX_NONE	= 0;
+	public static final int BRANCH_INDEX_NORMAL	= 1;
+	public static final int BRANCH_INDEX_EASY	= 2;
+	public static final int BRANCH_INDEX_MASTER	= 3;
 	
 //	public static final int ROLLING_NONE_LENDA		= -1;	// Just in convenience to display 
 //	public static final int ROLLING_NONE_BIG_LENDA	= -2;	// Just in convenience to display
@@ -271,17 +271,14 @@ public final class PlayModel {
 //	private int mLastPlayingNoteIndex;
 
 	private String mPlayTimeError = "";
-	private int mActionNoteBarIndex;
-	private int mActionNoteIndex;
-	private int mNextActionNoteBarIndex;
-	private Bar[] mCurrentBranch;
 	private long mLastOffset;
 	private StartBranchCommand mUpcomingStartBranchCommand;
 
 	public final PlayerMessage prepare(TJAFormat tja, int courseIndex, int notationIndex) {
 		mTJA = tja;
 		mCourse = mTJA.courses[courseIndex];
-		mPlayerMessage.reset(mCourse);
+		PlayerMessage playerMessage = mPlayerMessage;
+		playerMessage.reset(mCourse, mNotation.normalBranch);
 		
 		// Compile and reset internal values
 		TJANotationCompiler compiler = new TJANotationCompiler();
@@ -314,13 +311,9 @@ public final class PlayModel {
 
 		mSectionStat.reset(); // Reset the SECTION statistics
 
-		mIsSectionArranging = mNotation.easyBranch == null ? false : true;
+		mIsSectionArranging = mCourse.hasBranches ? true : false;
 		
-		mActionNoteBarIndex = 0;
-		mActionNoteIndex = 0;
-		mCurrentBranch = mNotation.normalBranch;
-		
-		mNextActionNoteBarIndex = -1;
+		mUpcomingStartBranchCommand = null;
 		
 		// Fill actionNoteBar and nextActionNoteBar
 		for (int index=0; index<mCurrentBranch.length; ++index) {
@@ -513,20 +506,29 @@ public final class PlayModel {
 	
 	
 	private void handleEnteringNoteBar() {
-		// TODO
+		
+		Bar[] currentBranch = mPlayerMessage.actionBranch;
+
 		if (mIsSectionArranging) {
 			mSectionStat.reset();
 			mIsSectionArranging = false;
 		}
-		if (mCourse.hasBranch) {
-			int index = mPlayerMessage.actionNoteIndex + 1;
-			while (index < mCurrentBranch.length && ! mCurrentBranch[index].isNoteBar) {
-				if (mCurrentBranch[index].command.commandValue == TJANotation.COMMAND_STARTBRANCH) {
-					mUpcomingStartBranchCommand = (StartBranchCommand) mCurrentBranch[index].command;
+		
+		// Set mUpcomingStartBranchCommand if hasBranches
+		mUpcomingStartBranchCommand = null;
+		if (mCourse.hasBranches) {
+			for (int index = mPlayerMessage.actionNoteBarIndex + 1;
+					index < currentBranch.length && ! currentBranch[index].isNoteBar;
+					index ++) {
+				if (currentBranch[index].command.commandValue == TJANotation.COMMAND_STARTBRANCH) {
+					mUpcomingStartBranchCommand = (StartBranchCommand) currentBranch[index].command;
 					break;
 				}
 			}
 		}
+		
+		// set next action bar
+		mPlayerMessage.nextBranch = nextBranch(false);
 	}
 	
 	/**
@@ -601,67 +603,41 @@ public final class PlayModel {
 		}
 		return NORMAL_NOTE_RESULT_REMOVE_NOTE;
 	}
+
 	/**
-	 * Computes the next note bar index of specified note bar index
+	 * Computes the next note branch of specified note bar index
 	 * 
-	 * @param index
-	 *            The specified note bar index next to which we want to compute
-	 * @param branchIndexRef
-	 *            The output reference of branch index of the result note bar
 	 * @param areBarNotesPassed
 	 *            Indicates whether the notes of the current bar are all passed.
 	 * @return
 	 */
-	private int nextNoteBarIndex(int index, IntegerRef branchIndexRef, boolean areBarNotesPassed) {
-		final int totalBars = mCurrentBranch.length;
+	private Bar[] nextBranch(boolean areBarNotesPassed) {
 		// If the course has no branch
-		if ( ! mCourse.hasBranch ) {
-			safeSetIntegerRef(branchIndexRef, BRANCH_NORMAL);
-			for (;;) {
-				++index;
-				if (index >= totalBars) {
-					return -1;
-				}
-				if (mCurrentBranch[index].isNoteBar) {
-					return index;
-				}
-			}
+		if ( ! mCourse.hasBranches ) {
+			return mNotation.normalBranch;
 		}
+
+		// If #BRANCHSTART is not encountered
+		if ( mUpcomingStartBranchCommand == null ) {
+			return mPlayerMessage.actionBranch;
+		}
+
 		// If the course has branches
-		for (;;) {
-			++index;
-			if (index >= totalBars) {
-				return -1;
-			}
-			Bar bar = mCurrentBranch[index];
-			if (bar.isNoteBar) {
-				safeSetIntegerRef(branchIndexRef, mPlayerMessage.branch);
-				return index;
-			}
-			if (bar.command.commandValue == TJANotation.COMMAND_STARTBRANCH) {
-				StartBranchCommand command = (StartBranchCommand) bar.command;
-				int branch = selectBranch(command, mSectionStat, areBarNotesPassed);
-				
-				switch (branch) {
-				case BRANCH_NONE:
-					safeSetIntegerRef(branchIndexRef, mPlayerMessage.branch);
-					return -1;
-				case BRANCH_NORMAL:
-					safeSetIntegerRef(branchIndexRef, BRANCH_NORMAL);
-					return command.normalIndex;
-				case BRANCH_EASY:
-					safeSetIntegerRef(branchIndexRef, BRANCH_EASY);
-					return command.easyIndex;
-				case BRANCH_MASTER:
-					safeSetIntegerRef(branchIndexRef, BRANCH_MASTER);
-					return command.masterIndex;
-				default:
-					assert false;
-				}
-			}
+		int branchIndex = selectBranch(mUpcomingStartBranchCommand, mSectionStat, areBarNotesPassed);
+		switch (branchIndex) {
+		case BRANCH_INDEX_NONE:
+			return null;
+		case BRANCH_INDEX_NORMAL:
+			return mNotation.normalBranch;
+		case BRANCH_INDEX_EASY:
+			return mNotation.easyBranch;
+		case BRANCH_INDEX_MASTER:
+			return mNotation.masterBranch;
+		default:
+			return null;
 		}
 	}
-
+	
 	private static final int selectBranch(StartBranchCommand startBranchCommand,
 			SectionStat sectionStat, boolean areBarNotesPassed) {
 		// N < E < M
@@ -692,24 +668,24 @@ public final class PlayModel {
 			break;
 
 		default:
-			return BRANCH_NONE;
+			return BRANCH_INDEX_NONE;
 		}
 
 		if (areBarNotesPassed) {
 			// Normal, Easy, Master!
 			if (played < limitE) {
-				return BRANCH_NORMAL;
+				return BRANCH_INDEX_NORMAL;
 			} else if (played < limitM) {
-				return BRANCH_EASY;
+				return BRANCH_INDEX_EASY;
 			} else {
-				return BRANCH_MASTER;
+				return BRANCH_INDEX_MASTER;
 			}
 		} else if (judgeType==TJANotation.BRANCH_JUDGE_ROLL || judgeType==TJANotation.BRANCH_JUDGE_SCORE){
 			if (played>=limitM) {
-				return BRANCH_MASTER;
+				return BRANCH_INDEX_MASTER;
 			}
 		}
-		return BRANCH_NONE;
+		return BRANCH_INDEX_NONE;
 	}
 //	/**
 //	 * 
@@ -1191,7 +1167,7 @@ public final class PlayModel {
 //	}
 
 	private final void resetGauge(int totalGaugeNotes) {
-		int course = mCourse.course;
+		int course = mCourse.courseIndex;
 		int level = Math.min(mCourse.level, MAX_LEVEL_OF[course]);
 
 		int gauge = (int) (MAX_GAUGE / (MAX_GAUGE_RATES[course][level] * totalGaugeNotes));
@@ -1211,11 +1187,11 @@ public final class PlayModel {
 			mScoreDiff = course.scoreDiff;
 		} else {
 			int fullScore; // approximate value of full score
-			if (course.level <= MAX_LEVEL_OF[course.course])
-				fullScore = FULL_SCORES[course.course][course.level];
+			if (course.level <= MAX_LEVEL_OF[course.courseIndex])
+				fullScore = FULL_SCORES[course.courseIndex][course.level];
 			else
-				fullScore = FULL_SCORES[course.course][MAX_LEVEL_OF[course.course]]
-						+ 100000 * (MAX_LEVEL_OF[course.course] - course.level);
+				fullScore = FULL_SCORES[course.courseIndex][MAX_LEVEL_OF[course.courseIndex]]
+						+ 100000 * (MAX_LEVEL_OF[course.courseIndex] - course.level);
 			float fullNormalNote = (float) fullScore / totalScoringNotes;
 			mScoreInit = (int) Math.floor(fullNormalNote * 0.08f) * 10;
 			mScoreDiff = (int) Math.floor(fullNormalNote * 0.02f) * 10;

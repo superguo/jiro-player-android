@@ -110,7 +110,7 @@ public class TJANotationCompiler {
 			// If the music starts later than the notation - we should avoid this case
 			mNotation.musicStartMillis = mStartWaitTimeMillis + Math.round(mTja.offset * 1000);
 		}
-		boolean hasBranch = mCourse.hasBranch;
+		boolean hasBranch = mCourse.hasBranches;
 
 		ArrayList<TJANotation.Bar> normalBranch = compileBranch(BRANCH_INDEX_NORMAL);
 

@@ -54,9 +54,9 @@ public final class TJAFormat {
 	public TJACourse courses[];
 
 	public static final class TJACourse {
-		public int course = COURSE_ONI; //
+		public int courseIndex = COURSE_ONI; //
 		public int level; // 1 ~ 12
-		public boolean hasBranch;
+		public boolean hasBranches;
 		public float BPM; // 50 ~ 250
 		public int[] balloons; // number of balloons
 		public int scoreInit; // 1 ~ 100000, 0 means auto

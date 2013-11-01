@@ -1,6 +1,8 @@
 package com.superguo.jiroplayer;
 
 import com.superguo.jiroplayer.TJAFormat.TJACourse;
+import com.superguo.jiroplayer.TJANotation.Bar;
+import com.superguo.jiroplayer.TJANotation.Note;
 import com.superguo.jiroplayer.TJANotation.NoteBar;
 
 /** PlayModel's publicly visible data are all in this class
@@ -15,14 +17,8 @@ public final class PlayerMessage {
 //	 * NOTE_START_ROLLING_POTATO
 //	 * are contained only when it is not in playing(rolling)
 //	 */
-//	public static final class NotePos {
-//		public int noteValue;
-//		public int notePos;
-//	}
-//	
-//	public static final int MAX_NOTE_POS 	= 64;
 	
-	public int course;
+	public int courseIndex;
 	public int score;
 	public int gauge;
 
@@ -50,22 +46,26 @@ public final class PlayerMessage {
 	 */
 	//public int iHit;
 
-//	public LinkedList<NotePos> notePosList = new LinkedList<PlayerMessage.NotePos>(); 
-
+	/** The action branch */
+	public Bar[] actionBranch;
+	
+	/**
+	 * The next branch. It may be null if #BRANCHSTART is coming but cannot
+	 * determine the next branch
+	 */
+	public Bar[] nextBranch;
+	
 	/** The action note bar is the one that appears in the screen first. */
-	public NoteBar actionNoteBar;
+	public int actionNoteBarIndex;
 
 	/** The index of the upcoming note that is not hit or missed or broken yet. */
 	public int actionNoteIndex;
 
-	/**
-	 * The next action note bar that immediately after the action note bar. It
-	 * may be null.
-	 */
-	public NoteBar nextActionNoteBar;
-	
 	/** The note beated */
 	public int beatedNote;
+	
+	/** The note in rolling state */
+	public Note actionRollingNote;
 	
 	/** Indicate the current note is played good,
 	 * 	play normal, missed, passed or not judged yet
@@ -74,7 +74,7 @@ public final class PlayerMessage {
 	public int noteJudged;
 	
 	/** Current branch */
-	public int branch;
+	public int branchIndex;
 	
 	public boolean isGGT;
 	
@@ -104,9 +104,9 @@ public final class PlayerMessage {
 	 */
 	public int rollingCount;
 	
-	public void reset(TJACourse aCourse) {
+	public void reset(TJACourse course, Bar[] branch) {
 		// Reset current course
-		course = aCourse.course;
+		courseIndex = course.courseIndex;
 
 		// Reset current score
 		score = 0;
@@ -114,28 +114,27 @@ public final class PlayerMessage {
 		
 		gauge = 0;
 
-		actionNoteBar = null;
+		actionBranch = nextBranch = branch;
+		actionNoteBarIndex = 0;
 		actionNoteIndex = 0;
-		nextActionNoteBar = null;
 		
 		// Reset hit
 		//iHit = PlayModel.HIT_NONE;
 		
-//		notePosList.clear();
-
 		// Reset judge
 		noteJudged = PlayModel.JUDGED_NONE;
 		
 		// Reset branch state
-		if (aCourse.hasBranch)
-			branch = PlayModel.BRANCH_NORMAL;
+		if (course.hasBranches)
+			branchIndex = PlayModel.BRANCH_INDEX_NORMAL;
 		else
-			branch = PlayModel.BRANCH_NONE;
+			branchIndex = PlayModel.BRANCH_INDEX_NONE;
 		
 		// Reset GO-GO-TIME state
 		isGGT = false;
 		
 		// Reset rolling states
+		actionRollingNote = null;
 		rollingState = PlayModel.ROLLING_NONE;
 		rollingCount = 0;
 

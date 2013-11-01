@@ -261,10 +261,10 @@ public final class TJAFormatParser
 
 			mParsedCommands.add(cmd);
 		} else if (mLine.equals("#SECTION")) {
-			mParsingCourse.hasBranch = true;
+			mParsingCourse.hasBranches = true;
 			mParsedCommands.add(new TJACommand(TJAFormat.COMMAND_TYPE_SECTION));
 		} else if (mLine.startsWith("#BRANCHSTART")) {
-			mParsingCourse.hasBranch = true; // #SECTION may be missing
+			mParsingCourse.hasBranches = true; // #SECTION may be missing
 			fields = mLine.substring(12).trim().split(",");
 			if (fields.length != 3)
 				throwEx("Unknown #BRANCHSTART command");
@@ -455,22 +455,22 @@ public final class TJAFormatParser
 
 			if (value.equalsIgnoreCase("Easy")
 					|| value.equals(Integer.toString(TJAFormat.COURSE_EASY))) {
-				mParsingCourse.course = TJAFormat.COURSE_EASY;
+				mParsingCourse.courseIndex = TJAFormat.COURSE_EASY;
 			} else if (value.equalsIgnoreCase("Normal")
 					|| value.equals(Integer.toString(TJAFormat.COURSE_NORMAL))) {
-				mParsingCourse.course = TJAFormat.COURSE_NORMAL;
+				mParsingCourse.courseIndex = TJAFormat.COURSE_NORMAL;
 			} else if (value.equalsIgnoreCase("Hard")
 					|| value.equals(Integer.toString(TJAFormat.COURSE_HARD))) {
-				mParsingCourse.course = TJAFormat.COURSE_HARD;
+				mParsingCourse.courseIndex = TJAFormat.COURSE_HARD;
 			} else if (value.equalsIgnoreCase("Oni")
 					|| value.equals(Integer.toString(TJAFormat.COURSE_ONI))) {
-				mParsingCourse.course = TJAFormat.COURSE_ONI;
+				mParsingCourse.courseIndex = TJAFormat.COURSE_ONI;
 			} else if (value.equalsIgnoreCase("Edit")
 					|| value.equals(Integer.toString(TJAFormat.COURSE_EDIT))) {
-				mParsingCourse.course = TJAFormat.COURSE_EDIT;
+				mParsingCourse.courseIndex = TJAFormat.COURSE_EDIT;
 			} else if (value.equalsIgnoreCase("Tower")
 					|| value.equals(Integer.toString(TJAFormat.COURSE_TOWER))) {
-				mParsingCourse.course = TJAFormat.COURSE_TOWER;
+				mParsingCourse.courseIndex = TJAFormat.COURSE_TOWER;
 			} else {
 				throwEx("Unknown course");
 			}
